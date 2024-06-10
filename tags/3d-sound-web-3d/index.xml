@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>3d Sound, Web 3d on Nicolas Mars</title>
+    <link>https://example.org/tags/3d-sound-web-3d/</link>
+    <description>Recent content in 3d Sound, Web 3d on Nicolas Mars</description>
+    <generator>Hugo</generator>
+    <language>en-us</language>
+    <lastBuildDate>Mon, 01 Feb 2021 00:00:00 +0000</lastBuildDate>
+    <atom:link href="https://example.org/tags/3d-sound-web-3d/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Le monde, sinon rien</title>
+      <link>https://example.org/projects/lmsr/</link>
+      <pubDate>Mon, 01 Feb 2021 00:00:00 +0000</pubDate>
+      <guid>https://example.org/projects/lmsr/</guid>
+      <description>3D exhibition website</description>
+    </item>
+  </channel>
+</rss>

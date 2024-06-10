@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en-us"
+  dir="ltr">
+
+  <head>
+    <meta charset="utf-8">
+<meta name="viewport" content="width=device-width"><meta name="description" content="" />
+
+<title>
+    
+    Posts | Nicolas Mars
+    
+</title>
+
+
+
+
+
+
+
+<link rel="stylesheet" href="/assets/combined.min.1a597bf3003b05ec92c50a54bac838f208bbbf98769520c89cfb1a7633c5e3c5.css" media="all">
+
+
+
+
+  
+
+
+
+  </head>
+
+  
+
+  
+  
+  
+
+  <body class="dark">
+
+    <div class="content">
+      <header>
+        
+
+<div class="header">
+    <h1 class="header-title">Nicolas Mars</h1>
+
+    <div class="flex">
+        
+
+        
+        
+        <p class="small ">
+            <a href="/">
+                /home
+            </a>
+        </p>
+        
+        <p class="small ">
+            <a href="/about">
+                /about
+            </a>
+        </p>
+        
+        <p class="small  bold ">
+            <a href="/posts">
+                /posts
+            </a>
+        </p>
+        
+        <p class="small ">
+            <a href="/projects">
+                /projects
+            </a>
+        </p>
+        
+        
+    </div>
+
+</div>
+      </header>
+
+      <main class="main">
+        
+
+<div class="list-container">
+
+    
+<div class="breadcrumbs">
+    
+    <a href="/">Home</a>
+    <span class="breadcrumbs-separator"> > </span>
+    
+    <a class="breadcrumbs-current" href="/posts/">Posts</a>
+</div>
+
+
+    <h1>Posts</h1>
+    
+
+    
+
+    
+    
+    
+    
+
+    
+
+    
+
+    
+    <div class="post-line">
+
+    
+    
+    
+    
+
+    <p class="line-date">5 Mar 2024 </p>
+
+    <div>
+        <p class="line-title">
+            <a href="/posts/u_particles/">
+                Driving GPU based particles using 2D textures, Unity
+            </a>
+        </p>
+
+        
+        <p class="line-summary"> Computing vision </p>
+        
+    </div>
+</div>
+    
+
+    
+
+    
+    <div class="post-line">
+
+    
+    
+    
+    
+
+    <p class="line-date">5 Mar 2024 </p>
+
+    <div>
+        <p class="line-title">
+            <a href="/posts/sdfgenerators/">
+                Generating SDF from 2D drawings using ComputeShaders, Unity
+            </a>
+        </p>
+
+        
+        <p class="line-summary"> Computing vision </p>
+        
+    </div>
+</div>
+    
+
+    
+
+    
+    <div class="post-line">
+
+    
+    
+    
+    
+
+    <p class="line-date">12 Jan 2024 </p>
+
+    <div>
+        <p class="line-title">
+            <a href="/posts/heightmaker/">
+                Mixed technics to bake normalized height maps, Blender
+            </a>
+        </p>
+
+        
+        <p class="line-summary"> rendering 3D SDF (made out of 2D Drawings) by RayMarching in materials </p>
+        
+    </div>
+</div>
+    
+
+    
+
+    
+    <div class="post-line">
+
+    
+    
+    
+    
+
+    <p class="line-date">12 Jan 2024 </p>
+
+    <div>
+        <p class="line-title">
+            <a href="/posts/blenderparticules/">
+                Particle systems using Simulation-Zone, Blender
+            </a>
+        </p>
+
+        
+        <p class="line-summary"> sound visualisation software </p>
+        
+    </div>
+</div>
+    
+
+    
+
+    
+    <div class="post-line">
+
+    
+    
+    
+    
+
+    <p class="line-date">12 Jan 2024 </p>
+
+    <div>
+        <p class="line-title">
+            <a href="/posts/cubemarchers/">
+                RayMarching in materials, Unity
+            </a>
+        </p>
+
+        
+        <p class="line-summary"> rendering 3D SDF (made out of 2D Drawings) by RayMarching in materials </p>
+        
+    </div>
+</div>
+    
+
+    
+
+    
+    <div class="post-line">
+
+    
+    
+    
+    
+
+    <p class="line-date">12 Jan 2024 </p>
+
+    <div>
+        <p class="line-title">
+            <a href="/posts/sdffactory/">
+                RayMarching in materials, Unity
+            </a>
+        </p>
+
+        
+        <p class="line-summary"> rendering 3D SDF (made out of 2D Drawings) by RayMarching in materials </p>
+        
+    </div>
+</div>
+    
+
+    
+
+    
+
+</div>
+
+      </main>
+    </div>
+
+    <footer>
+      
+
+
+    </footer>
+
+  </body>
+
+  <script>
+
+  function isAuto() {
+    return document.body.classList.contains("auto");
+  }
+
+  function setTheme() {
+    if (!isAuto()) {
+      return
+    }
+
+    document.body.classList.remove("auto");
+    let cls = "light";
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      cls = "dark";
+    }
+
+    document.body.classList.add(cls);
+  }
+
+  function invertBody() {
+    document.body.classList.toggle("dark");
+    document.body.classList.toggle("light");
+  }
+
+  if (isAuto()) {
+    window.matchMedia('(prefers-color-scheme: dark)').addListener(invertBody);
+  }
+
+  setTheme();
+
+</script>
+
+</html>

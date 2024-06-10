@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Posts on Nicolas Mars</title>
+    <link>https://example.org/posts/</link>
+    <description>Recent content in Posts on Nicolas Mars</description>
+    <generator>Hugo</generator>
+    <language>en-us</language>
+    <lastBuildDate>Tue, 05 Mar 2024 00:00:00 +0000</lastBuildDate>
+    <atom:link href="https://example.org/posts/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Driving GPU based particles using 2D textures, Unity</title>
+      <link>https://example.org/posts/u_particles/</link>
+      <pubDate>Tue, 05 Mar 2024 00:00:00 +0000</pubDate>
+      <guid>https://example.org/posts/u_particles/</guid>
+      <description>Computing vision</description>
+    </item>
+    <item>
+      <title>Generating SDF from 2D drawings using ComputeShaders, Unity</title>
+      <link>https://example.org/posts/sdfgenerators/</link>
+      <pubDate>Tue, 05 Mar 2024 00:00:00 +0000</pubDate>
+      <guid>https://example.org/posts/sdfgenerators/</guid>
+      <description>Computing vision</description>
+    </item>
+    <item>
+      <title>Mixed technics to bake normalized height maps, Blender</title>
+      <link>https://example.org/posts/heightmaker/</link>
+      <pubDate>Fri, 12 Jan 2024 00:00:00 +0000</pubDate>
+      <guid>https://example.org/posts/heightmaker/</guid>
+      <description>rendering 3D SDF (made out of 2D Drawings) by RayMarching in materials</description>
+    </item>
+    <item>
+      <title>Particle systems using Simulation-Zone, Blender</title>
+      <link>https://example.org/posts/blenderparticules/</link>
+      <pubDate>Fri, 12 Jan 2024 00:00:00 +0000</pubDate>
+      <guid>https://example.org/posts/blenderparticules/</guid>
+      <description>sound visualisation software</description>
+    </item>
+    <item>
+      <title>RayMarching in materials, Unity</title>
+      <link>https://example.org/posts/cubemarchers/</link>
+      <pubDate>Fri, 12 Jan 2024 00:00:00 +0000</pubDate>
+      <guid>https://example.org/posts/cubemarchers/</guid>
+      <description>rendering 3D SDF (made out of 2D Drawings) by RayMarching in materials</description>
+    </item>
+    <item>
+      <title>RayMarching in materials, Unity</title>
+      <link>https://example.org/posts/sdffactory/</link>
+      <pubDate>Fri, 12 Jan 2024 00:00:00 +0000</pubDate>
+      <guid>https://example.org/posts/sdffactory/</guid>
+      <description>rendering 3D SDF (made out of 2D Drawings) by RayMarching in materials</description>
+    </item>
+  </channel>
+</rss>
