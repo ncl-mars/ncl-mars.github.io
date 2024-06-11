@@ -13,14 +13,14 @@
       <link>https://example.org/posts/u_particles/</link>
       <pubDate>Sun, 05 May 2024 00:00:00 +0000</pubDate>
       <guid>https://example.org/posts/u_particles/</guid>
-      <description>Computing vision</description>
+      <description>Millions of particles for the cost of a single render pass</description>
     </item>
     <item>
       <title>Generating SDF from 2D drawings, Unity</title>
       <link>https://example.org/posts/sdfgenerators/</link>
       <pubDate>Thu, 25 Apr 2024 00:00:00 +0000</pubDate>
       <guid>https://example.org/posts/sdfgenerators/</guid>
-      <description>Computing vision</description>
+      <description>2 kernels min, filtering pixel data on GPU</description>
     </item>
     <item>
       <title>RayMarching in unlit materials, Unity</title>
