@@ -6,28 +6,28 @@
     <description>Recent content in Particles, Blender, SimulationZone on Nicolas Mars</description>
     <generator>Hugo</generator>
     <language>en-us</language>
-    <lastBuildDate>Fri, 12 Jan 2024 00:00:00 +0000</lastBuildDate>
+    <lastBuildDate>Sat, 20 Apr 2024 00:00:00 +0000</lastBuildDate>
     <atom:link href="https://example.org/tags/particles-blender-simulationzone/index.xml" rel="self" type="application/rss+xml" />
     <item>
-      <title>Generating SDF from triangles, Unity</title>
-      <link>https://example.org/posts/sdffactory/</link>
-      <pubDate>Fri, 12 Jan 2024 00:00:00 +0000</pubDate>
-      <guid>https://example.org/posts/sdffactory/</guid>
-      <description>rendering 3D SDF (made out of 2D Drawings) by RayMarching in materials</description>
+      <title>RayMarching in unlit materials, Unity</title>
+      <link>https://example.org/posts/cubemarchers/</link>
+      <pubDate>Sat, 20 Apr 2024 00:00:00 +0000</pubDate>
+      <guid>https://example.org/posts/cubemarchers/</guid>
+      <description>rendering 3D SDF (made out of 2D Drawings) by RayMarching in regular unlit materials</description>
     </item>
     <item>
       <title>Particle systems using Simulation-Zone, Blender</title>
-      <link>https://example.org/posts/blenderparticules/</link>
+      <link>https://example.org/posts/blenderparticles/</link>
       <pubDate>Fri, 12 Jan 2024 00:00:00 +0000</pubDate>
-      <guid>https://example.org/posts/blenderparticules/</guid>
+      <guid>https://example.org/posts/blenderparticles/</guid>
       <description>sound visualisation software</description>
     </item>
     <item>
-      <title>RayMarching in materials, Unity</title>
-      <link>https://example.org/posts/cubemarchers/</link>
-      <pubDate>Fri, 12 Jan 2024 00:00:00 +0000</pubDate>
-      <guid>https://example.org/posts/cubemarchers/</guid>
-      <description>rendering 3D SDF (made out of 2D Drawings) by RayMarching in regular unlit materials</description>
+      <title>Generating SDF from triangles, Unity</title>
+      <link>https://example.org/posts/sdffactory/</link>
+      <pubDate>Fri, 20 Oct 2023 00:00:00 +0000</pubDate>
+      <guid>https://example.org/posts/sdffactory/</guid>
+      <description>rendering 3D SDF (made out of 2D Drawings) by RayMarching in materials</description>
     </item>
   </channel>
 </rss>

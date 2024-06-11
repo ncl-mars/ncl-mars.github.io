@@ -6,49 +6,49 @@
     <description>Recent content in Posts on Nicolas Mars</description>
     <generator>Hugo</generator>
     <language>en-us</language>
-    <lastBuildDate>Tue, 05 Mar 2024 00:00:00 +0000</lastBuildDate>
+    <lastBuildDate>Sun, 05 May 2024 00:00:00 +0000</lastBuildDate>
     <atom:link href="https://example.org/posts/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Driving GPU based particles using 2D textures, Unity</title>
       <link>https://example.org/posts/u_particles/</link>
-      <pubDate>Tue, 05 Mar 2024 00:00:00 +0000</pubDate>
+      <pubDate>Sun, 05 May 2024 00:00:00 +0000</pubDate>
       <guid>https://example.org/posts/u_particles/</guid>
       <description>Computing vision</description>
     </item>
     <item>
       <title>Generating SDF from 2D drawings, Unity</title>
       <link>https://example.org/posts/sdfgenerators/</link>
-      <pubDate>Tue, 05 Mar 2024 00:00:00 +0000</pubDate>
+      <pubDate>Thu, 25 Apr 2024 00:00:00 +0000</pubDate>
       <guid>https://example.org/posts/sdfgenerators/</guid>
       <description>Computing vision</description>
     </item>
     <item>
-      <title>Generating SDF from triangles, Unity</title>
-      <link>https://example.org/posts/sdffactory/</link>
+      <title>RayMarching in unlit materials, Unity</title>
+      <link>https://example.org/posts/cubemarchers/</link>
+      <pubDate>Sat, 20 Apr 2024 00:00:00 +0000</pubDate>
+      <guid>https://example.org/posts/cubemarchers/</guid>
+      <description>rendering 3D SDF (made out of 2D Drawings) by RayMarching in regular unlit materials</description>
+    </item>
+    <item>
+      <title>Particle systems using Simulation-Zone, Blender</title>
+      <link>https://example.org/posts/blenderparticles/</link>
       <pubDate>Fri, 12 Jan 2024 00:00:00 +0000</pubDate>
-      <guid>https://example.org/posts/sdffactory/</guid>
-      <description>rendering 3D SDF (made out of 2D Drawings) by RayMarching in materials</description>
+      <guid>https://example.org/posts/blenderparticles/</guid>
+      <description>sound visualisation software</description>
     </item>
     <item>
       <title>Mixed technics to bake normalized height maps, Blender</title>
       <link>https://example.org/posts/heightmaker/</link>
-      <pubDate>Fri, 12 Jan 2024 00:00:00 +0000</pubDate>
+      <pubDate>Fri, 01 Dec 2023 00:00:00 +0000</pubDate>
       <guid>https://example.org/posts/heightmaker/</guid>
       <description>rendering 3D SDF (made out of 2D Drawings) by RayMarching in materials</description>
     </item>
     <item>
-      <title>Particle systems using Simulation-Zone, Blender</title>
-      <link>https://example.org/posts/blenderparticules/</link>
-      <pubDate>Fri, 12 Jan 2024 00:00:00 +0000</pubDate>
-      <guid>https://example.org/posts/blenderparticules/</guid>
-      <description>sound visualisation software</description>
-    </item>
-    <item>
-      <title>RayMarching in materials, Unity</title>
-      <link>https://example.org/posts/cubemarchers/</link>
-      <pubDate>Fri, 12 Jan 2024 00:00:00 +0000</pubDate>
-      <guid>https://example.org/posts/cubemarchers/</guid>
-      <description>rendering 3D SDF (made out of 2D Drawings) by RayMarching in regular unlit materials</description>
+      <title>Generating SDF from triangles, Unity</title>
+      <link>https://example.org/posts/sdffactory/</link>
+      <pubDate>Fri, 20 Oct 2023 00:00:00 +0000</pubDate>
+      <guid>https://example.org/posts/sdffactory/</guid>
+      <description>rendering 3D SDF (made out of 2D Drawings) by RayMarching in materials</description>
     </item>
   </channel>
 </rss>
