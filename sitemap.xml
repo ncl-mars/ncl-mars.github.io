@@ -20,6 +20,9 @@
     <loc>https://example.org/tags/</loc>
     <lastmod>2024-03-05T00:00:00+00:00</lastmod>
   </url><url>
+    <loc>https://example.org/posts/sdffactory/</loc>
+    <lastmod>2024-01-12T00:00:00+00:00</lastmod>
+  </url><url>
     <loc>https://example.org/posts/heightmaker/</loc>
     <lastmod>2024-01-12T00:00:00+00:00</lastmod>
   </url><url>
@@ -30,9 +33,6 @@
     <lastmod>2024-01-12T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://example.org/posts/cubemarchers/</loc>
-    <lastmod>2024-01-12T00:00:00+00:00</lastmod>
-  </url><url>
-    <loc>https://example.org/posts/sdffactory/</loc>
     <lastmod>2024-01-12T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://example.org/projects/mmbb/</loc>

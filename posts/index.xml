@@ -16,11 +16,18 @@
       <description>Computing vision</description>
     </item>
     <item>
-      <title>Generating SDF from 2D drawings using ComputeShaders, Unity</title>
+      <title>Generating SDF from 2D drawings, Unity</title>
       <link>https://example.org/posts/sdfgenerators/</link>
       <pubDate>Tue, 05 Mar 2024 00:00:00 +0000</pubDate>
       <guid>https://example.org/posts/sdfgenerators/</guid>
       <description>Computing vision</description>
+    </item>
+    <item>
+      <title>Generating SDF from triangles, Unity</title>
+      <link>https://example.org/posts/sdffactory/</link>
+      <pubDate>Fri, 12 Jan 2024 00:00:00 +0000</pubDate>
+      <guid>https://example.org/posts/sdffactory/</guid>
+      <description>rendering 3D SDF (made out of 2D Drawings) by RayMarching in materials</description>
     </item>
     <item>
       <title>Mixed technics to bake normalized height maps, Blender</title>
@@ -41,14 +48,7 @@
       <link>https://example.org/posts/cubemarchers/</link>
       <pubDate>Fri, 12 Jan 2024 00:00:00 +0000</pubDate>
       <guid>https://example.org/posts/cubemarchers/</guid>
-      <description>rendering 3D SDF (made out of 2D Drawings) by RayMarching in materials</description>
-    </item>
-    <item>
-      <title>RayMarching in materials, Unity</title>
-      <link>https://example.org/posts/sdffactory/</link>
-      <pubDate>Fri, 12 Jan 2024 00:00:00 +0000</pubDate>
-      <guid>https://example.org/posts/sdffactory/</guid>
-      <description>rendering 3D SDF (made out of 2D Drawings) by RayMarching in materials</description>
+      <description>rendering 3D SDF (made out of 2D Drawings) by RayMarching in regular unlit materials</description>
     </item>
   </channel>
 </rss>

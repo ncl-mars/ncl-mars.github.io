@@ -9,6 +9,13 @@
     <lastBuildDate>Fri, 12 Jan 2024 00:00:00 +0000</lastBuildDate>
     <atom:link href="https://example.org/tags/particles-blender-simulationzone/index.xml" rel="self" type="application/rss+xml" />
     <item>
+      <title>Generating SDF from triangles, Unity</title>
+      <link>https://example.org/posts/sdffactory/</link>
+      <pubDate>Fri, 12 Jan 2024 00:00:00 +0000</pubDate>
+      <guid>https://example.org/posts/sdffactory/</guid>
+      <description>rendering 3D SDF (made out of 2D Drawings) by RayMarching in materials</description>
+    </item>
+    <item>
       <title>Particle systems using Simulation-Zone, Blender</title>
       <link>https://example.org/posts/blenderparticules/</link>
       <pubDate>Fri, 12 Jan 2024 00:00:00 +0000</pubDate>
@@ -20,14 +27,7 @@
       <link>https://example.org/posts/cubemarchers/</link>
       <pubDate>Fri, 12 Jan 2024 00:00:00 +0000</pubDate>
       <guid>https://example.org/posts/cubemarchers/</guid>
-      <description>rendering 3D SDF (made out of 2D Drawings) by RayMarching in materials</description>
-    </item>
-    <item>
-      <title>RayMarching in materials, Unity</title>
-      <link>https://example.org/posts/sdffactory/</link>
-      <pubDate>Fri, 12 Jan 2024 00:00:00 +0000</pubDate>
-      <guid>https://example.org/posts/sdffactory/</guid>
-      <description>rendering 3D SDF (made out of 2D Drawings) by RayMarching in materials</description>
+      <description>rendering 3D SDF (made out of 2D Drawings) by RayMarching in regular unlit materials</description>
     </item>
   </channel>
 </rss>
