@@ -48,7 +48,7 @@
       <link>https://example.org/posts/heightmaker/</link>
       <pubDate>Fri, 01 Dec 2023 00:00:00 +0000</pubDate>
       <guid>https://example.org/posts/heightmaker/</guid>
-      <description>rendering 3D SDF (made out of 2D Drawings) by RayMarching in materials</description>
+      <description>Combine {texture painting, SDF, fbm (7 octaves)} to produce normalized height map [0,1]</description>
     </item>
     <item>
       <title>BlenderStudies</title>

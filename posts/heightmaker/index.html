@@ -105,7 +105,7 @@
 
     <h1 class="single-title">Mixed technics to bake normalized height maps, Blender</h1>
     
-    <p class="single-summary">rendering 3D SDF (made out of 2D Drawings) by RayMarching in materials</p>
+    <p class="single-summary">Combine {texture painting, SDF, fbm (7 octaves)} to produce normalized height map [0,1]</p>
     
 
     
@@ -129,14 +129,29 @@
   
   <aside class="toc">
     <p><strong>Table of contents</strong></p>
-    <nav id="TableOfContents"></nav>
+    <nav id="TableOfContents">
+  <ul>
+    <li><a href="#resume">Resume</a></li>
+  </ul>
+</nav>
   </aside>
   
 
   
 
   <div class="single-content">
-    
+    <h2 id="resume">Resume</h2>
+<p>This is a utility node, making it easier to export height map in TIFF (16bits).
+Of course we could export in .exr and not worry about normalized values (exr accept float texture), but support for exr in other software (like unity and gamma space project) can be source of error.</p>
+<p><a href="https://github.com/ncl-mars/HeightMaker">https://github.com/ncl-mars/HeightMaker</a></p>
+<video class="video-shortcode" preload="auto" controls >
+    <source src="0.mp4" type="video/mp4">
+    There should have been a video here but your browser does not seem
+    to support it.
+</video>
+
+
+
     
   </div>
 
