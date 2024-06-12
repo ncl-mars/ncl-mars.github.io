@@ -207,8 +207,14 @@ void ComputeMatrices(Bounds domain, Transform quadTransform)
 
     
 </figure></p>
-<p>To drive particles along a path (shape), we use a signed distance field to the outlines of the path, normals of the path for collisions and constaints, a path direction vector and finally an height map to raise the system to a third dimension, following a relief.<br>
-To see how SDF and directions can be computed from 2D drawings, check the post <em>sdfGenerators</em></p>
+<p>To drive particles along a path (shape), we need :</p>
+<ul>
+<li>a signed distance field (to the outlines of the path)</li>
+<li>normals of the path outlines (for collisions and constaints)</li>
+<li>a path direction (also called flow)</li>
+<li>elevation (or height) to raise the system to a third dimension, following a relief.</li>
+</ul>
+<p>To see how SDF and directions can be computed from 2D drawings, check the post <em>sdfGenerators</em></p>
 <p>A 4 component&rsquo;s texture (float or half) can pack everything, such as :</p>
 <pre tabindex="0"><code>// HLSL pseudo code
 float4 col = _PathTex[uv * dim] // hlsl direct access
