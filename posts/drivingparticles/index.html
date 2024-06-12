@@ -119,7 +119,7 @@
 
       
       &nbsp; · &nbsp;
-      2 min read
+      3 min read
       
     </p>
 
@@ -134,9 +134,13 @@
     <p><strong>Table of contents</strong></p>
     <nav id="TableOfContents">
   <ul>
-    <li><a href="#resume">Resume</a></li>
-    <li><a href="#path-following">Path following</a></li>
-    <li><a href="#gravity">Gravity</a></li>
+    <li><a href="#problems">Problems</a></li>
+    <li><a href="#resolutions">Resolutions</a>
+      <ul>
+        <li><a href="#following-a-path">Following a path</a></li>
+        <li><a href="#gravity">Gravity</a></li>
+      </ul>
+    </li>
     <li><a href="#workflow">Workflow</a></li>
   </ul>
 </nav>
@@ -146,29 +150,38 @@
   
 
   <div class="single-content">
-    <h2 id="resume">Resume</h2>
-<p>With GPU instanced particles, 2D textures (or Arrays of textures) can be used to provide a simulation shader (compute or fragment) the necessary data to implement behaviours and awarness of the scene.</p>
-<p>To orient this data (normals, directions&hellip;) in the scene, the texture can be <em>linked</em> to a quad and to its matrix transform (relative to the domain of the particle system).</p>
-<p>Packing as much data as possible in a single texture is key here, for optimisation purposes but also for readability and usability.</p>
-<h2 id="path-following">Path following</h2>
-<p>To drive particles along a path (shape), I use a signed distance field to the outlines of the path, normals of the path for collisions and constaints, a path direction vector and finally an height map to raise the system to 3d and have it following a relief.<br>
-To see how I compute SDF and directions from 2D drawings, check the post <em>sdfGenerators</em></p>
-<p>A 4 component&rsquo;s texture (float or half) can pack everything, such as :</p>
-<pre tabindex="0"><code>float4 col = _PathTex[uv * dim] // hlsl direct access
-struct PathData
+    <h2 id="problems">Problems</h2>
+<ul>
+<li>
+<p>How to implement a light-weighted particle system in the Unity built-in render pipeline, computed on the GPU, easy to use and compatible with a maximum amount of targets ?</p>
+</li>
+<li>
+<p>How to have millions of particles following a hand-drawn path, reacting to gravity, and colliding on obstacles ?</p>
+</li>
+<li>
+<p>How to make the system efficient enough in order to instantiate dozens of them in a scene ?</p>
+</li>
+<li>
+<p>How to make all of this running without the convenience of compute shaders or compute buffer (for compatibility purposes) ?</p>
+</li>
+</ul>
+<h2 id="resolutions">Resolutions</h2>
+<p>We ended up using 2D data textures (single or textures array, here called <em>field textures</em>), <em>linked</em> to the scene through a quad. From its transform, we could easily compute matrices relatives to the system&rsquo;s bounds, and use theses in the simulation shader to get particle&rsquo;s uv and convert vector data from texture space to domain space.</p>
+<pre tabindex="0"><code>// C# pseudo code
+void ComputeMatrices(Bounds domain, Transform quadTransform)
 {
-    // red + green
-    float3 shapeNormal;         // float3(normalize(col.rg), 0)
-    float distanceToShape;      // length(col.rg) * 2.0 - 1.0
-
-    // blue + alpha
-    float3 pathDirection;       // float3(normalize(col.ba), 0)
-    float height;               // length(col.ba) * 2.0 - 1.0
+    Matrix4x4 FieldToDomain = Matrix4x4.TRS(
+        domain.origin,                  // world position
+        Quaternion.identity,            // bypass rotation 
+        MinComponent(domain.extents)    // preserve ratio
+    ).inverse;
+    
+    FieldToDomain *= quadTransform.localToWorldMatrix;
+    DomainToField  = FieldToDomain.inverse;
 }
-
-// to get the vectors oriented in scene 
-shapeNormal = mul(FieldToDomainMatrix, float4(shapeNormal,0)).xyz;
-</code></pre><p><video class="video-shortcode" preload="auto" controls >
+</code></pre><p>Packing as much data as possible in a single texture is key here, for optimisation purposes but also for readability and usability.</p>
+<h3 id="following-a-path">Following a path</h3>
+<p><video class="video-shortcode" preload="auto" controls >
     <source src="0.mp4" type="video/mp4">
     There should have been a video here but your browser does not seem
     to support it.
@@ -194,8 +207,40 @@ shapeNormal = mul(FieldToDomainMatrix, float4(shapeNormal,0)).xyz;
 
     
 </figure></p>
-<h2 id="gravity">Gravity</h2>
-<pre tabindex="0"><code>float4 col = _TopoTex[uv * dim] // hlsl direct access
+<p>To drive particles along a path (shape), we use a signed distance field to the outlines of the path, normals of the path for collisions and constaints, a path direction vector and finally an height map to raise the system to a third dimension, following a relief.<br>
+To see how SDF and directions can be computed from 2D drawings, check the post <em>sdfGenerators</em></p>
+<p>A 4 component&rsquo;s texture (float or half) can pack everything, such as :</p>
+<pre tabindex="0"><code>// HLSL pseudo code
+float4 col = _PathTex[uv * dim] // hlsl direct access
+struct PathData
+{
+    // red + green
+    float3 shapeNormal;         // float3(normalize(col.rg), 0)
+    float distanceToShape;      // length(col.rg) * 2.0 - 1.0
+
+    // blue + alpha
+    float3 pathDirection;       // float3(normalize(col.ba), 0)
+    float height;               // length(col.ba) * 2.0 - 1.0
+}
+// to get the vectors oriented in scene 
+shapeNormal = mul(FieldToDomain, float4(shapeNormal,0)).xyz;
+</code></pre><p>This kind of texture doesn&rsquo;t need to be more defined than 512x512 pixels.
+Since we now have the distance to the path outlines and its normals, having the particle colling and reflecting is as simple as :</p>
+<pre tabindex="0"><code>// HLSL
+#define epsilon 0.01
+if(distance &lt; epsilon) velocity = reflect(normal, velocity);
+</code></pre><h3 id="gravity">Gravity</h3>
+<video class="video-shortcode" preload="auto" controls >
+    <source src="1.mp4" type="video/mp4">
+    There should have been a video here but your browser does not seem
+    to support it.
+</video>
+
+
+<p>To compute gravity and collision with topography, we pre-compute normals from an height map.
+Data textures for the gravity encapsulate at least 3D normals and the height map, such as :</p>
+<pre tabindex="0"><code>// HLSL pseudo code
+float4 col = _TopoTex[uv * dim] // hlsl direct access
 struct TopoData
 {
     // red + green + blue
@@ -203,15 +248,9 @@ struct TopoData
     float height;               // length(col.rgb) * 2.0 - 1.0
 
     // alpha
-    float zone;                 // col.a
+    float zone;                 // col.a, optional
 }
-</code></pre><video class="video-shortcode" preload="auto" controls >
-    <source src="1.mp4" type="video/mp4">
-    There should have been a video here but your browser does not seem
-    to support it.
-</video>
-
-
+</code></pre><p>By converting the particle&rsquo;s position to field space (by using the DomainToField matrix) we can compare its Z component with the height value (from the data texture), if less, we can once again reflect the particle velocity around</p>
 <h2 id="workflow">Workflow</h2>
 <p><video class="video-shortcode" preload="auto" controls >
     <source src="2.mp4" type="video/mp4">

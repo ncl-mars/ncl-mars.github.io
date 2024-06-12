@@ -23,11 +23,11 @@
       <description>2 kernels min, filtering pixel data on GPU</description>
     </item>
     <item>
-      <title>RayMarching in unlit materials, Unity</title>
+      <title>Raymarching in unlit materials, Unity</title>
       <link>https://ncl-mars.github.io/posts/cubemarchers/</link>
       <pubDate>Sat, 20 Apr 2024 00:00:00 +0000</pubDate>
       <guid>https://ncl-mars.github.io/posts/cubemarchers/</guid>
-      <description>rendering 3D SDF (made out of 2D Drawings) by RayMarching in regular unlit materials</description>
+      <description>rendering 3D SDF by Raymarching in regular unlit materials</description>
     </item>
     <item>
       <title>Particle systems using Simulation-Zone, Blender</title>
