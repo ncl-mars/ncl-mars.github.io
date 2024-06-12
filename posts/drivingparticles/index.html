@@ -148,7 +148,7 @@
   <div class="single-content">
     <h2 id="resume">Resume</h2>
 <p>With GPU instanced particles, 2D textures (or Arrays of textures) can be used to provide a simulation shader (compute or fragment) the necessary data to implement behaviours and awarness of the scene.</p>
-<p>To orient this data (field) in the scene, the texture can be linked to a quad and its matrix transform (relative to the domain of the particle system) is used for the transform.</p>
+<p>To orient this data (normals, directions&hellip;) in the scene, the texture can be <em>linked</em> to a quad and to its matrix transform (relative to the domain of the particle system).</p>
 <p>Packing as much data as possible in a single texture is key here, for optimisation purposes but also for readability and usability.</p>
 <h2 id="path-following">Path following</h2>
 <p>To drive particles along a path (shape), I use a signed distance field to the outlines of the path, normals of the path for collisions and constaints, a path direction vector and finally an height map to raise the system to 3d and have it following a relief.<br>
