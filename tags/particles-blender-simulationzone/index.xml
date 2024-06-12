@@ -22,12 +22,5 @@
       <guid>https://ncl-mars.github.io/posts/blenderboids/</guid>
       <description>Combining a boid system with a mesh tiler algo</description>
     </item>
-    <item>
-      <title>Generating SDF from triangles, Unity</title>
-      <link>https://ncl-mars.github.io/posts/sdffactory/</link>
-      <pubDate>Fri, 20 Oct 2023 00:00:00 +0000</pubDate>
-      <guid>https://ncl-mars.github.io/posts/sdffactory/</guid>
-      <description>rendering 3D SDF (made out of 2D Drawings) by RayMarching in materials</description>
-    </item>
   </channel>
 </rss>
