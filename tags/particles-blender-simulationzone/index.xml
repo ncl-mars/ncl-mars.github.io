@@ -2,31 +2,31 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>Particles, Blender, SimulationZone on Nicolas Mars</title>
-    <link>https://example.org/tags/particles-blender-simulationzone/</link>
+    <link>https://ncl-mars.github.io/tags/particles-blender-simulationzone/</link>
     <description>Recent content in Particles, Blender, SimulationZone on Nicolas Mars</description>
     <generator>Hugo</generator>
     <language>en-us</language>
     <lastBuildDate>Sat, 20 Apr 2024 00:00:00 +0000</lastBuildDate>
-    <atom:link href="https://example.org/tags/particles-blender-simulationzone/index.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="https://ncl-mars.github.io/tags/particles-blender-simulationzone/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>RayMarching in unlit materials, Unity</title>
-      <link>https://example.org/posts/cubemarchers/</link>
+      <link>https://ncl-mars.github.io/posts/cubemarchers/</link>
       <pubDate>Sat, 20 Apr 2024 00:00:00 +0000</pubDate>
-      <guid>https://example.org/posts/cubemarchers/</guid>
+      <guid>https://ncl-mars.github.io/posts/cubemarchers/</guid>
       <description>rendering 3D SDF (made out of 2D Drawings) by RayMarching in regular unlit materials</description>
     </item>
     <item>
       <title>Particle systems using Simulation-Zone, Blender</title>
-      <link>https://example.org/posts/blenderparticles/</link>
+      <link>https://ncl-mars.github.io/posts/blenderboids/</link>
       <pubDate>Fri, 12 Jan 2024 00:00:00 +0000</pubDate>
-      <guid>https://example.org/posts/blenderparticles/</guid>
-      <description>sound visualisation software</description>
+      <guid>https://ncl-mars.github.io/posts/blenderboids/</guid>
+      <description>Combining a boid system with a mesh tiler algo</description>
     </item>
     <item>
       <title>Generating SDF from triangles, Unity</title>
-      <link>https://example.org/posts/sdffactory/</link>
+      <link>https://ncl-mars.github.io/posts/sdffactory/</link>
       <pubDate>Fri, 20 Oct 2023 00:00:00 +0000</pubDate>
-      <guid>https://example.org/posts/sdffactory/</guid>
+      <guid>https://ncl-mars.github.io/posts/sdffactory/</guid>
       <description>rendering 3D SDF (made out of 2D Drawings) by RayMarching in materials</description>
     </item>
   </channel>

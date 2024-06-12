@@ -2,38 +2,38 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>Tram Covering, Procedural Graphics on Nicolas Mars</title>
-    <link>https://example.org/tags/tram-covering-procedural-graphics/</link>
+    <link>https://ncl-mars.github.io/tags/tram-covering-procedural-graphics/</link>
     <description>Recent content in Tram Covering, Procedural Graphics on Nicolas Mars</description>
     <generator>Hugo</generator>
     <language>en-us</language>
     <lastBuildDate>Wed, 20 Dec 2023 00:00:00 +0000</lastBuildDate>
-    <atom:link href="https://example.org/tags/tram-covering-procedural-graphics/index.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="https://ncl-mars.github.io/tags/tram-covering-procedural-graphics/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Modules de médiation du bruit au bureau</title>
-      <link>https://example.org/projects/mmbb/</link>
+      <link>https://ncl-mars.github.io/projects/mmbb/</link>
       <pubDate>Wed, 20 Dec 2023 00:00:00 +0000</pubDate>
-      <guid>https://example.org/projects/mmbb/</guid>
+      <guid>https://ncl-mars.github.io/projects/mmbb/</guid>
       <description>sound visualisation software</description>
     </item>
     <item>
       <title>Gaming in a soundscape</title>
-      <link>https://example.org/projects/memoire/</link>
+      <link>https://ncl-mars.github.io/projects/memoire/</link>
       <pubDate>Wed, 10 Mar 2021 00:00:00 +0000</pubDate>
-      <guid>https://example.org/projects/memoire/</guid>
+      <guid>https://ncl-mars.github.io/projects/memoire/</guid>
       <description>Master thesis</description>
     </item>
     <item>
       <title>Atlas des bifurcations</title>
-      <link>https://example.org/projects/stas/</link>
+      <link>https://ncl-mars.github.io/projects/stas/</link>
       <pubDate>Wed, 10 Feb 2021 00:00:00 +0000</pubDate>
-      <guid>https://example.org/projects/stas/</guid>
+      <guid>https://ncl-mars.github.io/projects/stas/</guid>
       <description>Tramway covering using procedural graphics</description>
     </item>
     <item>
       <title>Antic jewlery</title>
-      <link>https://example.org/projects/jewels/</link>
+      <link>https://ncl-mars.github.io/projects/jewels/</link>
       <pubDate>Mon, 15 Jun 2020 00:00:00 +0000</pubDate>
-      <guid>https://example.org/projects/jewels/</guid>
+      <guid>https://ncl-mars.github.io/projects/jewels/</guid>
       <description>3D jewlery modeling</description>
     </item>
   </channel>

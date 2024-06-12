@@ -2,24 +2,24 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>SDF, ComputeShader on Nicolas Mars</title>
-    <link>https://example.org/tags/sdf-computeshader/</link>
+    <link>https://ncl-mars.github.io/tags/sdf-computeshader/</link>
     <description>Recent content in SDF, ComputeShader on Nicolas Mars</description>
     <generator>Hugo</generator>
     <language>en-us</language>
     <lastBuildDate>Sun, 05 May 2024 00:00:00 +0000</lastBuildDate>
-    <atom:link href="https://example.org/tags/sdf-computeshader/index.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="https://ncl-mars.github.io/tags/sdf-computeshader/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Driving GPU based particles using 2D textures, Unity</title>
-      <link>https://example.org/posts/u_particles/</link>
+      <link>https://ncl-mars.github.io/posts/drivingparticles/</link>
       <pubDate>Sun, 05 May 2024 00:00:00 +0000</pubDate>
-      <guid>https://example.org/posts/u_particles/</guid>
+      <guid>https://ncl-mars.github.io/posts/drivingparticles/</guid>
       <description>Millions of particles for the cost of a single render pass</description>
     </item>
     <item>
       <title>Generating SDF from 2D drawings, Unity</title>
-      <link>https://example.org/posts/sdfgenerators/</link>
+      <link>https://ncl-mars.github.io/posts/sdfgenerators/</link>
       <pubDate>Thu, 25 Apr 2024 00:00:00 +0000</pubDate>
-      <guid>https://example.org/posts/sdfgenerators/</guid>
+      <guid>https://ncl-mars.github.io/posts/sdfgenerators/</guid>
       <description>2 kernels min, filtering pixel data on GPU</description>
     </item>
   </channel>
