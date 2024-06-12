@@ -118,6 +118,9 @@
       
 
       
+      &nbsp; · &nbsp;
+      2 min read
+      
     </p>
 
   </div>
@@ -131,12 +134,9 @@
     <p><strong>Table of contents</strong></p>
     <nav id="TableOfContents">
   <ul>
-    <li><a href="#resume">Resume</a>
-      <ul>
-        <li><a href="#path-following">Path following</a></li>
-        <li><a href="#gravity">Gravity</a></li>
-      </ul>
-    </li>
+    <li><a href="#resume">Resume</a></li>
+    <li><a href="#path-following">Path following</a></li>
+    <li><a href="#gravity">Gravity</a></li>
     <li><a href="#workflow">Workflow</a></li>
   </ul>
 </nav>
@@ -147,19 +147,22 @@
 
   <div class="single-content">
     <h2 id="resume">Resume</h2>
+<p>With GPU instanced particles, I use 2D textures (or Arrays of textures) to provide the simulation shader (compute or fragment) the necessary data to implement behaviours and awarness of the scene.</p>
+<p>To orient this data (field) in the scene, I link the texture to a quad and use its matrix transform (relative to the domain of the particle system).</p>
 <p>Packing as much data as possible in a single texture is key here, for optimisation purposes but also for readability and usability.</p>
-<h3 id="path-following">Path following</h3>
-<p>To drive particles along a path (shape), I use a signed distance field to the outlines of the path (see post sdfGenerators for how to compute this from drawings), normals of the path for collisions and constaints, a path direction vector and finally an height map to raise the system to 3d and have it following a relief.</p>
-<p>A 4 component&rsquo;s texture can pack everything, such as :</p>
+<h2 id="path-following">Path following</h2>
+<p>To drive particles along a path (shape), I use a signed distance field to the outlines of the path, normals of the path for collisions and constaints, a path direction vector and finally an height map to raise the system to 3d and have it following a relief.<br>
+To see how I compute SDF and directions from 2D drawings, check the post <em>sdfGenerators</em></p>
+<p>A 4 component&rsquo;s texture (float or half) can pack everything, such as :</p>
 <pre tabindex="0"><code>float4 col = _PathTex[uv * dim] // hlsl direct access
 struct PathData
 {
     // red + green
-    float2 shapeNormals;        // normalize(col.rg)
+    float3 shapeNormals;        // float3(normalize(col.rg), 0)
     float distanceToShape;      // length(col.rg) * 2.0 - 1.0
 
     // blue + alpha
-    float2 pathDirection;       // normalize(col.ba)
+    float3 pathDirection;       // float3(normalize(col.ba), 0)
     float height;               // length(col.ba) * 2.0 - 1.0
 }
 </code></pre><p><video class="video-shortcode" preload="auto" controls >
@@ -188,8 +191,18 @@ struct PathData
 
     
 </figure></p>
-<h3 id="gravity">Gravity</h3>
-<video class="video-shortcode" preload="auto" controls >
+<h2 id="gravity">Gravity</h2>
+<pre tabindex="0"><code>float4 col = _TopoTex[uv * dim] // hlsl direct access
+struct TopoData
+{
+    // red + green + blue
+    float3 normals;             // normalize(col.rgb)
+    float height;               // length(col.rgb) * 2.0 - 1.0
+    
+    // alpha
+    float zone;                 // col.a
+}
+</code></pre><video class="video-shortcode" preload="auto" controls >
     <source src="1.mp4" type="video/mp4">
     There should have been a video here but your browser does not seem
     to support it.
