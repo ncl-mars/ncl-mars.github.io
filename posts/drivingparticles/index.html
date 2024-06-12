@@ -158,13 +158,16 @@ To see how I compute SDF and directions from 2D drawings, check the post <em>sdf
 struct PathData
 {
     // red + green
-    float3 shapeNormals;        // float3(normalize(col.rg), 0)
+    float3 shapeNormal;        // float3(normalize(col.rg), 0)
     float distanceToShape;      // length(col.rg) * 2.0 - 1.0
 
     // blue + alpha
     float3 pathDirection;       // float3(normalize(col.ba), 0)
     float height;               // length(col.ba) * 2.0 - 1.0
 }
+
+// to get the vectors oriented in scene 
+shapeNormal = mul(FieldToDomainMatrix, float4(shapeNormal,0)).xyz;
 </code></pre><p><video class="video-shortcode" preload="auto" controls >
     <source src="0.mp4" type="video/mp4">
     There should have been a video here but your browser does not seem
@@ -198,7 +201,7 @@ struct TopoData
     // red + green + blue
     float3 normals;             // normalize(col.rgb)
     float height;               // length(col.rgb) * 2.0 - 1.0
-    
+
     // alpha
     float zone;                 // col.a
 }
