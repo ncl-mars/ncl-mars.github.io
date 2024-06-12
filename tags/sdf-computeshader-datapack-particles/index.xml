@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>SDF, ComputeShader, DataPack, Particles on Nicolas Mars</title>
+    <link>https://ncl-mars.github.io/tags/sdf-computeshader-datapack-particles/</link>
+    <description>Recent content in SDF, ComputeShader, DataPack, Particles on Nicolas Mars</description>
+    <generator>Hugo</generator>
+    <language>en-us</language>
+    <lastBuildDate>Sun, 05 May 2024 00:00:00 +0000</lastBuildDate>
+    <atom:link href="https://ncl-mars.github.io/tags/sdf-computeshader-datapack-particles/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Driving GPU based particles using 2D textures, Unity</title>
+      <link>https://ncl-mars.github.io/posts/drivingparticles/</link>
+      <pubDate>Sun, 05 May 2024 00:00:00 +0000</pubDate>
+      <guid>https://ncl-mars.github.io/posts/drivingparticles/</guid>
+      <description>Millions of particles for the cost of a single render pass</description>
+    </item>
+  </channel>
+</rss>

@@ -158,7 +158,7 @@ To see how I compute SDF and directions from 2D drawings, check the post <em>sdf
 struct PathData
 {
     // red + green
-    float3 shapeNormal;        // float3(normalize(col.rg), 0)
+    float3 shapeNormal;         // float3(normalize(col.rg), 0)
     float distanceToShape;      // length(col.rg) * 2.0 - 1.0
 
     // blue + alpha
