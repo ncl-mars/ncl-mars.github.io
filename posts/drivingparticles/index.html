@@ -166,9 +166,10 @@
 </li>
 </ul>
 <h2 id="solutions">Solutions</h2>
-<p>Use of multiple data fields at once into a single 2D texture buffer, such as normals, distances, directions, elevations (&hellip;) and using a quad to import it into a scene, as binding the fields to a transform component;</p>
-<p>Use of the particle&rsquo;s position in field space to read that data, and using the decoded data (tranformed back to world space) as an input for a physic system (steering behaviours, reynolds rules&hellip;)</p>
+<p>Use of multiple data fields at once into a single 2D texture buffer, such as normals, distances, directions, elevations (&hellip;) and using a quad to import it into a scene, as binding the fields to a transform component.</p>
+<p>Use of the particle&rsquo;s position in field space to read that data, and using the decoded data (tranformed back to world space) as an input for a physic system (steering behaviours, Reynolds rules&hellip;).</p>
 <p>Use of a constant uniform buffer packed into a vector4 array (aggressive packing) to limit CPU &gt; GPU calls</p>
+<p>Use of a modular design, structured around a system component that intantiate module objects (simulation, sequencer, renderer)</p>
 <pre tabindex="0"><code>// C# pseudo code for computing matrices
 void ComputeMatrices(Bounds domain, Transform quadTransform)
 {
