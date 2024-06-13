@@ -16,10 +16,38 @@
       <description></description>
     </item>
     <item>
-      <title>SDF, ComputeShader, GPU Data Filtering</title>
-      <link>https://ncl-mars.github.io/tags/sdf-computeshader-gpu-data-filtering/</link>
+      <title>Compute Shader</title>
+      <link>https://ncl-mars.github.io/tags/compute-shader/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      <guid>https://ncl-mars.github.io/tags/sdf-computeshader-gpu-data-filtering/</guid>
+      <guid>https://ncl-mars.github.io/tags/compute-shader/</guid>
+      <description></description>
+    </item>
+    <item>
+      <title>Editor Tools</title>
+      <link>https://ncl-mars.github.io/tags/editor-tools/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>https://ncl-mars.github.io/tags/editor-tools/</guid>
+      <description></description>
+    </item>
+    <item>
+      <title>GPU Data Filtering</title>
+      <link>https://ncl-mars.github.io/tags/gpu-data-filtering/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>https://ncl-mars.github.io/tags/gpu-data-filtering/</guid>
+      <description></description>
+    </item>
+    <item>
+      <title>SDF</title>
+      <link>https://ncl-mars.github.io/tags/sdf/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>https://ncl-mars.github.io/tags/sdf/</guid>
+      <description></description>
+    </item>
+    <item>
+      <title>Slicer</title>
+      <link>https://ncl-mars.github.io/tags/slicer/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>https://ncl-mars.github.io/tags/slicer/</guid>
       <description></description>
     </item>
     <item>
