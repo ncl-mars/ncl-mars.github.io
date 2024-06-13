@@ -105,7 +105,7 @@
 
     <h1 class="single-title">Generating SDF, Unity</h1>
     
-    <p class="single-summary">2 passes minimum, filtering pixel data GPU side</p>
+    <p class="single-summary">GPGPU, 2 compute passes minimum, GPU data filtering</p>
     
 
     
@@ -157,11 +157,12 @@
 <h2 id="solutions">Solutions</h2>
 <h3 id="generating-sdf-from-drawings">Generating SDF from drawings</h3>
 <p>While working with a concept artist, I had to find solutions for him to be able to generate easily these kind of datas. Therefore I have generalized 2D drawings as primary input for all generative processes.</p>
+<p><em>multiple GUI for the same generator, depending on the chosen mode</em></p>
 <table>
 <thead>
 <tr>
-<th style="text-align:center">Path Map Generator GUI</th>
-<th style="text-align:center">Topography Map Generator GUI</th>
+<th style="text-align:center">Path map generation mode</th>
+<th style="text-align:center">Topography map generation mode</th>
 </tr>
 </thead>
 <tbody>
@@ -207,7 +208,6 @@
 </tr>
 </tbody>
 </table>
-<p><em>multiple GUI for the same generator, depending on the chosen mode</em></p>
 <table>
 <thead>
 <tr>
@@ -259,10 +259,13 @@
     
 </figure></p>
 <h2 id="references">References</h2>
-<p>AMD TressFX : <a href="https://github.com/GPUOpen-Effects/TressFX">https://github.com/GPUOpen-Effects/TressFX</a></p>
-<p>Unityteam TressFX implementation : <a href="https://github.com/Unity-Technologies/com.unity.demoteam.mesh-to-sdf/tree/main">https://github.com/Unity-Technologies/com.unity.demoteam.mesh-to-sdf/tree/main</a></p>
-<p>Kenny Erleben : <a href="https://developer.nvidia.com/gpugems/gpugems3/part-v-physics-simulation/chapter-34-signed-distance-fields-using-single-pass-gpu">https://developer.nvidia.com/gpugems/gpugems3/part-v-physics-simulation/chapter-34-signed-distance-fields-using-single-pass-gpu</a></p>
-<p>Inigo Quilez : <a href="https://iquilezles.org/articles/">https://iquilezles.org/articles/</a></p>
+<ul>
+<li>AMD TressFX : <a href="https://github.com/GPUOpen-Effects/TressFX">https://github.com/GPUOpen-Effects/TressFX</a></li>
+<li>Unityteam TressFX implementation : <a href="https://github.com/Unity-Technologies/com.unity.demoteam.mesh-to-sdf/tree/main">https://github.com/Unity-Technologies/com.unity.demoteam.mesh-to-sdf/tree/main</a></li>
+<li>Kenny Erleben single-pass method : <a href="https://developer.nvidia.com/gpugems/gpugems3/part-v-physics-simulation/chapter-34-signed-distance-fields-using-single-pass-gpu">https://developer.nvidia.com/gpugems/gpugems3/part-v-physics-simulation/chapter-34-signed-distance-fields-using-single-pass-gpu</a></li>
+<li>Inigo Quilez : <a href="https://iquilezles.org/articles/">https://iquilezles.org/articles/</a></li>
+</ul>
+<p>This will be released on Github very soon :)</p>
 
     
   </div>
