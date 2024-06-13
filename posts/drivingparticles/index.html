@@ -162,15 +162,15 @@
 <p>to make the system efficient enough to be instantiable per dozens in a scene</p>
 </li>
 <li>
-<p>to make all of this running without the convenience neither of a compute shader nor a compute buffer (for compatibility reasons)</p>
+<p>to make all of this running without the comptibility issues of compute shaders or compute buffers</p>
 </li>
 </ul>
 <h2 id="solutions">Solutions</h2>
 <p>Use of multiple data fields at once encoded into a single 2D texture buffer, such as normals, distances, directions, elevations (&hellip;) and use of a quad to import it into a scene, as binding the data to a transform component.</p>
 <p>Use of the particle&rsquo;s position in field space to read that data, and use of the decoded data (tranformed back to world space) as an input for a physics system (steering behaviours, Reynolds rules&hellip;).</p>
-<p>Use of a constant uniform buffer packed into a vector4 array (aggressive packing) to limit CPU &gt; GPU calls.</p>
+<p>Use of a constant uniform buffer packed into a vector4 array (aggressive packing) to limit CPU &gt; GPU calls and avoid memory address computations (alignment).</p>
 <p>Use of a modular design, structured around a system component that intantiate module objects (simulation, sequencer, renderer).</p>
-<p>Use of an editor script to make a modular inspector GUI (accordingly to a system&rsquo;s mode), where the property fields write directly into the vector array (or constant buffer, no copies made).</p>
+<p>Use of an editor script to make a modular inspector GUI (accordingly to a system&rsquo;s mode), where the property fields write directly into the vector array (no copies made).</p>
 <pre tabindex="0"><code>// C# pseudo code for computing matrices
 void ComputeMatrices(Bounds domain, Transform quadTransform)
 {
@@ -234,7 +234,7 @@ struct PathData
 // to transform from field to domain (or bounds) space  
 shapeNormal = mul(FieldToDomain, float4(shapeNormal,0)).xyz;
 </code></pre><p>This kind of texture doesn&rsquo;t need to be more defined than 512x512 pixels.
-Since we now have the distance to the path outlines and its normals, we ca have the particle&rsquo;s velocity vector reflecting around the normal if the distance is close to zero</p>
+Since we now have the distance to the path outlines and its normals, we can have the particle&rsquo;s velocity vector reflecting around the normal if the distance is close to zero</p>
 <p>
 
 
