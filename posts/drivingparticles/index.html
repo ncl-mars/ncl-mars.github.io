@@ -134,8 +134,8 @@
     <p><strong>Table of contents</strong></p>
     <nav id="TableOfContents">
   <ul>
-    <li><a href="#problems">Problems</a></li>
-    <li><a href="#resolutions">Resolutions</a>
+    <li><a href="#objectives">Objectives</a></li>
+    <li><a href="#solutions">Solutions</a>
       <ul>
         <li><a href="#following-a-path">Following a path</a></li>
         <li><a href="#gravity">Gravity</a></li>
@@ -150,37 +150,38 @@
   
 
   <div class="single-content">
-    <h2 id="problems">Problems</h2>
+    <h2 id="objectives">Objectives</h2>
 <ul>
 <li>
-<p>How to implement a light-weighted particle system using the Unity built-in render pipeline, computed on the GPU, easy to use and compatible with a maximum amount of targets (such as Nintendo Switch or WebGL) ?</p>
+<p>to implement a light-weighted particle system using the Unity built-in render pipeline, fully instanced on the GPU, easy to use and compatible with a maximum amount of targets (such as Nintendo Switch or WebGL)</p>
 </li>
 <li>
-<p>How to have millions of particles following a hand-drawn path, reacting to gravity, and colliding on obstacles ?</p>
+<p>to have millions of particles following a hand-drawn path, reacting to gravity, and colliding with obstacles</p>
 </li>
 <li>
-<p>How to make the system efficient enough in order to instantiate dozens of them in a scene ?</p>
+<p>to make the system efficient enough to be instantiable per dozens in a scene</p>
 </li>
 <li>
-<p>How to make all of this running without the convenience of compute shaders or compute buffer (for compatibility purposes) ?</p>
+<p>to make all of this running without the convenience neither of a compute shader nor a compute buffer (for compatibility purposes)</p>
 </li>
 </ul>
-<h2 id="resolutions">Resolutions</h2>
-<p>We ended up using 2D data textures (single or textures array, here called <em>field textures</em>), <em>linked</em> to the scene through a quad. From its transform, we could easily compute matrices relatives to the system&rsquo;s bounds, and use theses in the simulation shader to get particle&rsquo;s uv and convert vector data from texture space to domain space.</p>
-<pre tabindex="0"><code>// C# pseudo code
+<h2 id="solutions">Solutions</h2>
+<p>Use of multiple data fields at once into a single 2D texture buffer, such as normals, distances, directions, elevations (&hellip;) and using a quad to import it into a scene, as binding the fields to a transform component;</p>
+<p>Use of the particle&rsquo;s position in field space to read that data, and using the decoded data (tranformed back to world space) as an input for a physic system (steering behaviours, reynolds rules&hellip;)</p>
+<p>Use of a constant uniform buffer packed into a vector4 array (aggressive packing) to limit CPU &gt; GPU calls</p>
+<pre tabindex="0"><code>// C# pseudo code for computing matrices
 void ComputeMatrices(Bounds domain, Transform quadTransform)
 {
     Matrix4x4 FieldToDomain = Matrix4x4.TRS(
         domain.origin,                  // world position
         Quaternion.identity,            // bypass rotation 
-        MinComponent(domain.extents)    // preserve ratio
+        MinComponent(domain.size)       // preserve ratio
     ).inverse;
     
     FieldToDomain *= quadTransform.localToWorldMatrix;
     DomainToField  = FieldToDomain.inverse;
 }
-</code></pre><p>Packing as much data as possible in a single texture is key here, for optimisation purposes but also for readability and usability.</p>
-<h3 id="following-a-path">Following a path</h3>
+</code></pre><h3 id="following-a-path">Following a path</h3>
 <p><video class="video-shortcode" preload="auto" controls >
     <source src="0.mp4" type="video/mp4">
     There should have been a video here but your browser does not seem
@@ -217,7 +218,7 @@ void ComputeMatrices(Bounds domain, Transform quadTransform)
 <p>To see how SDF and directions can be computed from 2D drawings, check the post <em>sdfGenerators</em></p>
 <p>A 4 component&rsquo;s texture (float or half) can pack everything, such as :</p>
 <pre tabindex="0"><code>// HLSL pseudo code
-float4 col = _PathTex[uv * dim] // hlsl direct access
+float4 col = _PathTex[uv * dim]
 struct PathData
 {
     // red + green
@@ -228,14 +229,11 @@ struct PathData
     float3 pathDirection;       // float3(normalize(col.ba), 0)
     float height;               // length(col.ba) * 2.0 - 1.0
 }
-// to get the vectors oriented in scene 
+// to transform from field to bounds space  
 shapeNormal = mul(FieldToDomain, float4(shapeNormal,0)).xyz;
 </code></pre><p>This kind of texture doesn&rsquo;t need to be more defined than 512x512 pixels.
-Since we now have the distance to the path outlines and its normals, having the particle colling and reflecting is as simple as :</p>
-<pre tabindex="0"><code>// HLSL
-#define epsilon 0.01
-if(distance &lt; epsilon) velocity = reflect(normal, velocity);
-</code></pre><h3 id="gravity">Gravity</h3>
+Since we now have the distance to the path outlines and its normals, we ca have the particle&rsquo;s velocity vector reflecting around the normal if the distance is close to zero</p>
+<h3 id="gravity">Gravity</h3>
 <video class="video-shortcode" preload="auto" controls >
     <source src="1.mp4" type="video/mp4">
     There should have been a video here but your browser does not seem
