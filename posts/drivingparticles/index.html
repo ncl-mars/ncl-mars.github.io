@@ -166,8 +166,8 @@
 </li>
 </ul>
 <h2 id="solutions">Solutions</h2>
-<p>Use of multiple data fields at once encoded into a single 2D texture buffer, such as normals, distances, directions, elevations (&hellip;) and using a quad to import it into a scene, as binding the fields to a transform component.</p>
-<p>Use of the particle&rsquo;s position in field space to read that data, and use of the decoded data (tranformed back to world space) as an input for a physic system (steering behaviours, Reynolds rules&hellip;).</p>
+<p>Use of multiple data fields at once encoded into a single 2D texture buffer, such as normals, distances, directions, elevations (&hellip;) and use of a quad to import it into a scene, as binding the fields to a transform component.</p>
+<p>Use of the particle&rsquo;s position in field space to read that data, and use of the decoded data (tranformed back to world space) as an input for a physics system (steering behaviours, Reynolds rules&hellip;).</p>
 <p>Use of a constant uniform buffer packed into a vector4 array (aggressive packing) to limit CPU &gt; GPU calls</p>
 <p>Use of a modular design, structured around a system component that intantiate module objects (simulation, sequencer, renderer)</p>
 <pre tabindex="0"><code>// C# pseudo code for computing matrices
@@ -230,7 +230,7 @@ struct PathData
     float3 pathDirection;       // float3(normalize(col.ba), 0)
     float height;               // length(col.ba) * 2.0 - 1.0
 }
-// to transform from field to bounds space  
+// to transform from field to domain (or bounds) space  
 shapeNormal = mul(FieldToDomain, float4(shapeNormal,0)).xyz;
 </code></pre><p>This kind of texture doesn&rsquo;t need to be more defined than 512x512 pixels.
 Since we now have the distance to the path outlines and its normals, we ca have the particle&rsquo;s velocity vector reflecting around the normal if the distance is close to zero</p>
@@ -242,7 +242,7 @@ Since we now have the distance to the path outlines and its normals, we ca have 
 </video>
 
 
-<p>To compute gravity gravity particles, and collision with a topography, we pre-compute normals from an height map.
+<p>To compute gravity particles, collisions with a topography, we pre-compute normals from an height map.
 The data textures encapsulate at least theses 3D normals and the corresponding height map.</p>
 <p>By transforming the particle&rsquo;s position to field space (by using the DomainToField matrix) we can compare its Z component with the height value (or elevation, from the data texture), if less, we can once again reflect the particle velocity around the normal.</p>
 <h2 id="workflow">Workflow</h2>
