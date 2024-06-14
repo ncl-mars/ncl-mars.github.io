@@ -171,8 +171,8 @@
 </li>
 <li>
 <p>Use of a fixed size vector4 array to hold the values on the CPU (with proper accessors).
-The array is passed to the GPU in one block, as a constant buffer for the uniforms (method called <em>aggressive packing</em>). This way, no extra copies are made and we limit CPU to GPU calls (without using a compute buffer).
-However, this solution implies to construct custom interfaces to access the array&rsquo;s elements (both from script and inspector).</p>
+The array is passed to the GPU in one block, as a constant buffer for the uniforms (method called <em>aggressive packing</em>). This way, no extra copies are made and we limit CPU to GPU calls, without using a compute buffer.
+However, this solution implies to construct custom interfaces to access the array&rsquo;s elements, both from script and inspector.</p>
 </li>
 </ul>
 <!-- raw HTML omitted -->
