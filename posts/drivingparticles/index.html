@@ -167,11 +167,11 @@
 <!-- raw HTML omitted -->
 <ul>
 <li>
-<p>Use of multiple data fields packed into a single 2D texture, such as normals, distances, elevations (&hellip;). The data is generated in screen space (XY), and linked to a scene through a 3D object that fits the 2D space (screen mesh, quadlike), used as an handle for easy manipulation in the editor and at runtime.</p>
+<p>Use of multiple data fields packed into a single 2D texture, such as normals, distances, elevations (&hellip;). The data is generated in screen space (XY, NDC), and linked to a scene through a 3D object that fits the 2D space (screen mesh, quadlike). The 3D object is used as an handle for easy manipulation in the editor and at runtime (its transform is used as input for matrix computations).</p>
 </li>
 <li>
-<p>Use of a fixed size vector4 array to hold the values on the CPU (with proper accessors).
-The array is passed to the GPU in one block, as a constant buffer for the uniforms (method called <em>aggressive packing</em>). This way no extra copies are made and we limit CPU to GPU calls.
+<p>Use of a fixed size vector4 array to hold the classes values on the CPU (with proper accessors).
+The array is passed to the GPU in one block, as a constant buffer for the uniforms (method called <em>aggressive packing</em>). This way, no extra copies are made and we limit CPU to GPU calls.
 However, this solution implies to construct custom interfaces to access the array&rsquo;s elements (both from script and inspector).</p>
 </li>
 </ul>
@@ -211,16 +211,14 @@ However, this solution implies to construct custom interfaces to access the arra
 <li>a signed distance field to the outlines of the path</li>
 <li>normals of the path outlines (for collisions and constaints)</li>
 <li>a path direction (also called flow)</li>
-<li>elevation (or height) to raise the system to a third dimension, following a relief.</li>
+<li>elevations (or heights) to raise the system to a third dimension, following a relief.</li>
 </ul>
 <p>To see how SDF and directions can be computed from 2D drawings, check the post <em>sdfGenerators</em></p>
-<p>A 4 component&rsquo;s texture (float or half) can pack everything, such as two positive values (packed in range [0,1]) set the length of 2 unit vectors, normals and flow directions.</p>
-<!-- raw HTML omitted -->
-<!-- raw HTML omitted -->
+<p>A 4 component&rsquo;s texture (float or half) can pack everything, such as two positive values (packed in range [0,1]) set the length of 2 unit vectors (2D), normals and flow directions.</p>
 <!-- raw HTML omitted -->
 <!-- raw HTML omitted -->
 <p>This kind of texture doesn&rsquo;t need to be more defined than 512x512 pixels.
-Since we now have the distance to the path outlines and its normals, we can have the particle&rsquo;s velocity vector reflecting around the normal if the distance is close to zero</p>
+Since we now have the distance to the path outlines and its normals, we can have the particle&rsquo;s velocity vector reflecting around the normal if the distance is close to zero.</p>
 <p>
 
 
