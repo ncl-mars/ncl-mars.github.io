@@ -20,7 +20,7 @@
       <link>https://ncl-mars.github.io/posts/sdfgenerators/</link>
       <pubDate>Thu, 25 Apr 2024 00:00:00 +0000</pubDate>
       <guid>https://ncl-mars.github.io/posts/sdfgenerators/</guid>
-      <description>GPGPU, 2 compute passes minimum, GPU data filtering</description>
+      <description>GPGPU, 2 passes minimum, editor tool</description>
     </item>
     <item>
       <title>Raymarching in unlit materials, Unity</title>
@@ -34,7 +34,7 @@
       <link>https://ncl-mars.github.io/posts/blenderboids/</link>
       <pubDate>Fri, 12 Jan 2024 00:00:00 +0000</pubDate>
       <guid>https://ncl-mars.github.io/posts/blenderboids/</guid>
-      <description>Combining a boid system with a tiler algorythm</description>
+      <description>Combining a boid system with a tiling algorithm</description>
     </item>
     <item>
       <title>Modules de médiation du bruit au bureau</title>
