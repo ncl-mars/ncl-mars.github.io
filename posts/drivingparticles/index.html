@@ -170,9 +170,10 @@
 <p>Use of multiple data fields packed into a single 2D texture, such as normals, distances, elevations (&hellip;). The data is generated in screen space and linked to a 3D scene through a 3D object that fits the space (screen mesh, quadlike). The 3D object is used as an handle to facilitate manipulations and orientations of the data in the scene.</p>
 </li>
 <li>
-<p>Use of a fixed size vector4 array to hold the values on the CPU (with proper accessors).
-The array is passed to the GPU in one block, as a constant buffer for the uniforms (<a href="https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/dx-graphics-hlsl-packing-rules#more-aggressive-packing"><em>aggressive packing</em></a>). This way, no extra copies are made and we limit CPU to GPU calls, without using a compute buffer.
-However, this solution implies to construct custom interfaces to access the array elements, both from script and inspector.</p>
+<p>Use of a fixed size vector4 array to hold and set the uniforms on the CPU.
+The array is passed to the GPU in one block and unpacked in shaders (<a href="https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/dx-graphics-hlsl-packing-rules#more-aggressive-packing"><em>aggressive packing</em></a>).
+This way, no extra copies are made and we limit CPU to GPU calls, without using a compute buffer.
+However, this solution implies to construct custom interfaces to access the array elements, both from script and from the inspector.</p>
 </li>
 </ul>
 <!-- raw HTML omitted -->
