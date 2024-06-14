@@ -167,10 +167,10 @@
 <!-- raw HTML omitted -->
 <ul>
 <li>
-<p>Use of multiple data fields packed into a single 2D texture, such as normals, distances, elevations (&hellip;). The data is generated in screen space (XY, NDC), and linked to a scene through a 3D object that fits the 2D space (screen mesh, quadlike). The 3D object is used as an handle for easy manipulation in the editor and at runtime (its transform is used as input for matrix computations).</p>
+<p>Use of multiple data fields packed into a single 2D texture, such as normals, distances, elevations (&hellip;). The data is generated in screen space (XY, NDC), and linked to a 3D scene through a 3D object that fits the 2D space (screen mesh, quadlike). The 3D object is used as an handle for easy manipulation in the editor and at runtime.</p>
 </li>
 <li>
-<p>Use of a fixed size vector4 array to hold the classes values on the CPU (with proper accessors).
+<p>Use of a fixed size vector4 array to hold the values on the CPU (with proper accessors).
 The array is passed to the GPU in one block, as a constant buffer for the uniforms (method called <em>aggressive packing</em>). This way, no extra copies are made and we limit CPU to GPU calls.
 However, this solution implies to construct custom interfaces to access the array&rsquo;s elements (both from script and inspector).</p>
 </li>
