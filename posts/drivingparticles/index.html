@@ -159,18 +159,24 @@
 <p>to have millions of particles following a hand-drawn path, reacting to gravity, and colliding with obstacles</p>
 </li>
 <li>
-<p>to make the system efficient enough to be instantiable per dozens in a scene</p>
-</li>
-<li>
-<p>to make all of this running without the comptibility issues of compute shaders or compute buffers</p>
+<p>to make the system efficient enough to be instantiated per dozens in a scene</p>
 </li>
 </ul>
+<!-- raw HTML omitted -->
 <h2 id="solutions">Solutions</h2>
-<p>Use of multiple data fields at once encoded into a single 2D texture buffer, such as normals, distances, directions, elevations (&hellip;) and use of a quad to import it into a scene, as binding the data to a transform component.</p>
-<p>Use of the particle&rsquo;s position in field space to read that data, and use of the decoded data (tranformed back to world space) as an input for a physics system (steering behaviours, Reynolds rules&hellip;).</p>
-<p>Use of a constant uniform buffer packed into a vector4 array (aggressive packing) to limit CPU &gt; GPU calls and avoid memory address computations (alignment).</p>
-<p>Use of a modular design, structured around a system component that intantiate module objects (simulation, sequencer, renderer).</p>
-<p>Use of an editor script to make a modular inspector GUI (accordingly to a system&rsquo;s mode), where the property fields write directly into the vector array (no copies made).</p>
+<!-- raw HTML omitted -->
+<ul>
+<li>
+<p>Use of multiple data fields packed into a single 2D texture, such as normals, distances, elevations (&hellip;). The data is generated in screen space (XY), and linked to a scene through a 3D object that fits the 2D space (screen mesh, quadlike), used as an handle for easy manipulation in the editor and at runtime.</p>
+</li>
+<li>
+<p>Use of a fixed size vector4 array to hold the values on the CPU (with proper accessors).
+The array is passed to the GPU in one block, as a constant buffer for the uniforms (method called <em>aggressive packing</em>). This way no extra copies are made and we limit CPU to GPU calls.
+However, this solution implies to construct custom interfaces to access the array&rsquo;s elements (both from script and inspector GUI).</p>
+</li>
+</ul>
+<!-- raw HTML omitted -->
+<!-- raw HTML omitted -->
 <!-- raw HTML omitted -->
 <!-- raw HTML omitted -->
 <h3 id="following-a-path">Following a path</h3>
@@ -244,7 +250,7 @@ Since we now have the distance to the path outlines and its normals, we can have
 
 <p>To compute gravity particles, collisions with a topography, we pre-compute normals from an height map.
 The data textures encapsulate at least theses 3D normals and the corresponding height map.</p>
-<p>By transforming the particle&rsquo;s position to field space (by using the DomainToField matrix) we can compare its Z component with the height value (or elevation, from the data texture), if less, we can once again reflect the particle velocity around the normal.</p>
+<p>By transforming the particle&rsquo;s position to field space we can compare its Z component with the height value (or elevation, from the data texture), if less, we can once again reflect the particle velocity around the normal.</p>
 <h2 id="workflow">Workflow</h2>
 <p><video class="video-shortcode" preload="auto" controls >
     <source src="2.mp4" type="video/mp4">
