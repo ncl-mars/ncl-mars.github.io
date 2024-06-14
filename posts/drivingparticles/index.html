@@ -159,7 +159,7 @@
 <p>to have millions of particles following a hand-drawn path, reacting to gravity, and colliding with obstacles</p>
 </li>
 <li>
-<p>to make the system efficient enough to be instantiated per dozens in a scene</p>
+<p>to make the system efficient enough to be heavily instantiated in a scene</p>
 </li>
 </ul>
 <!-- raw HTML omitted -->
@@ -172,7 +172,7 @@
 <li>
 <p>Use of a fixed size vector4 array to hold the values on the CPU (with proper accessors).
 The array is passed to the GPU in one block, as a constant buffer for the uniforms (method called <em>aggressive packing</em>). This way no extra copies are made and we limit CPU to GPU calls.
-However, this solution implies to construct custom interfaces to access the array&rsquo;s elements (both from script and inspector GUI).</p>
+However, this solution implies to construct custom interfaces to access the array&rsquo;s elements (both from script and inspector).</p>
 </li>
 </ul>
 <!-- raw HTML omitted -->
