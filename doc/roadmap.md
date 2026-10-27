@@ -2,7 +2,14 @@
 
 Living work plan. Tick boxes as we go, add notes inline, and log decisions at the bottom. Details live in the other docs; this file is the order of work.
 
-**Status:** M2a implemented + dev tuning panel; tune the camera with the panel, then the orientation check and perf gate are yours. Next: M2b (atmosphere).
+**Status (end of 2026-10-27):** M0, M1, M2a, the dev panel and the camera polish are merged into `develop`. Now on `feature/m2b-atmosphere`, nothing started yet.
+
+**Next session:**
+- Claude: M2b. First a camera change signal (a revision counter that only moves on real changes), then the terrain cache, the mist pass, and the `wind` / `fog` chunks, all tunable in the panel.
+- You, whenever:
+  - tune the camera in the panel → Save defaults → commit `defaults.json`;
+  - perf gate: `npm run dev -- --host`, phone fps + model (answers Q4);
+  - orientation check with a first Houdini export (`hou/snippets/export_heightmap.py`).
 
 **Docs:** [stack.md](stack.md) (web stack and rules) · [home-concept.md](home-concept.md) (home page) · [project-structure.md](project-structure.md) · [formats/](formats/) (heightmap, terrain maps)
 
