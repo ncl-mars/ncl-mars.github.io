@@ -37,6 +37,7 @@ Notes live in `.claude/memory/`, **not** in the global `~/.claude/projects/.../m
 - Views are expected in normal document flow: rects are cached in document space, so a `position: fixed` view on a scrolling page would drift.
 - Shader hot reload: each drawable module ends with `import.meta.hot.accept([...shader paths], …)` calling `hotSwap()`. Copy the block from `drawables/test/TestPattern.ts`, using relative paths.
 - Never read layout in the frame loop. Rects are cached in document space; visibility is arithmetic.
+- DOM overlays that follow the scene (compass, labels) update from `renderer.onFrame(cb)`, which runs after each rendered frame. Write `el.style` / attributes directly, only when the value changed, never through Svelte state.
 - `/lab/views/` is the view-system test page.
 
 ## Tuning (`web/src/lib/tuning/`)

@@ -29,6 +29,8 @@ export interface CameraMotionSettings {
 
 const DEG = Math.PI / 180;
 const UP: v3.Vec3 = [0, 1, 0];
+/** Terrain samples along the target → eye line, to keep ridges from hiding what the camera looks at. */
+const LINE_OF_SIGHT_SAMPLES = 10;
 
 /**
  * The home page's survey camera: oblique, orbiting its target. Pitch is set by the zoom (tilts up toward
@@ -70,6 +72,7 @@ export class SurveyCamera {
 	private velocity: [number, number] = [0, 0];
 	private zoomAnchor: { ndc: [number, number]; point: Vec3 } | null = null;
 	private goalYaw = 0;
+	private yawVelocity = 0;
 	private grounded = false;
 
 	constructor(
@@ -120,6 +123,7 @@ export class SurveyCamera {
 
 	/** Ease back to north up, the shortest way round. */
 	resetNorth() {
+		this.yawVelocity = 0;
 		this.goalYaw = this.yaw - wrapAngle(this.yaw);
 	}
 
@@ -128,9 +132,15 @@ export class SurveyCamera {
 		this.velocity = [vx, vz];
 	}
 
-	/** Grabbing the ground stops every glide (inertia, smooth zoom, heading ease). */
+	/** Keep turning after a rotate-drag or twist, in radians per second. */
+	flingYaw(radiansPerSecond: number) {
+		this.yawVelocity = radiansPerSecond;
+	}
+
+	/** Grabbing the ground stops every glide (pan and turn inertia, smooth zoom, heading ease). */
 	stop() {
 		this.velocity = [0, 0];
+		this.yawVelocity = 0;
 		this.zoomAnchor = null;
 		this.goalDistance = this.distance;
 		this.goalYaw = this.yaw;
@@ -152,6 +162,11 @@ export class SurveyCamera {
 		if (zoom) {
 			this.goalDistance = this.clampDistance(this.goalDistance * Math.exp(zoom * dt * 1.6));
 			this.zoomAnchor = null;
+		}
+		if (this.yawVelocity) {
+			this.rotate(this.yawVelocity * dt);
+			this.yawVelocity *= Math.exp(-dt * motion.inertiaDecay);
+			if (Math.abs(this.yawVelocity) < 0.02) this.yawVelocity = 0;
 		}
 		if (this.keys.rotate) this.goalYaw += this.keys.rotate * motion.keyboardRotateSpeed * DEG * dt;
 		if (this.yaw !== this.goalYaw) {
@@ -229,18 +244,22 @@ export class SurveyCamera {
 	}
 
 	/**
-	 * The target's height eases toward the ground under it, raised when needed so the eye stays above the
-	 * ground under the eye. Rises faster than it sinks.
+	 * The target's height eases toward the lowest height that keeps it on the ground and the whole line of
+	 * sight to the eye (eye included, with some clearance) above the terrain: a ridge in between lifts the
+	 * camera instead of hiding what it looks at. Rises faster than it sinks.
 	 */
 	private follow(field: Heightfield, dt: number) {
 		const horizontal = this.distance * Math.cos(this.pitch);
-		const eyeX = this.target[0] + Math.sin(this.yaw) * horizontal;
-		const eyeZ = this.target[2] + Math.cos(this.yaw) * horizontal;
+		const rise = this.distance * Math.sin(this.pitch); // eye height above the target
+		const dx = Math.sin(this.yaw) * horizontal;
+		const dz = Math.cos(this.yaw) * horizontal;
 		const clearance = 2 + this.distance * 0.05;
-		const desired = Math.max(
-			field.heightAt(this.target[0], this.target[2]),
-			field.heightAt(eyeX, eyeZ) + clearance - this.distance * Math.sin(this.pitch)
-		);
+		let desired = field.heightAt(this.target[0], this.target[2]);
+		for (let i = 1; i <= LINE_OF_SIGHT_SAMPLES; i++) {
+			const f = i / LINE_OF_SIGHT_SAMPLES; // 1 = the eye
+			const ground = field.heightAt(this.target[0] + dx * f, this.target[2] + dz * f);
+			desired = Math.max(desired, ground + (clearance - rise) * f);
+		}
 		if (!this.grounded) {
 			this.target[1] = desired;
 			this.grounded = true;

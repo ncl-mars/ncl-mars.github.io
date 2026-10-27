@@ -88,6 +88,7 @@ export class Renderer {
 		pixelRatio: 1
 	};
 
+	private frameListeners = new Set<(frame: Frame) => void>();
 	private resizeObserver: ResizeObserver | null = null;
 	private listeners: AbortController | null = null;
 	private pixelRatioQuery: MediaQueryList | null = null;
@@ -177,6 +178,16 @@ export class Renderer {
 			this.measure();
 		}
 		return () => this.removeView(view);
+	}
+
+	/**
+	 * Called after each rendered frame, in the same animation frame, for DOM overlays that follow the scene
+	 * (compass, labels): write styles directly, never Svelte state. Only runs while the loop runs.
+	 * Returns the unsubscribe function.
+	 */
+	onFrame(listener: (frame: Frame) => void): () => void {
+		this.frameListeners.add(listener);
+		return () => this.frameListeners.delete(listener);
 	}
 
 	/** Svelte attachment: `<div {@attach renderer.view(drawable)}></div>`. */
@@ -384,6 +395,13 @@ export class Renderer {
 		frame.dt = Math.min(delta, 0.1);
 		frame.index++;
 		this.render(frame);
+		for (const listener of this.frameListeners) {
+			try {
+				listener(frame);
+			} catch (error) {
+				console.error('[renderer] frame listener failed:', error);
+			}
+		}
 
 		const stats = this.stats;
 		if (delta > 0) stats.fps += (1 / delta - stats.fps) * 0.1;

@@ -18,7 +18,9 @@ The home page is an archaeological excavation, seen the way a site survey sees i
 - Oblique, orbiting its target. **Heading (yaw) is free:** right-drag or Alt+drag, two-finger twist, Q / E (A / E on AZERTY); N eases back to north up. DOM labels stay upright whatever the heading. **Pitch follows the zoom:** about 60° looking down when zoomed out, tilting up to about 25° toward the horizon when zoomed in (smoothstep on a log scale, to tune). An optional parallax tilt can follow the mouse.
 - **Pan:** dragging grabs the actual ground under the pointer (CPU raycast). Limited to the terrain bounds (the fog hides the edges). A released drag keeps some inertia.
 - **Zoom:** distance to the target, clamped. Wheel and trackpad pinch glide smoothly toward the pointer; two-finger pinch is direct; double-click or double-tap zooms in toward that point.
-- **Keyboard** (the view is focusable): movement keys by physical position, so WASD is ZQSD on AZERTY; arrows pan too; Q / E rotate, N north, `+` / `−` zoom.
+- **Compass** (bottom right): its needle follows the heading; clicking it eases back to north. Released rotations keep a little inertia, like pans.
+- **Line of sight:** the camera rises when a ridge would come between it and its target (terrain sampled along the whole target → eye line).
+- **Keyboard** (the view takes focus when the page loads, no focus ring): movement keys by physical position, so WASD is ZQSD on AZERTY; arrows pan too; Q / E rotate, N north, `+` / `−` zoom.
 - Panning never changes the view direction, so splat depth order only changes with zoom (pitch), rotation (heading) and the dive. Splats re-sort then, never on pan.
 - Built in TS with `twgl.m4` (`lookAt` → `inverse` = view, `perspective` with the **view rect's** aspect). The same matrices (`view`, `proj`, `viewProj`, `invViewProj`, `camPos`) go to the raymarcher and to everything rasterized.
 - The camera never goes through the terrain (it checks the CPU height under the camera).

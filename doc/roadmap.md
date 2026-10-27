@@ -212,6 +212,7 @@ Finds revealed in dug squares (see [home-concept.md](home-concept.md) § Splat f
 
 ## Decision log
 
+- **2026-10-27**: Camera polish (`feature/cam-controls`): compass (needle follows the heading, click = north), line-of-sight lift, rotation inertia, keyboard focus on load. New `renderer.onFrame()` hook for DOM overlays (the M2c labels will use it). Still to come with their milestones: a camera change signal (M2b terrain cache) and scripted moves with a pitch override (M2d / M3 dive).
 - **2026-10-27**: Camera rotation added after all: free heading (right-drag / Alt+drag, two-finger twist, Q/E, N back to north), pitch still tied to zoom. Keyboard bindings by physical key position (`event.code`). The dive will ease the heading back to north so thumbnails land upright. Splats re-sort on rotation too.
 - **2026-10-27**: Dev tuning panel (branch `dev-panel`): every tunable value lives in `web/src/lib/tuning/defaults.json` and is read live; the panel (dev only, P) has sliders built from `schema.ts`, live readouts, and Save / Copy / Reset. Save writes the JSON through a dev-server endpoint, no reload. Replaces the perf HUD. Camera got a `tiltCurve` value.
 - **2026-10-27**: Camera pitch now follows the zoom (60° → 25°, tilting up as it dives in), so the march switched from fixed steps to height-relative steps for the grazing rays. Controls: smooth zoom, inertia, real-ground grab, double-click/tap, keyboard. Splats will re-sort on zoom changes (still never on pan).

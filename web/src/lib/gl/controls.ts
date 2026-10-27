@@ -62,8 +62,9 @@ export function surveyControls(camera: SurveyCamera, options: SurveyControlsOpti
 		let grab: { planeY: number; point: Vec3 } | null = null;
 		let pinchDistance = 0;
 		let rotating: { id: number; x: number } | null = null;
-		// Recent target positions while dragging, to compute the release velocity
+		// Recent target positions / headings while dragging or turning, to compute the release velocity
 		let samples: { time: number; x: number; z: number }[] = [];
+		let yawSamples: { time: number; yaw: number }[] = [];
 		let downAt = { x: 0, y: 0, time: 0 };
 		let lastTap = { x: 0, y: 0, time: -Infinity };
 		const pressed = new Map<string, Binding>(); // by event.code, so keyup releases what keydown pressed
@@ -112,6 +113,21 @@ export function surveyControls(camera: SurveyCamera, options: SurveyControlsOpti
 			camera.zoomTo(camera.goalDistance * factor, point ? { ndc: toNdc(x, y), point } : null);
 		};
 
+		const recordYaw = (time: number) => {
+			yawSamples.push({ time, yaw: camera.yaw });
+			while (yawSamples.length > 2 && time - yawSamples[0].time > 100) yawSamples.shift();
+		};
+
+		/** Keep turning after a rotate-drag or twist, only if it was still turning when released. */
+		const flingYaw = (time: number) => {
+			const first = yawSamples[0];
+			const last = yawSamples[yawSamples.length - 1];
+			yawSamples = [];
+			if (!first || first === last || time - last.time > 50) return;
+			const seconds = (last.time - first.time) / 1000;
+			if (seconds > 0) camera.flingYaw((last.yaw - first.yaw) / seconds);
+		};
+
 		const pinchState = () => {
 			const [a, b] = [...pointers.values()];
 			return {
@@ -129,6 +145,7 @@ export function surveyControls(camera: SurveyCamera, options: SurveyControlsOpti
 			el.setPointerCapture(event.pointerId);
 			camera.stop();
 			samples = [];
+			yawSamples = [];
 			if (rotateDrag) {
 				rotating = { id: event.pointerId, x: event.clientX };
 				el.classList.add('rotating');
@@ -152,6 +169,7 @@ export function surveyControls(camera: SurveyCamera, options: SurveyControlsOpti
 				const speed = (options.settings?.rotateSpeed ?? 0.3) * DEG;
 				camera.rotate(-(event.clientX - rotating.x) * speed);
 				rotating.x = event.clientX;
+				recordYaw(event.timeStamp);
 				return;
 			}
 			const pointer = pointers.get(event.pointerId);
@@ -172,6 +190,7 @@ export function surveyControls(camera: SurveyCamera, options: SurveyControlsOpti
 				if (after.distance > 0 && pinchDistance > 0) zoomAt(before.x, before.y, pinchDistance / after.distance);
 				pinchDistance = after.distance;
 				camera.rotate(wrapAngle(after.angle - before.angle));
+				recordYaw(event.timeStamp);
 				dragTo(after.x, after.y);
 			}
 		};
@@ -180,6 +199,7 @@ export function surveyControls(camera: SurveyCamera, options: SurveyControlsOpti
 			if (rotating?.id === event.pointerId) {
 				rotating = null;
 				el.classList.remove('rotating');
+				flingYaw(event.timeStamp);
 				return;
 			}
 			if (!pointers.has(event.pointerId)) return;
@@ -187,6 +207,7 @@ export function surveyControls(camera: SurveyCamera, options: SurveyControlsOpti
 			pointers.delete(event.pointerId);
 
 			if (pointers.size === 1) {
+				flingYaw(event.timeStamp); // end of a twist
 				const [rest] = pointers.values();
 				startGrab(rest.x, rest.y); // keep panning with the remaining finger
 				samples = [];
