@@ -15,10 +15,11 @@ The home page is an archaeological excavation, seen the way a site survey sees i
 
 ## Camera: survey view, pan + zoom
 
-- Oblique, with a **fixed orientation**: pitch fixed (≈ 35–60°, to tune), yaw fixed (north up), no rotation. An optional parallax tilt of a few degrees can follow the mouse.
-- **Pan:** drag on the ground, limited to the terrain bounds (the fog hides the edges).
-- **Zoom:** a dolly along the view direction (wheel or pinch), clamped.
-- Since the camera only translates, the depth order along the view direction never changes, so splats are sorted once. The dive is the only pitch change (see **Click**).
+- Oblique, yaw fixed (north up), no rotation. **Pitch follows the zoom:** about 60° looking down when zoomed out, tilting up to about 25° toward the horizon when zoomed in (smoothstep on a log scale, to tune). An optional parallax tilt can follow the mouse.
+- **Pan:** dragging grabs the actual ground under the pointer (CPU raycast). Limited to the terrain bounds (the fog hides the edges). A released drag keeps some inertia.
+- **Zoom:** distance to the target, clamped. Wheel and trackpad pinch glide smoothly toward the pointer; two-finger pinch is direct; double-click or double-tap zooms in toward that point.
+- **Keyboard** (the view is focusable): arrows / WASD / ZQSD pan, `+` / `−` zoom.
+- Panning never changes the view direction, so splat depth order only changes with the zoom (pitch) and during the dive. Splats re-sort then, never on pan.
 - Built in TS with `twgl.m4` (`lookAt` → `inverse` = view, `perspective` with the **view rect's** aspect). The same matrices (`view`, `proj`, `viewProj`, `invViewProj`, `camPos`) go to the raymarcher and to everything rasterized.
 - The camera never goes through the terrain (it checks the CPU height under the camera).
 - Input: the canvas is `pointer-events: none`, so the home page's view element receives pointer and touch events (`touch-action: none`).
@@ -41,9 +42,8 @@ Page scroll doesn't invalidate the cache: only the blit position changes.
 - **Surface/shading split.** The surface stage (the raymarch) outputs world position, normal and depth. The shading stage (shared chunk) applies the baked maps, pits, square state and thumbnail. Plan B: if the raymarcher misses the performance gate, the surface stage becomes a rasterized displaced grid mesh with the same shading, possibly chosen per device.
 - **Raymarch:**
   - Rays come from `invViewProj` (a full-screen triangle; the viewport maps it onto the view rect).
-  - The march only covers the height slab: it enters at `bounds.max.y` and exits at `bounds.min.y`.
-  - Fixed steps + binary refinement, behind a strategy hook (max-mip or cone stepping later).
-  - The fixed pitch keeps rays steep. Estimate: 24–40 steps, to verify in M2.
+  - The march only covers the part of the ray inside the terrain's box.
+  - Height-relative steps (big far above the ground, small near it, at least the pixel footprint) + binary refinement, behind a strategy hook (max-mip or cone stepping later). Steep rays converge in a few steps, and the grazing rays of the zoomed-in, tilted-up camera stay accurate.
   - The hit writes depth with `viewProj`.
 - **Height functions** (shared chunk):
   - `terrainHeight(p)`: the original surface, used by stakes and cords.
@@ -104,7 +104,7 @@ Page scroll doesn't invalidate the cache: only the blit position changes.
 ## Click: enter the square → page change
 
 1. Input is disabled.
-2. The camera eases from oblique to top-down while descending between the cords into the square. This is the only pitch change: the terrain is re-marched every frame, and splats re-sort during it. At the same time the dig progress animates 0→1: the pit walls with their strata rise around the camera, the find is revealed, and dust bursts out.
+2. The camera eases from oblique to top-down while descending between the cords into the square. The terrain is re-marched every frame and splats re-sort during it. At the same time the dig progress animates 0→1: the pit walls with their strata rise around the camera, the find is revealed, and dust bursts out.
 3. The final frame is the thumbnail filling the view. Then `goto('/projects/<slug>')`. The project page opens with the same image as its hero, in the same place. The canvas persists, so the hand-off is seamless.
 4. Back: the camera state is still in memory, and the rise out of the square plays in reverse.
 
@@ -117,7 +117,7 @@ Page scroll doesn't invalidate the cache: only the blit position changes.
 
 - Small splat scenes: the find at the bottom of a dug square, tools, rocks, a hero object per project.
 - Composited against the terrain depth (transparent pass), fogged per splat.
-- With the pan-only camera, they are sorted once and re-sorted only during the dive.
+- Re-sorted only when the zoom (pitch) changes and during the dive, never on pan.
 
 ## Particles (M8)
 

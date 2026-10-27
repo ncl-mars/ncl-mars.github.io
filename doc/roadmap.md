@@ -70,9 +70,9 @@ See [home-concept.md](home-concept.md) § Camera, § Terrain.
 - [x] `web/scripts/gen-terrain.mjs` (`npm run gen:terrain`): placeholder 1024² heightmap (fbm + ridges + a flat central plateau for the dig) and maps (light with soft shadows from `sunDir`, horizon AO, cavity), in the spec formats, no dependencies. Never overwrites without `--force`.
 - [x] Loaders: heightmap → CPU `Heightfield` (half → float lookup table, GL-matching bilinear `heightAt`) + `R16F` texture; maps → raw `RGBA8` (no colour conversion, mipmapped). Textures cached per context (`renderer.resource`), so navigation doesn't reload them.
 - [x] Maps imported as `?lossless&format=webp`: checked bit-identical to the PNG after the build
-- [x] Camera (`gl/camera.ts`): pan + zoom (distance), fixed pitch 45° / yaw 0 / fov 35° (to tune), pan limits = bounds − 10 %, target follows the ground, eye kept above it. Module-level on the home page, so it survives navigation.
-- [x] Controls (`gl/controls.ts`, S2 = native Pointer Events): drag grabs the ground, wheel / trackpad pinch / two-finger pinch zoom toward the pointer
-- [x] Raymarch: rays from `invViewProj`, march only inside the terrain's box, fixed steps (`uSteps` 64) + binary refinement (6), `marchSurface()` is the strategy hook, writes `gl_FragDepth`
+- [x] Camera (`gl/camera.ts`): pan + zoom, yaw 0 / fov 35°, **pitch from the zoom** (60° far → 25° near, tilting up as it dives in), pan limits = bounds − 10 %, target follows the ground, eye kept above it. Smooth zoom, inertia and keyboard are eased in `update()`. Module-level on the home page, so it survives navigation.
+- [x] Controls (`gl/controls.ts`, S2 = native Pointer Events): drag grabs the real ground (CPU `Heightfield.raycast`) with inertia on release; wheel / trackpad pinch glide-zoom toward the pointer; two-finger pinch; double-click / double-tap zoom in; arrows / WASD / ZQSD + `+`/`−` when focused
+- [x] Raymarch: rays from `invViewProj`, march only inside the terrain's box, **height-relative steps** (`uStepScale` 0.45, `uPrecision` 0.0015, cap `uSteps` 128) + binary refinement (6), `marchSurface()` is the strategy hook, writes `gl_FragDepth`
 - [x] Surface/shading split: `surface.glsl` (the `Surface` struct), `march.glsl` (surface stage), `shade.glsl` (shading stage)
 - [x] Shading from the maps (light, AO, cavity → near-gray, light distance fog for now); `terrainHeight()` / `height()` / `terrainNormal()` in `gl/chunks/terrain.glsl`
 - [x] Fade-in once loaded; tuning from the URL: `?steps=48`, `?dpr=1`
@@ -155,7 +155,7 @@ See [home-concept.md](home-concept.md) § Square state, § Hover.
 
 ## M5 — Splat finds
 
-Finds revealed in dug squares (see [home-concept.md](home-concept.md) § Splat finds). Rendering in WebGL2: a CPU sort in a worker, instanced quads, premultiplied blending. With the pan-only camera, a find is sorted once and re-sorted only during the dive. Fill rate is the main cost, so scenes stay small.
+Finds revealed in dug squares (see [home-concept.md](home-concept.md) § Splat finds). Rendering in WebGL2: a CPU sort in a worker, instanced quads, premultiplied blending. Panning never changes the view direction, so a find re-sorts only when the zoom (pitch) changes and during the dive. Fill rate is the main cost, so scenes stay small.
 
 ### M5a — Spike (time-box ~2 sessions, hidden `/lab/splat` route)
 
@@ -212,6 +212,7 @@ Finds revealed in dug squares (see [home-concept.md](home-concept.md) § Splat f
 
 ## Decision log
 
+- **2026-10-27**: Camera pitch now follows the zoom (60° → 25°, tilting up as it dives in), so the march switched from fixed steps to height-relative steps for the grazing rays. Controls: smooth zoom, inertia, real-ground grab, double-click/tap, keyboard. Splats will re-sort on zoom changes (still never on pan).
 - **2026-10-27**: M2a implemented. S2 = native Pointer Events. Camera and terrain drawable are module-level on the home page (state survives navigation). Textures are cached per context like programs. The camera target follows the ground.
 - **2026-10-27**: M1 browser checks passed: mapping exact, no visible swimming, idle when nothing is on screen or the tab is hidden, programs reused across navigation, shader hot reload works. Browser zoom scales the CSS-px test grid, as expected.
 - **2026-10-27**: M1 implemented. View visibility comes from cached rects (arithmetic) instead of IntersectionObserver. Pass order lives inside drawables, not in the renderer. Programs are cached by source, so navigation doesn't recompile. `KHR_parallel_shader_compile` deferred.

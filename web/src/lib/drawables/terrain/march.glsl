@@ -1,10 +1,14 @@
 // Surface stage: where a view ray first hits the heightfield. Needs /terrain and ./surface.
-// Strategy now: fixed steps across the part of the ray inside the terrain's box, then a binary search.
-// The survey camera keeps rays steep, so the box crossing is short. A max-mip or cone-step strategy
-// would replace marchSurface() and keep the same signature.
+// Strategy: height-relative steps inside the terrain's box. Far above the ground the ray takes big steps,
+// near it small ones (step = uStepScale × clearance, at least the pixel footprint), then a binary search
+// once a sample lands below ground. Steep rays (zoomed out) converge in a few steps; grazing rays (zoomed
+// in, camera tilted up) stay accurate. A max-mip or cone-step strategy would replace marchSurface() and
+// keep the same signature.
 
-uniform int uSteps;       // fixed steps across the box crossing
-uniform int uRefineSteps; // binary-search steps after the first sample below ground
+uniform int uSteps;        // iteration cap
+uniform int uRefineSteps;  // binary-search steps after the first sample below ground
+uniform float uStepScale;  // fraction of the clearance to step (< 1: steep slopes would be overshot)
+uniform float uPrecision;  // minimum step and hit tolerance, relative to the distance (~ pixel footprint)
 
 // Ray vs the terrain's world box: (tEnter, tExit), with tEnter >= tExit when it misses.
 vec2 boundsInterval(vec3 ro, vec3 rd) {
@@ -23,12 +27,12 @@ Surface marchSurface(vec3 ro, vec3 rd) {
 	vec2 span = boundsInterval(ro, rd);
 	if (span.x >= span.y) return s;
 
-	float dt = (span.y - span.x) / float(uSteps);
+	float t = span.x;
 	float tAbove = span.x;
-	for (int i = 1; i <= uSteps; i++) {
-		float t = span.x + dt * float(i);
+	for (int i = 0; i < uSteps; i++) {
 		vec3 p = ro + rd * t;
-		if (p.y <= height(p.xz)) {
+		float clearance = p.y - height(p.xz);
+		if (clearance <= 0.0) {
 			// The surface is between tAbove (above ground) and t (below): bisect
 			float a = tAbove;
 			float b = t;
@@ -38,12 +42,19 @@ Surface marchSurface(vec3 ro, vec3 rd) {
 				if (q.y <= height(q.xz)) b = m;
 				else a = m;
 			}
+			t = 0.5 * (a + b);
 			s.hit = true;
-			s.t = 0.5 * (a + b);
-			s.position = ro + rd * s.t;
-			return s;
+			break;
+		}
+		if (clearance < t * uPrecision) {
+			s.hit = true; // closer than a pixel: good enough
+			break;
 		}
 		tAbove = t;
+		t += max(clearance * uStepScale, t * uPrecision);
+		if (t > span.y) break;
 	}
+	s.t = t;
+	s.position = ro + rd * t;
 	return s;
 }

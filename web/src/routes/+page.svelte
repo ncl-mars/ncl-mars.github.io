@@ -4,7 +4,7 @@
 	import { terrainAssets } from '$lib/terrain/assets';
 
 	// Module level: the camera (and where you were on the site) survives navigating away and back
-	const camera = new SurveyCamera({ pitch: 45, fov: 35, distance: 350 });
+	const camera = new SurveyCamera({ pitchNear: 25, pitchFar: 60, fov: 35, distance: 350 });
 	const terrain = new Terrain(camera, terrainAssets);
 </script>
 
@@ -32,7 +32,16 @@
 	<title>Portfolio</title>
 </svelte:head>
 
-<div class="site" {@attach renderer.view(terrain)} {@attach surveyControls(camera)}></div>
+<!-- Focusable for the keyboard controls, which surveyControls attaches (Svelte can't see them) -->
+<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+<div
+	class="site"
+	role="application"
+	aria-label="Dig site. Drag to pan, scroll or pinch to zoom, arrow keys to move, plus and minus to zoom."
+	tabindex="0"
+	{@attach renderer.view(terrain)}
+	{@attach surveyControls(camera, { field: () => terrain.field })}
+></div>
 
 <header class="overlay">
 	<h1>Portfolio</h1>
@@ -50,6 +59,15 @@
 
 	.site:global(.grabbing) {
 		cursor: grabbing;
+	}
+
+	.site:focus {
+		outline: none;
+	}
+
+	.site:focus-visible {
+		outline: 2px solid rgb(255 255 255 / 0.6);
+		outline-offset: -2px;
 	}
 
 	.overlay {

@@ -51,6 +51,48 @@ export class Heightfield {
 		const bottom = h[j1 * width + i0] + (h[j1 * width + i1] - h[j1 * width + i0]) * fu;
 		return top + (bottom - top) * fv;
 	}
+
+	/**
+	 * First point where a ray meets the ground, or null (picking, grab-to-pan). Fixed steps across the
+	 * terrain's box, then bisection: precise enough for input, cheap enough for pointer events.
+	 */
+	raycast(origin: Vec3, direction: Vec3, steps = 256): Vec3 | null {
+		const { min, max } = this.meta.bounds;
+		let enter = 0;
+		let exit = Infinity;
+		for (let axis = 0; axis < 3; axis++) {
+			if (direction[axis] === 0) {
+				if (origin[axis] < min[axis] || origin[axis] > max[axis]) return null;
+				continue;
+			}
+			const t0 = (min[axis] - origin[axis]) / direction[axis];
+			const t1 = (max[axis] - origin[axis]) / direction[axis];
+			enter = Math.max(enter, Math.min(t0, t1));
+			exit = Math.min(exit, Math.max(t0, t1));
+		}
+		if (enter >= exit) return null;
+
+		const below = (t: number) =>
+			origin[1] + direction[1] * t <= this.heightAt(origin[0] + direction[0] * t, origin[2] + direction[2] * t);
+		const dt = (exit - enter) / steps;
+		let above = enter;
+		for (let i = 1; i <= steps; i++) {
+			const t = enter + dt * i;
+			if (below(t)) {
+				let a = above;
+				let b = t;
+				for (let k = 0; k < 20; k++) {
+					const m = (a + b) / 2;
+					if (below(m)) b = m;
+					else a = m;
+				}
+				const hit = (a + b) / 2;
+				return [origin[0] + direction[0] * hit, origin[1] + direction[1] * hit, origin[2] + direction[2] * hit];
+			}
+			above = t;
+		}
+		return null;
+	}
 }
 
 const cache = new Map<string, Promise<Heightfield>>();

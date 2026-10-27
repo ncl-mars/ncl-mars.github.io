@@ -19,9 +19,13 @@ let fragment = fragmentSource;
  * then fades in. Textures are cached per GL context, so coming back to the page doesn't reload them.
  */
 export class Terrain implements Drawable {
-	/** March steps across the terrain box (tuning: `?steps=` on the home page). */
-	steps = 64;
+	/** March iteration cap (tuning: `?steps=` on the home page). Most rays need far fewer. */
+	steps = 128;
 	refineSteps = 6;
+	/** Fraction of the ground clearance taken by each march step. */
+	stepScale = 0.45;
+	/** Minimum step and hit tolerance, relative to the distance along the ray. */
+	precision = 0.0015;
 	/** CPU copy of the heightmap, once loaded (camera following, picking). */
 	field: Heightfield | null = null;
 
@@ -77,9 +81,8 @@ export class Terrain implements Drawable {
 	}
 
 	update(frame: Frame) {
-		if (!this.field || !this.heightTexture) return;
-		this.camera.follow(this.field, frame.dt);
-		this.fade = Math.min(1, this.fade + frame.dt / 0.6);
+		this.camera.update(frame.dt, this.field);
+		if (this.heightTexture && this.mapsTexture) this.fade = Math.min(1, this.fade + frame.dt / 0.6);
 	}
 
 	draw(gl: WebGL2RenderingContext, { rect }: DrawContext) {
@@ -95,6 +98,8 @@ export class Terrain implements Drawable {
 		u.uMaps = this.mapsTexture;
 		u.uSteps = this.steps;
 		u.uRefineSteps = this.refineSteps;
+		u.uStepScale = this.stepScale;
+		u.uPrecision = this.precision;
 		u.uFade = this.fade;
 
 		const info = this.program!.info;

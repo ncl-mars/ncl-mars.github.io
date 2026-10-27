@@ -2,8 +2,10 @@ import { m4, type v3 } from 'twgl.js';
 import type { Heightfield, Vec3 } from '$lib/terrain/heightfield';
 
 export interface SurveyCameraOptions {
-	/** Degrees down from the horizontal. */
-	pitch?: number;
+	/** Degrees down from the horizontal at the closest zoom: the camera tilts up as it dives in. */
+	pitchNear?: number;
+	/** Degrees down from the horizontal at the farthest zoom. */
+	pitchFar?: number;
 	/** Degrees; 0 looks north (−Z). */
 	yaw?: number;
 	/** Vertical field of view, degrees. */
@@ -17,23 +19,33 @@ const DEG = Math.PI / 180;
 const UP: v3.Vec3 = [0, 1, 0];
 
 /**
- * The home page's survey camera: oblique, with a fixed orientation (pitch and yaw never change outside the
- * dive, so splat depth order doesn't either), moved only by pan and zoom. Its target rides on the ground and
- * the eye never dips into the terrain. The matrices are shared by every program that draws the scene
- * (raymarch now; cords, particles and splats later), so their depths agree.
+ * The home page's survey camera: oblique, yaw fixed (north up), pitch set by the zoom (it tilts up toward
+ * the horizon as it gets closer, looks down as it backs off). Moved by pan and zoom only; panning never
+ * changes the view direction. Its target rides on the ground and the eye never dips into the terrain.
+ *
+ * Input (see controls.ts) either acts directly (drag, pinch) or sets goals that `update` eases toward
+ * every frame (wheel zoom, inertia, keyboard). The matrices are shared by every program that draws the
+ * scene (raymarch now; cords, particles and splats later), so their depths agree.
  */
 export class SurveyCamera {
 	readonly target: Vec3 = [0, 0, 0];
 	readonly eye: Vec3 = [0, 0, 0];
-	pitch: number;
+	/** Current pitch in radians, derived from the distance. */
+	pitch = 0;
+	pitchNear: number;
+	pitchFar: number;
 	yaw: number;
 	fov: number;
 	distance: number;
+	/** Where the smooth zoom is heading. */
+	goalDistance: number;
 	minDistance: number;
 	maxDistance: number;
 	aspect = 1;
 	near = 1;
 	far = 2000;
+	/** Keyboard input, set by the controls: pan in screen terms (x right, y up), zoom (−1 in, +1 out). */
+	readonly keys = { x: 0, y: 0, zoom: 0 };
 
 	readonly view = m4.identity();
 	readonly projection = m4.identity();
@@ -43,15 +55,18 @@ export class SurveyCamera {
 
 	private panMin: [number, number] = [-Infinity, -Infinity];
 	private panMax: [number, number] = [Infinity, Infinity];
+	private velocity: [number, number] = [0, 0];
+	private zoomAnchor: { ndc: [number, number]; point: Vec3 } | null = null;
 	private grounded = false;
 
 	constructor(options: SurveyCameraOptions = {}) {
-		this.pitch = (options.pitch ?? 45) * DEG;
+		this.pitchNear = (options.pitchNear ?? 25) * DEG;
+		this.pitchFar = (options.pitchFar ?? 60) * DEG;
 		this.yaw = (options.yaw ?? 0) * DEG;
 		this.fov = (options.fov ?? 35) * DEG;
 		this.minDistance = options.minDistance ?? 60;
 		this.maxDistance = options.maxDistance ?? 700;
-		this.distance = clamp(options.distance ?? 350, this.minDistance, this.maxDistance);
+		this.distance = this.goalDistance = this.clampDistance(options.distance ?? 350);
 		this.refresh();
 	}
 
@@ -62,44 +77,86 @@ export class SurveyCamera {
 		this.pan(0, 0);
 	}
 
-	/** Move the target along the ground, clamped to the pan bounds. */
+	/** Move the target along the ground, clamped to the pan bounds (inertia stops at a bound). */
 	pan(dx: number, dz: number) {
-		this.target[0] = clamp(this.target[0] + dx, this.panMin[0], this.panMax[0]);
-		this.target[2] = clamp(this.target[2] + dz, this.panMin[1], this.panMax[1]);
+		const x = this.target[0] + dx;
+		const z = this.target[2] + dz;
+		this.target[0] = clamp(x, this.panMin[0], this.panMax[0]);
+		this.target[2] = clamp(z, this.panMin[1], this.panMax[1]);
+		if (this.target[0] !== x) this.velocity[0] = 0;
+		if (this.target[2] !== z) this.velocity[1] = 0;
 		this.refresh();
 	}
 
+	/** Immediate zoom (pinch). Cancels any smooth zoom in progress. */
 	setDistance(distance: number) {
-		this.distance = clamp(distance, this.minDistance, this.maxDistance);
+		this.distance = this.goalDistance = this.clampDistance(distance);
+		this.zoomAnchor = null;
 		this.refresh();
+	}
+
+	/** Smooth zoom toward `goal`, keeping `anchor.point` under the same spot of the view (NDC) if given. */
+	zoomTo(goal: number, anchor: { ndc: [number, number]; point: Vec3 } | null = null) {
+		this.goalDistance = this.clampDistance(goal);
+		this.zoomAnchor = anchor;
+	}
+
+	/** Start gliding after a drag, in world units per second. */
+	fling(vx: number, vz: number) {
+		this.velocity = [vx, vz];
+	}
+
+	/** Grabbing the ground stops every glide (inertia and smooth zoom). */
+	stop() {
+		this.velocity = [0, 0];
+		this.zoomAnchor = null;
+		this.goalDistance = this.distance;
+	}
+
+	/** Once per frame: keyboard, inertia, smooth zoom, then ground following. */
+	update(dt: number, field: Heightfield | null) {
+		const { x, y, zoom } = this.keys;
+		if (x || y) {
+			const step = this.distance * 1.1 * dt;
+			const s = Math.sin(this.yaw);
+			const c = Math.cos(this.yaw);
+			this.pan((x * c - y * s) * step, (-x * s - y * c) * step); // screen right / screen up on the ground
+		}
+		if (zoom) {
+			this.goalDistance = this.clampDistance(this.goalDistance * Math.exp(zoom * dt * 1.6));
+			this.zoomAnchor = null;
+		}
+
+		if (this.velocity[0] || this.velocity[1]) {
+			this.pan(this.velocity[0] * dt, this.velocity[1] * dt);
+			const decay = Math.exp(-dt * 4);
+			this.velocity[0] *= decay;
+			this.velocity[1] *= decay;
+			if (Math.hypot(this.velocity[0], this.velocity[1]) < this.distance * 0.01) this.velocity = [0, 0];
+		}
+
+		if (this.distance !== this.goalDistance) {
+			// Ease in log space, so zooming in and out feel the same
+			const k = 1 - Math.exp(-dt * 10);
+			let d = Math.exp(Math.log(this.distance) + Math.log(this.goalDistance / this.distance) * k);
+			if (Math.abs(d - this.goalDistance) < this.goalDistance * 1e-3) d = this.goalDistance;
+			this.distance = d;
+			this.refresh();
+			const anchor = this.zoomAnchor;
+			if (anchor) {
+				const p = this.groundPoint(anchor.ndc[0], anchor.ndc[1], anchor.point[1]);
+				if (p) this.pan(anchor.point[0] - p[0], anchor.point[2] - p[2]);
+			}
+			if (d === this.goalDistance) this.zoomAnchor = null;
+		}
+
+		if (field) this.follow(field, dt);
+		else this.refresh();
 	}
 
 	setAspect(aspect: number) {
 		if (aspect === this.aspect) return;
 		this.aspect = aspect;
-		this.refresh();
-	}
-
-	/**
-	 * Once per frame: the target's height eases toward the ground under it, raised when needed so the eye
-	 * stays above the ground under the eye. Rises faster than it sinks.
-	 */
-	follow(field: Heightfield, dt: number) {
-		const horizontal = this.distance * Math.cos(this.pitch);
-		const eyeX = this.target[0] + Math.sin(this.yaw) * horizontal;
-		const eyeZ = this.target[2] + Math.cos(this.yaw) * horizontal;
-		const clearance = 2 + this.distance * 0.05;
-		const desired = Math.max(
-			field.heightAt(this.target[0], this.target[2]),
-			field.heightAt(eyeX, eyeZ) + clearance - this.distance * Math.sin(this.pitch)
-		);
-		if (!this.grounded) {
-			this.target[1] = desired;
-			this.grounded = true;
-		} else {
-			const rate = desired > this.target[1] ? 10 : 3;
-			this.target[1] += (desired - this.target[1]) * (1 - Math.exp(-dt * rate));
-		}
 		this.refresh();
 	}
 
@@ -120,8 +177,9 @@ export class SurveyCamera {
 		return [origin[0] + direction[0] * t, planeY, origin[2] + direction[2] * t];
 	}
 
-	/** Recompute eye and matrices from target, distance, pitch, yaw and aspect. */
+	/** Recompute pitch, eye and matrices from target, distance, yaw and aspect. */
 	refresh() {
+		this.pitch = this.pitchFor(this.distance);
 		const horizontal = this.distance * Math.cos(this.pitch);
 		this.eye[0] = this.target[0] + Math.sin(this.yaw) * horizontal;
 		this.eye[1] = this.target[1] + this.distance * Math.sin(this.pitch);
@@ -134,6 +192,43 @@ export class SurveyCamera {
 		m4.perspective(this.fov, this.aspect, this.near, this.far, this.projection);
 		m4.multiply(this.projection, this.view, this.viewProjection);
 		m4.inverse(this.viewProjection, this.inverseViewProjection);
+	}
+
+	/**
+	 * The target's height eases toward the ground under it, raised when needed so the eye stays above the
+	 * ground under the eye. Rises faster than it sinks.
+	 */
+	private follow(field: Heightfield, dt: number) {
+		const horizontal = this.distance * Math.cos(this.pitch);
+		const eyeX = this.target[0] + Math.sin(this.yaw) * horizontal;
+		const eyeZ = this.target[2] + Math.cos(this.yaw) * horizontal;
+		const clearance = 2 + this.distance * 0.05;
+		const desired = Math.max(
+			field.heightAt(this.target[0], this.target[2]),
+			field.heightAt(eyeX, eyeZ) + clearance - this.distance * Math.sin(this.pitch)
+		);
+		if (!this.grounded) {
+			this.target[1] = desired;
+			this.grounded = true;
+		} else {
+			const rate = desired > this.target[1] ? 10 : 3;
+			this.target[1] += (desired - this.target[1]) * (1 - Math.exp(-dt * rate));
+		}
+		this.refresh();
+	}
+
+	/** Pitch from distance: smoothstep on a log scale between pitchNear and pitchFar. */
+	private pitchFor(distance: number) {
+		const t = clamp(
+			Math.log(distance / this.minDistance) / Math.log(this.maxDistance / this.minDistance),
+			0,
+			1
+		);
+		return this.pitchNear + (this.pitchFar - this.pitchNear) * t * t * (3 - 2 * t);
+	}
+
+	private clampDistance(distance: number) {
+		return clamp(distance, this.minDistance, this.maxDistance);
 	}
 }
 
