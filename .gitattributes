@@ -1,0 +1,59 @@
+# Text files are stored with LF, and checked out with LF on every OS
+* text=auto eol=lf
+
+# Binary files: never convert line endings, never diff as text.
+# Listed explicitly because a half-float .bin can look like text to git and get corrupted.
+
+# Pipeline data
+*.bin     binary
+*.ply     binary
+*.spz     binary
+*.splat   binary
+*.ksplat  binary
+
+# Houdini
+*.hip     binary
+*.hiplc   binary
+*.hipnc   binary
+*.hda     binary
+*.hdalc   binary
+*.hdanc   binary
+*.otl     binary
+*.bgeo*   binary
+*.vdb     binary
+*.rat     binary
+
+# 3D / interchange
+*.abc     binary
+*.fbx     binary
+*.glb     binary
+*.usdc    binary
+*.usdz    binary
+*.blend   binary
+
+# Images
+*.png     binary
+*.jpg     binary
+*.jpeg    binary
+*.webp    binary
+*.avif    binary
+*.gif     binary
+*.ico     binary
+*.exr     binary
+*.hdr     binary
+*.tif     binary
+*.tiff    binary
+*.psd     binary
+
+# Fonts, media, documents
+*.woff    binary
+*.woff2   binary
+*.ttf     binary
+*.otf     binary
+*.mp4     binary
+*.webm    binary
+*.mov     binary
+*.mp3     binary
+*.wav     binary
+*.pdf     binary
+*.zip     binary

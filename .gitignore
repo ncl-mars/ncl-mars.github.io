@@ -1,0 +1,16 @@
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Node (the app's own ignores are in web/.gitignore)
+node_modules/
+
+# Claude Code local settings (notes in .claude/memory/ are tracked)
+.claude/settings.local.json
+
+# Houdini: autosave backups, caches and renders (.hip* and .hda files are tracked)
+hou/**/backup/
+hou/geo/
+hou/cache/
+hou/render/

@@ -1,0 +1,21 @@
+{
+	// The app lives in web/: new terminals open there (git still works from any subfolder)
+	"terminal.integrated.cwd": "${workspaceFolder}/web",
+
+	"files.watcherExclude": {
+		"**/hou/backup/**": true,
+		"**/hou/geo/**": true,
+		"**/hou/cache/**": true,
+		"**/hou/render/**": true,
+		"**/web/.svelte-kit/**": true,
+		"**/web/build/**": true
+	},
+	"search.exclude": {
+		"**/hou/backup": true,
+		"**/hou/geo": true,
+		"**/hou/cache": true,
+		"**/hou/render": true,
+		"**/web/.svelte-kit": true,
+		"**/web/build": true
+	}
+}

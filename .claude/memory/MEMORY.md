@@ -1,0 +1,2 @@
+- [User profile](user-profile.md) — Houdini 22 expert; shipped Mont-Blanc (Svelte 5 + twgl); wants speed
+- [Scope: web shaders only](portfolio-scope-web-only.md) — don't cover Houdini or splat content creation unless asked

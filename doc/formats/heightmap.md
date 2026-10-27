@@ -1,0 +1,71 @@
+# Heightmap format (v1)
+
+Contract between the exporters (Houdini Python SOP, placeholder generator `web/scripts/gen-heightmap.mjs`) and the web loader. Change it here first, then on both sides.
+
+## Files
+
+Two files with the same base name, in `web/src/lib/assets/terrain/`:
+
+| File | Content |
+|------|---------|
+| `heightmap.bin` | raw height samples, no header |
+| `heightmap.json` | metadata |
+
+The baked lighting maps share the same footprint: [terrain-maps.md](terrain-maps.md).
+
+## `heightmap.bin`
+
+- IEEE 754 **half-float** (binary16), **little-endian**. In numpy: `astype('<f2').tofile(path)`.
+- `width × height` values, row-major: `index = j * width + i`.
+  - `i` runs along world **+X**, `j` along world **+Z**.
+  - Row 0 becomes texture row 0, so texture `u` follows +X and `v` follows +Z.
+- Values are **normalized to [0, 1]**: `worldY = bounds.min[1] + v * (bounds.max[1] - bounds.min[1])`.
+  - Why normalized: half floats have relative precision. Storing absolute heights would make the precision depend on where the terrain sits in Y. Normalized storage gives about 11 bits over the whole height range, against 8 bits for a PNG.
+- File size must be exactly `width * height * 2` bytes.
+
+## `heightmap.json`
+
+```json
+{
+  "version": 1,
+  "width": 1024,
+  "height": 1024,
+  "format": "r16f",
+  "bounds": { "min": [-500, 0, -500], "max": [500, 120, 500] }
+}
+```
+
+| Field | Meaning |
+|-------|---------|
+| `version` | format version (see Versioning) |
+| `width`, `height` | sample counts along X and Z |
+| `format` | always `"r16f"` in v1 |
+| `bounds.min/max` | world box `[x, y, z]`. X/Z are the **outer edges** of the sample grid, so sample centers sit at `min.x + (i + 0.5) * (max.x - min.x) / width` (same for Z with `j`, `height`). This matches GL texel centers. Y is the height range used to denormalize. |
+
+## Coordinate system
+
+Y-up, right-handed, with the same axes in Houdini and WebGL. The exporter does any flip needed to meet "`i` → +X, `j` → +Z".
+
+## Loader (web)
+
+- Import: `heightmap.bin?url` and `heightmap.json` directly.
+- Check `version`, `format` and byte length; fail loudly on a mismatch.
+- Upload: `texImage2D(TEXTURE_2D, 0, R16F, width, height, 0, RED, HALF_FLOAT, Uint16Array)` with `UNPACK_ALIGNMENT = 2`, `LINEAR` min/mag, `CLAMP_TO_EDGE`.
+- Keep a CPU copy decoded to `Float32Array` (world heights) for picking and camera collision.
+
+## Size guidance
+
+- WebGL2 guarantees `MAX_TEXTURE_SIZE ≥ 2048`. Stay at **≤ 2048** per side; non-power-of-two is fine.
+- The download is the raw size (1024² = 2 MB, 2048² = 8 MB). Don't count on GitHub Pages compressing `.bin`.
+
+## Orientation check
+
+Export a test pattern once and check it renders the same way in Houdini and in the browser: a ramp rising along +X plus a bump near the (+X, +Z) corner.
+
+## Versioning
+
+- New optional fields: no version bump. The loader ignores fields it doesn't know.
+- Changing the meaning or layout of existing fields: bump `version`. The loader rejects versions it doesn't support.
+- Planned optional fields:
+  - `mips`: a max-height pyramid, either as a sidecar `.bin` or as offsets into one.
+  - `cone`: a cone-ratio map in a sidecar `heightmap.cone.bin` (same layout, R16F).
