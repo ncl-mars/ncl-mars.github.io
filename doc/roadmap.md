@@ -2,7 +2,7 @@
 
 Living work plan. Tick boxes as we go, add notes inline, and log decisions at the bottom. Details live in the other docs; this file is the order of work.
 
-**Status:** M0 done, except `git init` (yours). Next: M1 (renderer core).
+**Status:** M1 done (browser checks passed). Next: M2a (terrain).
 
 **Docs:** [stack.md](stack.md) (web stack and rules) · [home-concept.md](home-concept.md) (home page) · [project-structure.md](project-structure.md) · [formats/](formats/) (heightmap, terrain maps)
 
@@ -40,19 +40,22 @@ Stack choices S1–S4 are tracked in [stack.md](stack.md#open-decisions).
 
 ## M1 — Renderer core (shared canvas + views)
 
-`web/src/lib/gl/`: `renderer.ts`, `views.ts`, `loop.ts`, `camera.ts`, `programs.ts`, `textures.ts`, `assets.ts`, `chunks/`. Drawables in `web/src/lib/drawables/<name>/`.
+`web/src/lib/gl/`: `renderer.ts` (views, loop, sizing, context), `programs.ts` (cache + hot swap), `types.ts`, `context.ts`, `fullscreen.vert`, `chunks/`. Drawables in `web/src/lib/drawables/<name>/` (`test/` for now). `camera.ts`, `textures.ts` and `assets.ts` come with M2a/M3, when something uses them.
 
-- [ ] Root layout creates the canvas (`position: fixed; inset: 0; z-index: -1; pointer-events: none`) and starts the renderer in `onMount`; pages reach it through Svelte context
-- [ ] Context: `depth: true`, `antialias: false`, `premultipliedAlpha: true`; `webglcontextlost` → `preventDefault` + log
-- [ ] View API: `{@attach}` (or an action) registers `{ el, drawable }`, unregisters on destroy
-- [ ] Drawable interface: `draw(gl, view, frame, target)` (`target` may be an FBO), pass order opaque → transparent, optional `update(frame)` before drawing
-- [ ] Rect cache in document space, read only in ResizeObserver callbacks (each view + root element), window resize and `document.fonts.ready`; IntersectionObserver for visibility; passive scroll listener for the offset
-- [ ] Per frame: plain arithmetic to the GL rect (Y flipped), scissor + viewport
-- [ ] Loop gating: rAF only while a view is visible and `visibilityState === 'visible'`
-- [ ] `maxPixelRatio` config
-- [ ] Shader hot reload: editing a `.vert`/`.frag` recompiles that program in place (`import.meta.hot.accept`)
-- [ ] `KHR_parallel_shader_compile` when available
-- [ ] Perf HUD in dev (fps, frame time, context id, programs, textures), stubbed out of production
+- [x] Root layout creates the canvas (`position: fixed; inset: 0; z-index: -1; pointer-events: none`) and the renderer; pages reach it with `getRenderer()`
+- [x] Context: `alpha`, `depth: true`, `antialias: false`, `premultipliedAlpha: true`. Context loss → `preventDefault`; on restore, drawables are re-initialised (basic recovery already)
+- [x] View API: `{@attach renderer.view(drawable)}` registers, unregisters on destroy. Views registered before the canvas exists are initialised at mount.
+- [x] Drawable interface: `init` / `update(frame)` / `draw(gl, ctx)` / `dispose`; `ctx` has the view's pixel rect and `target` (FBO or null). Pass order is the drawable's business (a scene drawable draws opaque, then transparent).
+- [x] Rect cache in document space, read only in ResizeObserver callbacks (canvas, each view, root element), window resize, pixel-ratio change and `document.fonts.ready`; passive scroll listener for the offset
+- [x] Visibility is computed from the cached rects + scroll offset (arithmetic, exact, no async lag) instead of IntersectionObserver
+- [x] Per frame: plain arithmetic to the GL rect (Y flipped, edges rounded separately), viewport + scissor clipped to the canvas; zero allocations
+- [x] Loop gating: rAF only while a view is visible and the tab is visible; the canvas is cleared when the last view leaves the screen
+- [x] `maxPixelRatio` option (default 2)
+- [x] Program cache keyed by sources: drawables re-created by navigation reuse compiled programs
+- [x] Shader hot reload: `hotSwap()` from the drawable module's `import.meta.hot.accept`; a broken edit logs the error and keeps the old program running
+- [ ] `KHR_parallel_shader_compile`: deferred. twgl's `createProgramInfoAsync` uses it; switch when there are enough programs for compile time to matter.
+- [x] Perf HUD in dev (context id, running/idle, fps, CPU ms, views, programs, compiles, canvas size), toggle with P, not in production builds (checked)
+- [x] Test page `/lab/views/`: four test-pattern views with spacers, link home and back
 
 **Watch:** a fixed canvas can trail native scrolling by a frame on some browsers ("swimming" views). Measure it here.
 
@@ -205,6 +208,8 @@ Finds revealed in dug squares (see [home-concept.md](home-concept.md) § Splat f
 
 ## Decision log
 
+- **2026-10-27**: M1 browser checks passed: mapping exact, no visible swimming, idle when nothing is on screen or the tab is hidden, programs reused across navigation, shader hot reload works. Browser zoom scales the CSS-px test grid, as expected.
+- **2026-10-27**: M1 implemented. View visibility comes from cached rects (arithmetic) instead of IntersectionObserver. Pass order lives inside drawables, not in the renderer. Programs are cached by source, so navigation doesn't recompile. `KHR_parallel_shader_compile` deferred.
 - **2026-10-27**: M0 done. SvelteKit 2.70 instead of 3: SvelteKit 3 needs Node ≥ 22.17, and the default Node stays 22.12 so Mont-Blanc isn't affected. Vite 8, Svelte 5, TS 6, `engine-strict=true`. Houdini folder is `hou/` (yours, already there). Texture imports end with `format=webp`; GLSL root includes are `#include /name;`.
 - **2026-10-27**: Roadmap synced with the docs. M2 split into M2a–M2d; the dive moved into M3 (it needs a project page to land on). Locked decisions now live in [stack.md](stack.md).
 - **2026-10-27**: Working rules: Claude writes the code inside this folder only (nothing outside it without agreement) and doesn't touch files you are tuning live without asking. You run all git commands; Claude suggests commit messages, with no `Co-Authored-By` line. S1: plain CSS.
