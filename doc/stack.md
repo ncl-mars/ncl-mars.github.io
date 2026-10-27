@@ -42,6 +42,9 @@ Installed in M0 (2026-10-27). `web/package-lock.json` has the exact tree.
 | `twgl.js` | 7.0.0 |
 | `typescript` | 6.0.3 |
 | `svelte-check` | 4.7.7 |
+| `@types/node` | 22.20.5 (for `vite.config.ts`) |
+
+`web/tsconfig.json` enables `allowImportingTsExtensions`: Vite 8's config loader wants explicit `.ts` extensions in imports from `vite.config.ts`.
 
 ## Coming from Mont-Blanc
 
@@ -113,7 +116,8 @@ Installed in M0 (2026-10-27). `web/package-lock.json` has the exact tree.
 - Types for shader imports come from `vite-plugin-glsl/ext`, referenced in `web/src/ambient.d.ts`.
 - **First line is `#version 300 es`**, before any `#include`.
 - **Fragment shaders declare `precision highp float;`.** WebGL2 guarantees highp in fragment shaders, and the raymarch and fog break with mediump on phones.
-- **Hot reload:** each shader file is a Vite module, so editing one recompiles just that program in place (`import.meta.hot.accept`). The GL context, camera and terrain cache survive. Set this up in M1.
+- **Hot reload:** each shader file is a Vite module. The drawable module accepts its shader imports (`import.meta.hot.accept`) and calls `hotSwap(prev, next)`, which recompiles that program in place. The GL context, camera and views survive. A shader that fails to compile logs the error and leaves the previous program running. Editing an included chunk reloads every shader that includes it.
+- `web/src/lib/gl/fullscreen.vert` draws a full-screen triangle from `gl_VertexID` (no vertex buffer; bind an empty VAO and call `drawArrays(TRIANGLES, 0, 3)`).
 
 ## Images and binary assets
 
@@ -134,7 +138,7 @@ Installed in M0 (2026-10-27). `web/package-lock.json` has the exact tree.
 ## Dev tools (not dependencies)
 
 - **Spector.js** (browser extension): WebGL frame capture, for debugging the terrain cache, FBOs and depth compositing.
-- Perf HUD in dev builds (fps, frame time, programs, textures, context id), stubbed out of production like Mont-Blanc's perf panel.
+- **Dev panel** (dev builds only, P toggles; not in production builds, checked): renderer stats, live readouts, and sliders for every value in `web/src/lib/tuning/defaults.json`. Like Mont-Blanc's EnvPanel, but generated from `schema.ts`, and "Save defaults" writes the JSON file through a dev-server endpoint instead of logging values to paste.
 
 ## Rejected
 
@@ -154,6 +158,6 @@ Installed in M0 (2026-10-27). `web/package-lock.json` has the exact tree.
 | # | Question | Options |
 |---|----------|---------|
 | S1 | Styles | **Decided: plain CSS** (native nesting, custom properties; switching to SCSS later is cheap) |
-| S2 | Gestures | native Pointer Events (recommended: pan + pinch + tap only, no dependency) or hammerjs (familiar, unmaintained since 2016) |
+| S2 | Gestures | **Decided: native Pointer Events** (`web/src/lib/gl/controls.ts`), no dependency |
 | S3 | Formatting / linting | **Decided: `svelte-check` only** (like Mont-Blanc); Prettier can be added later |
 | S4 | Tests | none, or Vitest for the pure TS math (half-float conversion, format parsing, CPU picking, camera) |

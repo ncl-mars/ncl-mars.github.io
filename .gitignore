@@ -9,6 +9,9 @@ node_modules/
 # Claude Code local settings (notes in .claude/memory/ are tracked)
 .claude/settings.local.json
 
+# Scratch files (kept inside the project, never in system temp)
+.tmp/
+
 # Houdini: autosave backups, caches and renders (.hip* and .hda files are tracked)
 hou/**/backup/
 hou/geo/

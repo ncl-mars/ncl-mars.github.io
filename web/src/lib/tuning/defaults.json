@@ -1,0 +1,39 @@
+{
+	"camera": {
+		"pitchNear": 25,
+		"pitchFar": 60,
+		"tiltCurve": 1,
+		"fov": 35,
+		"distance": 350,
+		"minDistance": 60,
+		"maxDistance": 700
+	},
+	"controls": {
+		"wheelSpeed": 0.002,
+		"zoomSmoothing": 10,
+		"inertiaDecay": 4,
+		"keyboardSpeed": 1.1,
+		"rotateSpeed": 0.3,
+		"keyboardRotateSpeed": 90
+	},
+	"march": {
+		"stepScale": 0.45,
+		"precision": 0.0015,
+		"steps": 128,
+		"refineSteps": 6
+	},
+	"shading": {
+		"tint": [0.8, 0.81, 0.83],
+		"shadowLight": 0.38,
+		"aoStrength": 0.85,
+		"cavityStrength": 0.7,
+		"exposure": 1.05
+	},
+	"fog": {
+		"color": [0.6, 0.62, 0.64],
+		"density": 0.0011
+	},
+	"renderer": {
+		"maxPixelRatio": 2
+	}
+}

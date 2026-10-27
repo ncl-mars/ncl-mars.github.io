@@ -4,7 +4,7 @@ Personal portfolio: a SvelteKit static site with a raw WebGL2 renderer, hosted o
 
 ## Working rules
 
-- Write code only inside this folder. Nothing outside it without the user's agreement: no temp files, no global memory, no installs.
+- Write code only inside this folder. Nothing outside it without the user's agreement: no temp files, no global memory, no installs. Scratch files go in `.tmp/` (gitignored), never `/tmp` or the system temp folder.
 - Don't touch files the user is tuning live without asking.
 - The user runs all git commands. Suggest commit messages, and never add a `Co-Authored-By` or any other attribution line.
 - Answer planning questions in chat. Edit docs only when asked, or to keep the roadmap's decision log current.
@@ -28,6 +28,24 @@ Notes live in `.claude/memory/`, **not** in the global `~/.claude/projects/.../m
 - `web/`: the SvelteKit app (the only thing that gets built and deployed)
 - `hou/`: Houdini ($JOB). `doc/`: docs. Details in `doc/project-structure.md`.
 
+## Renderer (`web/src/lib/gl/`)
+
+- One canvas, owned by `routes/+layout.svelte`. Pages get the renderer with `getRenderer()` and register DOM elements with `{@attach renderer.view(drawable)}`. Never create another canvas.
+- Drawables (`lib/drawables/<name>/`) implement `init` / `update` / `draw` / `dispose` (`lib/gl/types.ts`). Constructors must not touch the DOM or GL (prerender runs in Node). Create GL resources in `init`.
+- Programs come from `renderer.program(vs, fs)`, cached by source for the life of the context. Textures and other per-context resources go through `renderer.resource(key, create)`, cached the same way.
+- State that must survive navigation (the home camera, the terrain drawable) lives in the page's `<script module>`.
+- Views are expected in normal document flow: rects are cached in document space, so a `position: fixed` view on a scrolling page would drift.
+- Shader hot reload: each drawable module ends with `import.meta.hot.accept([...shader paths], …)` calling `hotSwap()`. Copy the block from `drawables/test/TestPattern.ts`, using relative paths.
+- Never read layout in the frame loop. Rects are cached in document space; visibility is arithmetic.
+- DOM overlays that follow the scene (compass, labels) update from `renderer.onFrame(cb)`, which runs after each rendered frame. Write `el.style` / attributes directly, only when the value changed, never through Svelte state.
+- `/lab/views/` is the view-system test page.
+
+## Tuning (`web/src/lib/tuning/`)
+
+- Every tunable value (camera, controls, march, shading, fog, renderer) lives in `defaults.json`. Code reads `tuning.<group>.<key>` live, every frame or event; don't copy the values into locals at construction.
+- Adding a value: add it to `defaults.json`, describe it in `schema.ts` (label, range, hint), read it from `tuning`. If changing it needs an action, use `onTuningChange` (e.g. the pixel-ratio cap in the root layout).
+- Dev panel (`lib/components/DevPanel.svelte`, dev only, P toggles): stats, live readouts (`readouts` map, registered by pages), and sliders. "Save defaults" writes `defaults.json` through the dev server endpoint `/__tuning/save` (`vite.config.ts`), which checks the shape first. `tuning/index.ts` hot-accepts `defaults.json`, so saving doesn't reload the app.
+
 ## Commands
 
 Run from `web/` (in Bash: `cd web && …`). The default Node is 22.12.0 and **must not be changed** (Mont-Blanc pins it). That's why this is SvelteKit 2, not 3 (see `doc/stack.md`).
@@ -35,5 +53,6 @@ Run from `web/` (in Bash: `cd web && …`). The default Node is 22.12.0 and **mu
 - `npm run dev`: dev server with hot reload
 - `npm run build`: static site to `web/build/`
 - `npm run check`: type check (`svelte-check`). This is the only static check: no linter, no tests.
+- `npm run gen:terrain`: placeholder heightmap + maps into `src/lib/assets/terrain/` (refuses to overwrite without `-- --force`, the files may be a real Houdini export)
 
 Smoke-testing the dev server on Windows: stopping the background `npx vite dev` leaves its `node` child listening. Kill the process that owns the port afterwards (PowerShell `Get-NetTCPConnection -LocalPort <port>` → `Stop-Process`).

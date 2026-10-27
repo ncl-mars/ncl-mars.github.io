@@ -2,7 +2,7 @@
 
 Living work plan. Tick boxes as we go, add notes inline, and log decisions at the bottom. Details live in the other docs; this file is the order of work.
 
-**Status:** M0 done, except `git init` (yours). Next: M1 (renderer core).
+**Status:** M2a implemented + dev tuning panel; tune the camera with the panel, then the orientation check and perf gate are yours. Next: M2b (atmosphere).
 
 **Docs:** [stack.md](stack.md) (web stack and rules) · [home-concept.md](home-concept.md) (home page) · [project-structure.md](project-structure.md) · [formats/](formats/) (heightmap, terrain maps)
 
@@ -40,19 +40,22 @@ Stack choices S1–S4 are tracked in [stack.md](stack.md#open-decisions).
 
 ## M1 — Renderer core (shared canvas + views)
 
-`web/src/lib/gl/`: `renderer.ts`, `views.ts`, `loop.ts`, `camera.ts`, `programs.ts`, `textures.ts`, `assets.ts`, `chunks/`. Drawables in `web/src/lib/drawables/<name>/`.
+`web/src/lib/gl/`: `renderer.ts` (views, loop, sizing, context), `programs.ts` (cache + hot swap), `types.ts`, `context.ts`, `fullscreen.vert`, `chunks/`. Drawables in `web/src/lib/drawables/<name>/` (`test/` for now). `camera.ts`, `textures.ts` and `assets.ts` come with M2a/M3, when something uses them.
 
-- [ ] Root layout creates the canvas (`position: fixed; inset: 0; z-index: -1; pointer-events: none`) and starts the renderer in `onMount`; pages reach it through Svelte context
-- [ ] Context: `depth: true`, `antialias: false`, `premultipliedAlpha: true`; `webglcontextlost` → `preventDefault` + log
-- [ ] View API: `{@attach}` (or an action) registers `{ el, drawable }`, unregisters on destroy
-- [ ] Drawable interface: `draw(gl, view, frame, target)` (`target` may be an FBO), pass order opaque → transparent, optional `update(frame)` before drawing
-- [ ] Rect cache in document space, read only in ResizeObserver callbacks (each view + root element), window resize and `document.fonts.ready`; IntersectionObserver for visibility; passive scroll listener for the offset
-- [ ] Per frame: plain arithmetic to the GL rect (Y flipped), scissor + viewport
-- [ ] Loop gating: rAF only while a view is visible and `visibilityState === 'visible'`
-- [ ] `maxPixelRatio` config
-- [ ] Shader hot reload: editing a `.vert`/`.frag` recompiles that program in place (`import.meta.hot.accept`)
-- [ ] `KHR_parallel_shader_compile` when available
-- [ ] Perf HUD in dev (fps, frame time, context id, programs, textures), stubbed out of production
+- [x] Root layout creates the canvas (`position: fixed; inset: 0; z-index: -1; pointer-events: none`) and the renderer; pages reach it with `getRenderer()`
+- [x] Context: `alpha`, `depth: true`, `antialias: false`, `premultipliedAlpha: true`. Context loss → `preventDefault`; on restore, drawables are re-initialised (basic recovery already)
+- [x] View API: `{@attach renderer.view(drawable)}` registers, unregisters on destroy. Views registered before the canvas exists are initialised at mount.
+- [x] Drawable interface: `init` / `update(frame)` / `draw(gl, ctx)` / `dispose`; `ctx` has the view's pixel rect and `target` (FBO or null). Pass order is the drawable's business (a scene drawable draws opaque, then transparent).
+- [x] Rect cache in document space, read only in ResizeObserver callbacks (canvas, each view, root element), window resize, pixel-ratio change and `document.fonts.ready`; passive scroll listener for the offset
+- [x] Visibility is computed from the cached rects + scroll offset (arithmetic, exact, no async lag) instead of IntersectionObserver
+- [x] Per frame: plain arithmetic to the GL rect (Y flipped, edges rounded separately), viewport + scissor clipped to the canvas; zero allocations
+- [x] Loop gating: rAF only while a view is visible and the tab is visible; the canvas is cleared when the last view leaves the screen
+- [x] `maxPixelRatio` option (default 2)
+- [x] Program cache keyed by sources: drawables re-created by navigation reuse compiled programs
+- [x] Shader hot reload: `hotSwap()` from the drawable module's `import.meta.hot.accept`; a broken edit logs the error and keeps the old program running
+- [ ] `KHR_parallel_shader_compile`: deferred. twgl's `createProgramInfoAsync` uses it; switch when there are enough programs for compile time to matter.
+- [x] Perf HUD in dev (context id, running/idle, fps, CPU ms, views, programs, compiles, canvas size), toggle with P, not in production builds (checked)
+- [x] Test page `/lab/views/`: four test-pattern views with spacers, link home and back
 
 **Watch:** a fixed canvas can trail native scrolling by a frame on some browsers ("swimming" views). Measure it here.
 
@@ -64,14 +67,18 @@ Stack choices S1–S4 are tracked in [stack.md](stack.md#open-decisions).
 
 See [home-concept.md](home-concept.md) § Camera, § Terrain.
 
-- [ ] `web/scripts/gen-terrain.mjs`: placeholder `heightmap.bin/.json` ([format](formats/heightmap.md)) **and** placeholder `maps.png/.json` ([format](formats/terrain-maps.md), simple light + AO computed from the heightmap), so this doesn't wait for the Houdini bake. Never overwrites existing exports without `--force`.
-- [ ] Loaders: heightmap → `R16F` + CPU `Float32Array` copy; maps → raw `RGBA8` (no colour conversion)
-- [ ] Camera: pan + zoom (dolly), fixed pitch and yaw, pan limits, collision with the CPU height, input on the view element (S2)
-- [ ] Raymarch: rays from `invViewProj`, march only within the height range (enter at `max.y`, exit at `min.y`), fixed steps + binary refinement behind a strategy hook, writes `gl_FragDepth`
-- [ ] Surface/shading split: the surface stage outputs position, normal, depth; the shading stage is a shared chunk
-- [ ] Shading from the maps (light, AO, cavity → near-gray), height functions `terrainHeight()` / `height()` in a chunk
-- [ ] Houdini heightmap export snippet (`hou/snippets/export_heightmap.py`) + orientation check with the test pattern. The maps export follows [terrain-maps.md](formats/terrain-maps.md).
-- [ ] **Performance gate** on the Q4 device: ≥ 60 fps desktop, ≥ 30 fps on the device at the DPR cap. If it misses, the surface stage becomes the displaced mesh (plan B), possibly per device.
+- [x] `web/scripts/gen-terrain.mjs` (`npm run gen:terrain`): placeholder 1024² heightmap (fbm + ridges + a flat central plateau for the dig) and maps (light with soft shadows from `sunDir`, horizon AO, cavity), in the spec formats, no dependencies. Never overwrites without `--force`.
+- [x] Loaders: heightmap → CPU `Heightfield` (half → float lookup table, GL-matching bilinear `heightAt`) + `R16F` texture; maps → raw `RGBA8` (no colour conversion, mipmapped). Textures cached per context (`renderer.resource`), so navigation doesn't reload them.
+- [x] Maps imported as `?lossless&format=webp`: checked bit-identical to the PNG after the build
+- [x] Camera (`gl/camera.ts`): pan + zoom, yaw 0 / fov 35°, **pitch from the zoom** (60° far → 25° near, tilting up as it dives in), pan limits = bounds − 10 %, target follows the ground, eye kept above it. Smooth zoom, inertia and keyboard are eased in `update()`. Module-level on the home page, so it survives navigation.
+- [x] Controls (`gl/controls.ts`, S2 = native Pointer Events): drag grabs the real ground (CPU `Heightfield.raycast`) with inertia on release; wheel / trackpad pinch glide-zoom toward the pointer; two-finger pinch; double-click / double-tap zoom in; arrows / WASD / ZQSD + `+`/`−` when focused
+- [x] Raymarch: rays from `invViewProj`, march only inside the terrain's box, **height-relative steps** (`uStepScale` 0.45, `uPrecision` 0.0015, cap `uSteps` 128) + binary refinement (6), `marchSurface()` is the strategy hook, writes `gl_FragDepth`
+- [x] Surface/shading split: `surface.glsl` (the `Surface` struct), `march.glsl` (surface stage), `shade.glsl` (shading stage)
+- [x] Shading from the maps (light, AO, cavity → near-gray, light distance fog for now); `terrainHeight()` / `height()` / `terrainNormal()` in `gl/chunks/terrain.glsl`
+- [x] Fade-in once loaded; tuning from the URL: `?steps=48`, `?dpr=1`
+- [x] Houdini heightmap export snippet: `hou/snippets/export_heightmap.py` (detects axis flips/swaps)
+- [ ] Orientation check with the test pattern (yours, after a first export)
+- [ ] **Performance gate** on the Q4 device: ≥ 60 fps desktop, ≥ 30 fps on the device at the DPR cap. If it misses, the surface stage becomes the displaced mesh (plan B), possibly per device. To test a phone on the same Wi-Fi: `npm run dev -- --host`.
 
 **Done when:** `/` shows the terrain, pan and zoom work, and the gate is measured and recorded below.
 
@@ -148,7 +155,7 @@ See [home-concept.md](home-concept.md) § Square state, § Hover.
 
 ## M5 — Splat finds
 
-Finds revealed in dug squares (see [home-concept.md](home-concept.md) § Splat finds). Rendering in WebGL2: a CPU sort in a worker, instanced quads, premultiplied blending. With the pan-only camera, a find is sorted once and re-sorted only during the dive. Fill rate is the main cost, so scenes stay small.
+Finds revealed in dug squares (see [home-concept.md](home-concept.md) § Splat finds). Rendering in WebGL2: a CPU sort in a worker, instanced quads, premultiplied blending. Panning never changes the view direction, so a find re-sorts only when the zoom (pitch) or the heading changes, and during the dive. Fill rate is the main cost, so scenes stay small.
 
 ### M5a — Spike (time-box ~2 sessions, hidden `/lab/splat` route)
 
@@ -205,6 +212,13 @@ Finds revealed in dug squares (see [home-concept.md](home-concept.md) § Splat f
 
 ## Decision log
 
+- **2026-10-27**: Camera polish (`feature/cam-controls`): compass (needle follows the heading, click = north), line-of-sight lift, rotation inertia, keyboard focus on load. New `renderer.onFrame()` hook for DOM overlays (the M2c labels will use it). Still to come with their milestones: a camera change signal (M2b terrain cache) and scripted moves with a pitch override (M2d / M3 dive).
+- **2026-10-27**: Camera rotation added after all: free heading (right-drag / Alt+drag, two-finger twist, Q/E, N back to north), pitch still tied to zoom. Keyboard bindings by physical key position (`event.code`). The dive will ease the heading back to north so thumbnails land upright. Splats re-sort on rotation too.
+- **2026-10-27**: Dev tuning panel (branch `dev-panel`): every tunable value lives in `web/src/lib/tuning/defaults.json` and is read live; the panel (dev only, P) has sliders built from `schema.ts`, live readouts, and Save / Copy / Reset. Save writes the JSON through a dev-server endpoint, no reload. Replaces the perf HUD. Camera got a `tiltCurve` value.
+- **2026-10-27**: Camera pitch now follows the zoom (60° → 25°, tilting up as it dives in), so the march switched from fixed steps to height-relative steps for the grazing rays. Controls: smooth zoom, inertia, real-ground grab, double-click/tap, keyboard. Splats will re-sort on zoom changes (still never on pan).
+- **2026-10-27**: M2a implemented. S2 = native Pointer Events. Camera and terrain drawable are module-level on the home page (state survives navigation). Textures are cached per context like programs. The camera target follows the ground.
+- **2026-10-27**: M1 browser checks passed: mapping exact, no visible swimming, idle when nothing is on screen or the tab is hidden, programs reused across navigation, shader hot reload works. Browser zoom scales the CSS-px test grid, as expected.
+- **2026-10-27**: M1 implemented. View visibility comes from cached rects (arithmetic) instead of IntersectionObserver. Pass order lives inside drawables, not in the renderer. Programs are cached by source, so navigation doesn't recompile. `KHR_parallel_shader_compile` deferred.
 - **2026-10-27**: M0 done. SvelteKit 2.70 instead of 3: SvelteKit 3 needs Node ≥ 22.17, and the default Node stays 22.12 so Mont-Blanc isn't affected. Vite 8, Svelte 5, TS 6, `engine-strict=true`. Houdini folder is `hou/` (yours, already there). Texture imports end with `format=webp`; GLSL root includes are `#include /name;`.
 - **2026-10-27**: Roadmap synced with the docs. M2 split into M2a–M2d; the dive moved into M3 (it needs a project page to land on). Locked decisions now live in [stack.md](stack.md).
 - **2026-10-27**: Working rules: Claude writes the code inside this folder only (nothing outside it without agreement) and doesn't touch files you are tuning live without asking. You run all git commands; Claude suggests commit messages, with no `Co-Authored-By` line. S1: plain CSS.

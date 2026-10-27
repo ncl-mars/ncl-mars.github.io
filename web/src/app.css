@@ -1,0 +1,24 @@
+/* Global styles. The WebGL canvas sits behind the page (z-index -1): the background lives on <html>,
+   and anything drawn over a view must stay transparent or it hides the canvas. */
+
+:root {
+	color-scheme: dark;
+	--bg: #1b1c1e;
+	--fg: #d8d9db;
+	--muted: #8b8e92;
+	--font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+html {
+	background: var(--bg);
+	color: var(--fg);
+	font-family: var(--font-sans);
+}
+
+body {
+	margin: 0;
+}
+
+a {
+	color: inherit;
+}
