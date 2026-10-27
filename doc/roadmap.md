@@ -2,7 +2,7 @@
 
 Living work plan. Tick boxes as we go, add notes inline, and log decisions at the bottom. Details live in the other docs; this file is the order of work.
 
-**Status:** M1 done (browser checks passed). Next: M2a (terrain).
+**Status:** M2a implemented; browser check, orientation check and perf gate are yours. Next: M2b (atmosphere).
 
 **Docs:** [stack.md](stack.md) (web stack and rules) · [home-concept.md](home-concept.md) (home page) · [project-structure.md](project-structure.md) · [formats/](formats/) (heightmap, terrain maps)
 
@@ -67,14 +67,18 @@ Stack choices S1–S4 are tracked in [stack.md](stack.md#open-decisions).
 
 See [home-concept.md](home-concept.md) § Camera, § Terrain.
 
-- [ ] `web/scripts/gen-terrain.mjs`: placeholder `heightmap.bin/.json` ([format](formats/heightmap.md)) **and** placeholder `maps.png/.json` ([format](formats/terrain-maps.md), simple light + AO computed from the heightmap), so this doesn't wait for the Houdini bake. Never overwrites existing exports without `--force`.
-- [ ] Loaders: heightmap → `R16F` + CPU `Float32Array` copy; maps → raw `RGBA8` (no colour conversion)
-- [ ] Camera: pan + zoom (dolly), fixed pitch and yaw, pan limits, collision with the CPU height, input on the view element (S2)
-- [ ] Raymarch: rays from `invViewProj`, march only within the height range (enter at `max.y`, exit at `min.y`), fixed steps + binary refinement behind a strategy hook, writes `gl_FragDepth`
-- [ ] Surface/shading split: the surface stage outputs position, normal, depth; the shading stage is a shared chunk
-- [ ] Shading from the maps (light, AO, cavity → near-gray), height functions `terrainHeight()` / `height()` in a chunk
-- [ ] Houdini heightmap export snippet (`hou/snippets/export_heightmap.py`) + orientation check with the test pattern. The maps export follows [terrain-maps.md](formats/terrain-maps.md).
-- [ ] **Performance gate** on the Q4 device: ≥ 60 fps desktop, ≥ 30 fps on the device at the DPR cap. If it misses, the surface stage becomes the displaced mesh (plan B), possibly per device.
+- [x] `web/scripts/gen-terrain.mjs` (`npm run gen:terrain`): placeholder 1024² heightmap (fbm + ridges + a flat central plateau for the dig) and maps (light with soft shadows from `sunDir`, horizon AO, cavity), in the spec formats, no dependencies. Never overwrites without `--force`.
+- [x] Loaders: heightmap → CPU `Heightfield` (half → float lookup table, GL-matching bilinear `heightAt`) + `R16F` texture; maps → raw `RGBA8` (no colour conversion, mipmapped). Textures cached per context (`renderer.resource`), so navigation doesn't reload them.
+- [x] Maps imported as `?lossless&format=webp`: checked bit-identical to the PNG after the build
+- [x] Camera (`gl/camera.ts`): pan + zoom (distance), fixed pitch 45° / yaw 0 / fov 35° (to tune), pan limits = bounds − 10 %, target follows the ground, eye kept above it. Module-level on the home page, so it survives navigation.
+- [x] Controls (`gl/controls.ts`, S2 = native Pointer Events): drag grabs the ground, wheel / trackpad pinch / two-finger pinch zoom toward the pointer
+- [x] Raymarch: rays from `invViewProj`, march only inside the terrain's box, fixed steps (`uSteps` 64) + binary refinement (6), `marchSurface()` is the strategy hook, writes `gl_FragDepth`
+- [x] Surface/shading split: `surface.glsl` (the `Surface` struct), `march.glsl` (surface stage), `shade.glsl` (shading stage)
+- [x] Shading from the maps (light, AO, cavity → near-gray, light distance fog for now); `terrainHeight()` / `height()` / `terrainNormal()` in `gl/chunks/terrain.glsl`
+- [x] Fade-in once loaded; tuning from the URL: `?steps=48`, `?dpr=1`
+- [x] Houdini heightmap export snippet: `hou/snippets/export_heightmap.py` (detects axis flips/swaps)
+- [ ] Orientation check with the test pattern (yours, after a first export)
+- [ ] **Performance gate** on the Q4 device: ≥ 60 fps desktop, ≥ 30 fps on the device at the DPR cap. If it misses, the surface stage becomes the displaced mesh (plan B), possibly per device. To test a phone on the same Wi-Fi: `npm run dev -- --host`.
 
 **Done when:** `/` shows the terrain, pan and zoom work, and the gate is measured and recorded below.
 
@@ -208,6 +212,7 @@ Finds revealed in dug squares (see [home-concept.md](home-concept.md) § Splat f
 
 ## Decision log
 
+- **2026-10-27**: M2a implemented. S2 = native Pointer Events. Camera and terrain drawable are module-level on the home page (state survives navigation). Textures are cached per context like programs. The camera target follows the ground.
 - **2026-10-27**: M1 browser checks passed: mapping exact, no visible swimming, idle when nothing is on screen or the tab is hidden, programs reused across navigation, shader hot reload works. Browser zoom scales the CSS-px test grid, as expected.
 - **2026-10-27**: M1 implemented. View visibility comes from cached rects (arithmetic) instead of IntersectionObserver. Pass order lives inside drawables, not in the renderer. Programs are cached by source, so navigation doesn't recompile. `KHR_parallel_shader_compile` deferred.
 - **2026-10-27**: M0 done. SvelteKit 2.70 instead of 3: SvelteKit 3 needs Node ≥ 22.17, and the default Node stays 22.12 so Mont-Blanc isn't affected. Vite 8, Svelte 5, TS 6, `engine-strict=true`. Houdini folder is `hou/` (yours, already there). Texture imports end with `format=webp`; GLSL root includes are `#include /name;`.

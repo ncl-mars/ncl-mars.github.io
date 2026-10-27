@@ -51,9 +51,10 @@ let nextContextId = 1;
 export class Renderer {
 	gl: WebGL2RenderingContext | null = null;
 
-	private readonly maxPixelRatio: number;
+	private maxPixelRatio: number;
 	private canvas: HTMLCanvasElement | null = null;
 	private programs: ProgramCache | null = null;
+	private resources = new Map<string, unknown>();
 	private views: View[] = [];
 	private lost = false;
 
@@ -151,6 +152,7 @@ export class Renderer {
 		}
 		this.views = [];
 		this.programs = null;
+		this.resources.clear();
 		this.gl = null;
 		this.canvas = null;
 	}
@@ -186,6 +188,17 @@ export class Renderer {
 	program(vertex: string, fragment: string): Program {
 		if (!this.programs) throw new Error('renderer.program() called before mount');
 		return this.programs.get(vertex, fragment);
+	}
+
+	/**
+	 * Per-context cache for resources shared across navigation (textures, often as a Promise while they
+	 * load): `create` runs once per key. Emptied on context loss; the GL objects die with the context.
+	 */
+	resource<T>(key: string, create: (gl: WebGL2RenderingContext) => T): T {
+		const gl = this.gl;
+		if (!gl) throw new Error('renderer.resource() called before mount');
+		if (!this.resources.has(key)) this.resources.set(key, create(gl));
+		return this.resources.get(key) as T;
 	}
 
 	/**
@@ -238,12 +251,21 @@ export class Renderer {
 		this.stats.contextId = nextContextId++;
 	}
 
+	/** Debug/tuning (e.g. `?dpr=1` on the home page): change the pixel-ratio cap. Returns the previous one. */
+	setMaxPixelRatio(value: number): number {
+		const previous = this.maxPixelRatio;
+		this.maxPixelRatio = value;
+		this.measure();
+		return previous;
+	}
+
 	private onContextLost = (event: Event) => {
 		event.preventDefault(); // allows the browser to restore the context later
 		console.warn('[renderer] WebGL context lost');
 		this.lost = true;
 		for (const view of this.views) view.ready = false;
 		this.programs?.release();
+		this.resources.clear();
 		this.updateLoop();
 	};
 

@@ -6,13 +6,14 @@ portfolio/
 │  ├─ src/
 │  │  ├─ routes/                 +layout.svelte (owns the canvas), +page.svelte, projects/[slug]/, lab/
 │  │  ├─ lib/
-│  │  │  ├─ gl/                  renderer core: renderer, views, loop, camera, programs, textures, assets
+│  │  │  ├─ gl/                  renderer core: renderer, programs, textures, camera, controls, types
 │  │  │  │  └─ chunks/           shared GLSL (`#include /name;`): noise, wind, fog, height, common
 │  │  │  ├─ drawables/           one folder per drawable, its TS and shaders side by side
-│  │  │  │  ├─ terrain/          terrain.ts, terrain.vert, terrain.frag, march.glsl
+│  │  │  │  ├─ terrain/          Terrain.ts, terrain.frag, surface/march/shade.glsl
 │  │  │  │  ├─ image/
 │  │  │  │  ├─ splat/            later, includes sort.worker.ts
 │  │  │  │  └─ particles/        later
+│  │  │  ├─ terrain/             CPU side of the terrain: heightfield (load, sample), asset imports
 │  │  │  ├─ components/          Svelte UI
 │  │  │  ├─ content/             projects.ts
 │  │  │  └─ assets/              pipeline exports + project images (imported → hashed URLs)
@@ -23,7 +24,7 @@ portfolio/
 │  │  ├─ app.d.ts
 │  │  └─ ambient.d.ts            module types: shaders, texture imports
 │  ├─ static/                    only files that need a fixed URL: favicon, robots.txt, CNAME
-│  ├─ scripts/                   npm scripts (gen-heightmap.mjs)
+│  ├─ scripts/                   npm scripts (gen-terrain.mjs: placeholder heightmap + maps)
 │  └─ package.json, svelte.config.js, vite.config.ts, tsconfig.json
 ├─ hou/                          Houdini ($JOB)
 │  ├─ *.hip*, hda/               tracked

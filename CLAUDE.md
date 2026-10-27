@@ -32,7 +32,9 @@ Notes live in `.claude/memory/`, **not** in the global `~/.claude/projects/.../m
 
 - One canvas, owned by `routes/+layout.svelte`. Pages get the renderer with `getRenderer()` and register DOM elements with `{@attach renderer.view(drawable)}`. Never create another canvas.
 - Drawables (`lib/drawables/<name>/`) implement `init` / `update` / `draw` / `dispose` (`lib/gl/types.ts`). Constructors must not touch the DOM or GL (prerender runs in Node). Create GL resources in `init`.
-- Programs come from `renderer.program(vs, fs)`, cached by source for the life of the context.
+- Programs come from `renderer.program(vs, fs)`, cached by source for the life of the context. Textures and other per-context resources go through `renderer.resource(key, create)`, cached the same way.
+- State that must survive navigation (the home camera, the terrain drawable) lives in the page's `<script module>`.
+- Views are expected in normal document flow: rects are cached in document space, so a `position: fixed` view on a scrolling page would drift.
 - Shader hot reload: each drawable module ends with `import.meta.hot.accept([...shader paths], …)` calling `hotSwap()`. Copy the block from `drawables/test/TestPattern.ts`, using relative paths.
 - Never read layout in the frame loop. Rects are cached in document space; visibility is arithmetic.
 - `/lab/views/` is the view-system test page. The dev perf HUD toggles with P.
@@ -44,5 +46,6 @@ Run from `web/` (in Bash: `cd web && …`). The default Node is 22.12.0 and **mu
 - `npm run dev`: dev server with hot reload
 - `npm run build`: static site to `web/build/`
 - `npm run check`: type check (`svelte-check`). This is the only static check: no linter, no tests.
+- `npm run gen:terrain`: placeholder heightmap + maps into `src/lib/assets/terrain/` (refuses to overwrite without `-- --force`, the files may be a real Houdini export)
 
 Smoke-testing the dev server on Windows: stopping the background `npx vite dev` leaves its `node` child listening. Kill the process that owns the port afterwards (PowerShell `Get-NetTCPConnection -LocalPort <port>` → `Stop-Process`).

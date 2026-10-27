@@ -155,6 +155,6 @@ Installed in M0 (2026-10-27). `web/package-lock.json` has the exact tree.
 | # | Question | Options |
 |---|----------|---------|
 | S1 | Styles | **Decided: plain CSS** (native nesting, custom properties; switching to SCSS later is cheap) |
-| S2 | Gestures | native Pointer Events (recommended: pan + pinch + tap only, no dependency) or hammerjs (familiar, unmaintained since 2016) |
+| S2 | Gestures | **Decided: native Pointer Events** (`web/src/lib/gl/controls.ts`), no dependency |
 | S3 | Formatting / linting | **Decided: `svelte-check` only** (like Mont-Blanc); Prettier can be added later |
 | S4 | Tests | none, or Vitest for the pure TS math (half-float conversion, format parsing, CPU picking, camera) |
