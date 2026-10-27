@@ -12,20 +12,20 @@ import type { DrawContext, Drawable, Frame } from '../../gl/types';
 let vertex = vertexSource;
 let fragment = fragmentSource;
 
+/** Read live every frame (the dev panel edits them). See schema.ts for what each value does. */
+export interface TerrainSettings {
+	march: { stepScale: number; precision: number; steps: number; refineSteps: number };
+	shading: { tint: number[]; shadowLight: number; aoStrength: number; cavityStrength: number; exposure: number };
+	fog: { color: number[]; density: number };
+}
+
 /**
  * The dig site's ground: a raymarched heightfield (surface stage: march.glsl) shaded from the baked maps
  * (shading stage: shade.glsl). It writes depth, so later passes (cords, particles, splats) composite against
- * it. It also drives the camera's terrain following. Draws nothing until the heightmap and maps are loaded,
+ * it. It also drives the camera (`camera.update`). Draws nothing until the heightmap and maps are loaded,
  * then fades in. Textures are cached per GL context, so coming back to the page doesn't reload them.
  */
 export class Terrain implements Drawable {
-	/** March iteration cap (tuning: `?steps=` on the home page). Most rays need far fewer. */
-	steps = 128;
-	refineSteps = 6;
-	/** Fraction of the ground clearance taken by each march step. */
-	stepScale = 0.45;
-	/** Minimum step and hit tolerance, relative to the distance along the ray. */
-	precision = 0.0015;
 	/** CPU copy of the heightmap, once loaded (camera following, picking). */
 	field: Heightfield | null = null;
 
@@ -35,11 +35,13 @@ export class Terrain implements Drawable {
 	private mapsTexture: WebGLTexture | null = null;
 	private fade = 0;
 	private generation = 0;
+	private readonly shadingVector = new Float32Array(4);
 	private readonly uniforms: Record<string, unknown>;
 
 	constructor(
 		private readonly camera: SurveyCamera,
-		private readonly assets: TerrainAssets
+		private readonly assets: TerrainAssets,
+		private readonly settings: TerrainSettings
 	) {
 		const { min, max } = assets.heightmap.bounds;
 		const marginX = (max[0] - min[0]) * 0.1;
@@ -50,10 +52,7 @@ export class Terrain implements Drawable {
 			uBoundsMin: min,
 			uBoundsMax: max,
 			uSunDir: assets.maps.sunDir,
-			uTint: [0.8, 0.81, 0.83],
-			uShading: [0.38, 0.85, 0.7, 1.05], // light in shadow, AO strength, cavity strength, exposure
-			uFogColor: [0.6, 0.62, 0.64],
-			uFogDensity: 0.0011
+			uShading: this.shadingVector
 		};
 	}
 
@@ -90,16 +89,26 @@ export class Terrain implements Drawable {
 		const camera = this.camera;
 		camera.setAspect(rect.width / rect.height);
 
+		const { march, shading, fog } = this.settings;
+		const s = this.shadingVector;
+		s[0] = shading.shadowLight;
+		s[1] = shading.aoStrength;
+		s[2] = shading.cavityStrength;
+		s[3] = shading.exposure;
+
 		const u = this.uniforms;
 		u.uInvViewProj = camera.inverseViewProjection;
 		u.uViewProj = camera.viewProjection;
 		u.uCamPos = camera.eye;
 		u.uHeightmap = this.heightTexture;
 		u.uMaps = this.mapsTexture;
-		u.uSteps = this.steps;
-		u.uRefineSteps = this.refineSteps;
-		u.uStepScale = this.stepScale;
-		u.uPrecision = this.precision;
+		u.uSteps = march.steps;
+		u.uRefineSteps = march.refineSteps;
+		u.uStepScale = march.stepScale;
+		u.uPrecision = march.precision;
+		u.uTint = shading.tint;
+		u.uFogColor = fog.color;
+		u.uFogDensity = fog.density;
 		u.uFade = this.fade;
 
 		const info = this.program!.info;

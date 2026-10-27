@@ -5,6 +5,8 @@ import type { Heightfield, Vec3 } from '$lib/terrain/heightfield';
 export interface SurveyControlsOptions {
 	/** The CPU heightfield once loaded: grabs and zooms anchor on the real ground under the pointer. */
 	field?: () => Heightfield | null;
+	/** Read live (the dev panel edits it). */
+	settings?: { wheelSpeed: number };
 }
 
 /** Keys → [axis, direction]. QWERTY (WASD), AZERTY (ZQSD) and arrows; +/− and Page Up/Down zoom. */
@@ -178,7 +180,8 @@ export function surveyControls(camera: SurveyCamera, options: SurveyControlsOpti
 		const onWheel = (event: WheelEvent) => {
 			event.preventDefault(); // also stops ctrl+wheel (trackpad pinch) from zooming the page
 			const scale = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 400 : 1;
-			glideZoomAt(event.clientX, event.clientY, Math.exp(event.deltaY * scale * 0.002));
+			const speed = options.settings?.wheelSpeed ?? 0.002;
+			glideZoomAt(event.clientX, event.clientY, Math.exp(event.deltaY * scale * speed));
 		};
 
 		const updateKeys = () => {

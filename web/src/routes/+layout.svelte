@@ -7,21 +7,28 @@
 	import { onMount, type Component } from 'svelte';
 	import { Renderer } from '$lib/gl/renderer';
 	import { setRenderer } from '$lib/gl/context';
+	import { onTuningChange, tuning } from '$lib/tuning';
 
 	let { children } = $props();
 
-	const renderer = new Renderer({ maxPixelRatio: 2 });
+	const renderer = new Renderer({ maxPixelRatio: tuning.renderer.maxPixelRatio });
 	setRenderer(renderer);
 
 	let canvas: HTMLCanvasElement;
-	let PerfHud = $state<Component<{ renderer: Renderer }> | null>(null);
+	let DevPanel = $state<Component<{ renderer: Renderer }> | null>(null);
 
 	onMount(() => {
 		renderer.mount(canvas);
+		const stopListening = onTuningChange((group) => {
+			if (group === 'renderer') renderer.setMaxPixelRatio(tuning.renderer.maxPixelRatio);
+		});
 		if (import.meta.env.DEV) {
-			import('$lib/components/PerfHud.svelte').then((module) => (PerfHud = module.default));
+			import('$lib/components/DevPanel.svelte').then((module) => (DevPanel = module.default));
 		}
-		return () => renderer.unmount();
+		return () => {
+			stopListening();
+			renderer.unmount();
+		};
 	});
 </script>
 
@@ -33,8 +40,8 @@
 
 {@render children()}
 
-{#if PerfHud}
-	<PerfHud {renderer} />
+{#if DevPanel}
+	<DevPanel {renderer} />
 {/if}
 
 <style>

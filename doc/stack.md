@@ -42,6 +42,9 @@ Installed in M0 (2026-10-27). `web/package-lock.json` has the exact tree.
 | `twgl.js` | 7.0.0 |
 | `typescript` | 6.0.3 |
 | `svelte-check` | 4.7.7 |
+| `@types/node` | 22.20.5 (for `vite.config.ts`) |
+
+`web/tsconfig.json` enables `allowImportingTsExtensions`: Vite 8's config loader wants explicit `.ts` extensions in imports from `vite.config.ts`.
 
 ## Coming from Mont-Blanc
 
@@ -135,7 +138,7 @@ Installed in M0 (2026-10-27). `web/package-lock.json` has the exact tree.
 ## Dev tools (not dependencies)
 
 - **Spector.js** (browser extension): WebGL frame capture, for debugging the terrain cache, FBOs and depth compositing.
-- Perf HUD in dev builds (fps, frame time, programs, textures, context id), stubbed out of production like Mont-Blanc's perf panel.
+- **Dev panel** (dev builds only, P toggles; not in production builds, checked): renderer stats, live readouts, and sliders for every value in `web/src/lib/tuning/defaults.json`. Like Mont-Blanc's EnvPanel, but generated from `schema.ts`, and "Save defaults" writes the JSON file through a dev-server endpoint instead of logging values to paste.
 
 ## Rejected
 

@@ -37,7 +37,13 @@ Notes live in `.claude/memory/`, **not** in the global `~/.claude/projects/.../m
 - Views are expected in normal document flow: rects are cached in document space, so a `position: fixed` view on a scrolling page would drift.
 - Shader hot reload: each drawable module ends with `import.meta.hot.accept([...shader paths], …)` calling `hotSwap()`. Copy the block from `drawables/test/TestPattern.ts`, using relative paths.
 - Never read layout in the frame loop. Rects are cached in document space; visibility is arithmetic.
-- `/lab/views/` is the view-system test page. The dev perf HUD toggles with P.
+- `/lab/views/` is the view-system test page.
+
+## Tuning (`web/src/lib/tuning/`)
+
+- Every tunable value (camera, controls, march, shading, fog, renderer) lives in `defaults.json`. Code reads `tuning.<group>.<key>` live, every frame or event; don't copy the values into locals at construction.
+- Adding a value: add it to `defaults.json`, describe it in `schema.ts` (label, range, hint), read it from `tuning`. If changing it needs an action, use `onTuningChange` (e.g. the pixel-ratio cap in the root layout).
+- Dev panel (`lib/components/DevPanel.svelte`, dev only, P toggles): stats, live readouts (`readouts` map, registered by pages), and sliders. "Save defaults" writes `defaults.json` through the dev server endpoint `/__tuning/save` (`vite.config.ts`), which checks the shape first. `tuning/index.ts` hot-accepts `defaults.json`, so saving doesn't reload the app.
 
 ## Commands
 

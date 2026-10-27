@@ -1,46 +1,52 @@
 import { m4, type v3 } from 'twgl.js';
 import type { Heightfield, Vec3 } from '$lib/terrain/heightfield';
 
-export interface SurveyCameraOptions {
-	/** Degrees down from the horizontal at the closest zoom: the camera tilts up as it dives in. */
-	pitchNear?: number;
-	/** Degrees down from the horizontal at the farthest zoom. */
-	pitchFar?: number;
-	/** Degrees; 0 looks north (−Z). */
-	yaw?: number;
-	/** Vertical field of view, degrees. */
-	fov?: number;
-	distance?: number;
-	minDistance?: number;
-	maxDistance?: number;
+/** Read live (the dev panel edits them). Angles in degrees, distances in world units. */
+export interface CameraSettings {
+	/** Pitch (down from the horizontal) at the closest zoom: the camera tilts up as it dives in. */
+	pitchNear: number;
+	/** Pitch at the farthest zoom. */
+	pitchFar: number;
+	/** Shapes where the tilt happens along the zoom range: above 1 it tilts up earlier while zooming in. */
+	tiltCurve: number;
+	/** Vertical field of view. */
+	fov: number;
+	/** Start distance (only read at construction). */
+	distance: number;
+	minDistance: number;
+	maxDistance: number;
+}
+
+/** Read live. Rates are per second. */
+export interface CameraMotionSettings {
+	zoomSmoothing: number;
+	inertiaDecay: number;
+	/** Keyboard pan speed, in distances per second. */
+	keyboardSpeed: number;
 }
 
 const DEG = Math.PI / 180;
 const UP: v3.Vec3 = [0, 1, 0];
 
 /**
- * The home page's survey camera: oblique, yaw fixed (north up), pitch set by the zoom (it tilts up toward
- * the horizon as it gets closer, looks down as it backs off). Moved by pan and zoom only; panning never
- * changes the view direction. Its target rides on the ground and the eye never dips into the terrain.
+ * The home page's survey camera: oblique, yaw fixed (north up), pitch set by the zoom (tilts up toward the
+ * horizon as it gets closer, looks down as it backs off). Moved by pan and zoom only; panning never changes
+ * the view direction. Its target rides on the ground and the eye never dips into the terrain.
  *
- * Input (see controls.ts) either acts directly (drag, pinch) or sets goals that `update` eases toward
- * every frame (wheel zoom, inertia, keyboard). The matrices are shared by every program that draws the
- * scene (raymarch now; cords, particles and splats later), so their depths agree.
+ * Input (controls.ts) either acts directly (drag, pinch) or sets goals that `update` eases toward every
+ * frame (wheel zoom, inertia, keyboard). The matrices are shared by every program that draws the scene
+ * (raymarch now; cords, particles and splats later), so their depths agree.
  */
 export class SurveyCamera {
 	readonly target: Vec3 = [0, 0, 0];
 	readonly eye: Vec3 = [0, 0, 0];
 	/** Current pitch in radians, derived from the distance. */
 	pitch = 0;
-	pitchNear: number;
-	pitchFar: number;
-	yaw: number;
-	fov: number;
+	/** Radians; 0 looks north (−Z). */
+	yaw = 0;
 	distance: number;
 	/** Where the smooth zoom is heading. */
 	goalDistance: number;
-	minDistance: number;
-	maxDistance: number;
 	aspect = 1;
 	near = 1;
 	far = 2000;
@@ -59,14 +65,11 @@ export class SurveyCamera {
 	private zoomAnchor: { ndc: [number, number]; point: Vec3 } | null = null;
 	private grounded = false;
 
-	constructor(options: SurveyCameraOptions = {}) {
-		this.pitchNear = (options.pitchNear ?? 25) * DEG;
-		this.pitchFar = (options.pitchFar ?? 60) * DEG;
-		this.yaw = (options.yaw ?? 0) * DEG;
-		this.fov = (options.fov ?? 35) * DEG;
-		this.minDistance = options.minDistance ?? 60;
-		this.maxDistance = options.maxDistance ?? 700;
-		this.distance = this.goalDistance = this.clampDistance(options.distance ?? 350);
+	constructor(
+		private readonly settings: CameraSettings,
+		private readonly motion: CameraMotionSettings
+	) {
+		this.distance = this.goalDistance = this.clampDistance(settings.distance);
 		this.refresh();
 	}
 
@@ -115,9 +118,13 @@ export class SurveyCamera {
 
 	/** Once per frame: keyboard, inertia, smooth zoom, then ground following. */
 	update(dt: number, field: Heightfield | null) {
+		const motion = this.motion;
+		// Zoom limits may have been edited
+		this.goalDistance = this.clampDistance(this.goalDistance);
+
 		const { x, y, zoom } = this.keys;
 		if (x || y) {
-			const step = this.distance * 1.1 * dt;
+			const step = this.distance * motion.keyboardSpeed * dt;
 			const s = Math.sin(this.yaw);
 			const c = Math.cos(this.yaw);
 			this.pan((x * c - y * s) * step, (-x * s - y * c) * step); // screen right / screen up on the ground
@@ -129,7 +136,7 @@ export class SurveyCamera {
 
 		if (this.velocity[0] || this.velocity[1]) {
 			this.pan(this.velocity[0] * dt, this.velocity[1] * dt);
-			const decay = Math.exp(-dt * 4);
+			const decay = Math.exp(-dt * motion.inertiaDecay);
 			this.velocity[0] *= decay;
 			this.velocity[1] *= decay;
 			if (Math.hypot(this.velocity[0], this.velocity[1]) < this.distance * 0.01) this.velocity = [0, 0];
@@ -137,7 +144,7 @@ export class SurveyCamera {
 
 		if (this.distance !== this.goalDistance) {
 			// Ease in log space, so zooming in and out feel the same
-			const k = 1 - Math.exp(-dt * 10);
+			const k = 1 - Math.exp(-dt * motion.zoomSmoothing);
 			let d = Math.exp(Math.log(this.distance) + Math.log(this.goalDistance / this.distance) * k);
 			if (Math.abs(d - this.goalDistance) < this.goalDistance * 1e-3) d = this.goalDistance;
 			this.distance = d;
@@ -177,7 +184,7 @@ export class SurveyCamera {
 		return [origin[0] + direction[0] * t, planeY, origin[2] + direction[2] * t];
 	}
 
-	/** Recompute pitch, eye and matrices from target, distance, yaw and aspect. */
+	/** Recompute pitch, eye and matrices from target, distance, yaw, settings and aspect. */
 	refresh() {
 		this.pitch = this.pitchFor(this.distance);
 		const horizontal = this.distance * Math.cos(this.pitch);
@@ -189,7 +196,7 @@ export class SurveyCamera {
 		this.far = Math.max(2000, this.distance * 8);
 		m4.lookAt(this.eye, this.target, UP, this.world);
 		m4.inverse(this.world, this.view);
-		m4.perspective(this.fov, this.aspect, this.near, this.far, this.projection);
+		m4.perspective(this.settings.fov * DEG, this.aspect, this.near, this.far, this.projection);
 		m4.multiply(this.projection, this.view, this.viewProjection);
 		m4.inverse(this.viewProjection, this.inverseViewProjection);
 	}
@@ -217,18 +224,17 @@ export class SurveyCamera {
 		this.refresh();
 	}
 
-	/** Pitch from distance: smoothstep on a log scale between pitchNear and pitchFar. */
+	/** Pitch from distance: position on a log scale between the zoom limits, shaped by tiltCurve, smoothstep. */
 	private pitchFor(distance: number) {
-		const t = clamp(
-			Math.log(distance / this.minDistance) / Math.log(this.maxDistance / this.minDistance),
-			0,
-			1
-		);
-		return this.pitchNear + (this.pitchFar - this.pitchNear) * t * t * (3 - 2 * t);
+		const s = this.settings;
+		const range = Math.log(s.maxDistance / s.minDistance);
+		const linear = range > 0 ? clamp(Math.log(distance / s.minDistance) / range, 0, 1) : 0;
+		const t = Math.pow(linear, s.tiltCurve);
+		return (s.pitchNear + (s.pitchFar - s.pitchNear) * t * t * (3 - 2 * t)) * DEG;
 	}
 
 	private clampDistance(distance: number) {
-		return clamp(distance, this.minDistance, this.maxDistance);
+		return clamp(distance, this.settings.minDistance, this.settings.maxDistance);
 	}
 }
 

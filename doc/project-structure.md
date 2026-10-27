@@ -13,7 +13,8 @@ portfolio/
 │  │  │  │  ├─ image/
 │  │  │  │  ├─ splat/            later, includes sort.worker.ts
 │  │  │  │  └─ particles/        later
-│  │  │  ├─ terrain/             CPU side of the terrain: heightfield (load, sample), asset imports
+│  │  │  ├─ terrain/             CPU side of the terrain: heightfield (load, sample, raycast), asset imports
+│  │  │  ├─ tuning/              defaults.json (every tunable value), schema.ts (dev panel layout)
 │  │  │  ├─ components/          Svelte UI
 │  │  │  ├─ content/             projects.ts
 │  │  │  └─ assets/              pipeline exports + project images (imported → hashed URLs)
