@@ -41,7 +41,9 @@ export const schema: Group[] = [
 			{ key: 'wheelSpeed', label: 'Wheel speed', min: 0.0002, max: 0.008, step: 0.0001 },
 			{ key: 'zoomSmoothing', label: 'Zoom smoothing', min: 1, max: 30, step: 0.5, hint: 'Lower glides longer.' },
 			{ key: 'inertiaDecay', label: 'Inertia decay', min: 0.5, max: 20, step: 0.1, hint: 'Higher stops sooner.' },
-			{ key: 'keyboardSpeed', label: 'Keyboard speed', min: 0.1, max: 4, step: 0.05 }
+			{ key: 'keyboardSpeed', label: 'Keyboard speed', min: 0.1, max: 4, step: 0.05 },
+			{ key: 'rotateSpeed', label: 'Rotate (°/px)', min: 0.05, max: 1.5, step: 0.01, hint: 'Right-drag / Alt+drag rotation per pixel.' },
+			{ key: 'keyboardRotateSpeed', label: 'Key rotate (°/s)', min: 10, max: 360, step: 5, hint: 'Q / E rotation speed.' }
 		]
 	},
 	{

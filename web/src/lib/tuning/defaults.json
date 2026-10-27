@@ -12,7 +12,9 @@
 		"wheelSpeed": 0.002,
 		"zoomSmoothing": 10,
 		"inertiaDecay": 4,
-		"keyboardSpeed": 1.1
+		"keyboardSpeed": 1.1,
+		"rotateSpeed": 0.3,
+		"keyboardRotateSpeed": 90
 	},
 	"march": {
 		"stepScale": 0.45,

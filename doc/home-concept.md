@@ -15,11 +15,11 @@ The home page is an archaeological excavation, seen the way a site survey sees i
 
 ## Camera: survey view, pan + zoom
 
-- Oblique, yaw fixed (north up), no rotation. **Pitch follows the zoom:** about 60° looking down when zoomed out, tilting up to about 25° toward the horizon when zoomed in (smoothstep on a log scale, to tune). An optional parallax tilt can follow the mouse.
+- Oblique, orbiting its target. **Heading (yaw) is free:** right-drag or Alt+drag, two-finger twist, Q / E (A / E on AZERTY); N eases back to north up. DOM labels stay upright whatever the heading. **Pitch follows the zoom:** about 60° looking down when zoomed out, tilting up to about 25° toward the horizon when zoomed in (smoothstep on a log scale, to tune). An optional parallax tilt can follow the mouse.
 - **Pan:** dragging grabs the actual ground under the pointer (CPU raycast). Limited to the terrain bounds (the fog hides the edges). A released drag keeps some inertia.
 - **Zoom:** distance to the target, clamped. Wheel and trackpad pinch glide smoothly toward the pointer; two-finger pinch is direct; double-click or double-tap zooms in toward that point.
-- **Keyboard** (the view is focusable): arrows / WASD / ZQSD pan, `+` / `−` zoom.
-- Panning never changes the view direction, so splat depth order only changes with the zoom (pitch) and during the dive. Splats re-sort then, never on pan.
+- **Keyboard** (the view is focusable): movement keys by physical position, so WASD is ZQSD on AZERTY; arrows pan too; Q / E rotate, N north, `+` / `−` zoom.
+- Panning never changes the view direction, so splat depth order only changes with zoom (pitch), rotation (heading) and the dive. Splats re-sort then, never on pan.
 - Built in TS with `twgl.m4` (`lookAt` → `inverse` = view, `perspective` with the **view rect's** aspect). The same matrices (`view`, `proj`, `viewProj`, `invViewProj`, `camPos`) go to the raymarcher and to everything rasterized.
 - The camera never goes through the terrain (it checks the CPU height under the camera).
 - Input: the canvas is `pointer-events: none`, so the home page's view element receives pointer and touch events (`touch-action: none`).
@@ -104,7 +104,7 @@ Page scroll doesn't invalidate the cache: only the blit position changes.
 ## Click: enter the square → page change
 
 1. Input is disabled.
-2. The camera eases from oblique to top-down while descending between the cords into the square. The terrain is re-marched every frame and splats re-sort during it. At the same time the dig progress animates 0→1: the pit walls with their strata rise around the camera, the find is revealed, and dust bursts out.
+2. The camera eases from oblique to top-down while descending between the cords into the square, and its heading eases back to north, so the thumbnail (and the project's hero image after it) lands upright. The terrain is re-marched every frame and splats re-sort during it. At the same time the dig progress animates 0→1: the pit walls with their strata rise around the camera, the find is revealed, and dust bursts out.
 3. The final frame is the thumbnail filling the view. Then `goto('/projects/<slug>')`. The project page opens with the same image as its hero, in the same place. The canvas persists, so the hand-off is seamless.
 4. Back: the camera state is still in memory, and the rise out of the square plays in reverse.
 

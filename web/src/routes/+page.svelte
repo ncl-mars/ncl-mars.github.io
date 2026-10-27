@@ -22,8 +22,9 @@
 
 	onMount(() => {
 		readouts.set('camera', () => {
-			const pitch = (camera.pitch * 180) / Math.PI;
-			return `pitch ${pitch.toFixed(1)}° · distance ${camera.distance.toFixed(0)}`;
+			const deg = 180 / Math.PI;
+			const heading = (((-camera.yaw * deg) % 360) + 360) % 360; // compass: 0 north, 90 east
+			return `pitch ${(camera.pitch * deg).toFixed(1)}° · heading ${heading.toFixed(0)}° · distance ${camera.distance.toFixed(0)}`;
 		});
 
 		const params = new URLSearchParams(location.search);
@@ -48,7 +49,7 @@
 <div
 	class="site"
 	role="application"
-	aria-label="Dig site. Drag to pan, scroll or pinch to zoom, arrow keys to move, plus and minus to zoom."
+	aria-label="Dig site. Drag to pan, scroll or pinch to zoom, right-drag or twist to rotate. Keys: arrows to move, Q and E to rotate, N for north, plus and minus to zoom."
 	tabindex="0"
 	{@attach renderer.view(terrain)}
 	{@attach surveyControls(camera, { field: () => terrain.field, settings: tuning.controls })}
@@ -70,6 +71,10 @@
 
 	.site:global(.grabbing) {
 		cursor: grabbing;
+	}
+
+	.site:global(.rotating) {
+		cursor: ew-resize;
 	}
 
 	.site:focus {

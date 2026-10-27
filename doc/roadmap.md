@@ -155,7 +155,7 @@ See [home-concept.md](home-concept.md) § Square state, § Hover.
 
 ## M5 — Splat finds
 
-Finds revealed in dug squares (see [home-concept.md](home-concept.md) § Splat finds). Rendering in WebGL2: a CPU sort in a worker, instanced quads, premultiplied blending. Panning never changes the view direction, so a find re-sorts only when the zoom (pitch) changes and during the dive. Fill rate is the main cost, so scenes stay small.
+Finds revealed in dug squares (see [home-concept.md](home-concept.md) § Splat finds). Rendering in WebGL2: a CPU sort in a worker, instanced quads, premultiplied blending. Panning never changes the view direction, so a find re-sorts only when the zoom (pitch) or the heading changes, and during the dive. Fill rate is the main cost, so scenes stay small.
 
 ### M5a — Spike (time-box ~2 sessions, hidden `/lab/splat` route)
 
@@ -212,6 +212,7 @@ Finds revealed in dug squares (see [home-concept.md](home-concept.md) § Splat f
 
 ## Decision log
 
+- **2026-10-27**: Camera rotation added after all: free heading (right-drag / Alt+drag, two-finger twist, Q/E, N back to north), pitch still tied to zoom. Keyboard bindings by physical key position (`event.code`). The dive will ease the heading back to north so thumbnails land upright. Splats re-sort on rotation too.
 - **2026-10-27**: Dev tuning panel (branch `dev-panel`): every tunable value lives in `web/src/lib/tuning/defaults.json` and is read live; the panel (dev only, P) has sliders built from `schema.ts`, live readouts, and Save / Copy / Reset. Save writes the JSON through a dev-server endpoint, no reload. Replaces the perf HUD. Camera got a `tiltCurve` value.
 - **2026-10-27**: Camera pitch now follows the zoom (60° → 25°, tilting up as it dives in), so the march switched from fixed steps to height-relative steps for the grazing rays. Controls: smooth zoom, inertia, real-ground grab, double-click/tap, keyboard. Splats will re-sort on zoom changes (still never on pan).
 - **2026-10-27**: M2a implemented. S2 = native Pointer Events. Camera and terrain drawable are module-level on the home page (state survives navigation). Textures are cached per context like programs. The camera target follows the ground.

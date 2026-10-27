@@ -1,41 +1,59 @@
 import type { Attachment } from 'svelte/attachments';
-import type { SurveyCamera } from './camera';
+import { wrapAngle, type SurveyCamera } from './camera';
 import type { Heightfield, Vec3 } from '$lib/terrain/heightfield';
 
 export interface SurveyControlsOptions {
 	/** The CPU heightfield once loaded: grabs and zooms anchor on the real ground under the pointer. */
 	field?: () => Heightfield | null;
-	/** Read live (the dev panel edits it). */
-	settings?: { wheelSpeed: number };
+	/** Read live (the dev panel edits them). */
+	settings?: { wheelSpeed: number; rotateSpeed: number };
 }
 
-/** Keys → [axis, direction]. QWERTY (WASD), AZERTY (ZQSD) and arrows; +/− and Page Up/Down zoom. */
-const KEYS: Record<string, ['x' | 'y' | 'zoom', number]> = {
-	arrowup: ['y', 1],
-	w: ['y', 1],
-	z: ['y', 1],
-	arrowdown: ['y', -1],
-	s: ['y', -1],
-	arrowleft: ['x', -1],
-	a: ['x', -1],
-	q: ['x', -1],
-	arrowright: ['x', 1],
-	d: ['x', 1],
+type Binding = ['x' | 'y' | 'zoom' | 'rotate', number] | 'north';
+
+/**
+ * Movement keys by physical position (event.code), so WASD is ZQSD on AZERTY and Q/E (A/E on AZERTY)
+ * sit next to them on every layout.
+ */
+const KEY_CODES: Record<string, Binding> = {
+	ArrowUp: ['y', 1],
+	KeyW: ['y', 1],
+	ArrowDown: ['y', -1],
+	KeyS: ['y', -1],
+	ArrowLeft: ['x', -1],
+	KeyA: ['x', -1],
+	ArrowRight: ['x', 1],
+	KeyD: ['x', 1],
+	KeyQ: ['rotate', 1],
+	KeyE: ['rotate', -1],
+	KeyN: 'north',
+	PageUp: ['zoom', -1],
+	PageDown: ['zoom', 1],
+	NumpadAdd: ['zoom', -1],
+	NumpadSubtract: ['zoom', 1]
+};
+
+/** Zoom keys by character: '-' is on the 6 key on AZERTY, '+' needs Shift on most layouts. */
+const KEY_CHARS: Record<string, Binding> = {
 	'+': ['zoom', -1],
 	'=': ['zoom', -1],
-	pageup: ['zoom', -1],
 	'-': ['zoom', 1],
-	pagedown: ['zoom', 1]
+	_: ['zoom', 1]
 };
+
+const DEG = Math.PI / 180;
 
 /**
  * Input for the survey camera, attached to the view element (the canvas ignores pointers):
- * `<div tabindex="0" {@attach surveyControls(camera, { field })}>`. Native Pointer Events.
+ * `<div tabindex="0" {@attach surveyControls(camera, { field, settings })}>`. Native Pointer Events.
  * - Drag (mouse, one finger) grabs the ground: the point under the pointer stays under it. Releasing
  *   while moving leaves some inertia.
- * - Wheel and trackpad pinch: smooth zoom toward the pointer. Two-finger pinch: direct zoom + pan.
+ * - Right-drag or Alt+drag rotates the heading around the view centre.
+ * - Wheel and trackpad pinch: smooth zoom toward the pointer. Two fingers: pinch zooms, twist rotates,
+ *   both around the point between the fingers, which also pans.
  * - Double-click / double-tap: zoom in toward that point.
- * - Keyboard (when the element has focus): arrows / WASD / ZQSD pan, +/− zoom.
+ * - Keyboard (when the element has focus): WASD / ZQSD / arrows pan, Q / E (A / E on AZERTY) rotate,
+ *   N back to north up, + / − zoom.
  * Layout is read here, in input events, never in the frame loop. The element needs `touch-action: none`.
  */
 export function surveyControls(camera: SurveyCamera, options: SurveyControlsOptions = {}): Attachment<HTMLElement> {
@@ -43,11 +61,12 @@ export function surveyControls(camera: SurveyCamera, options: SurveyControlsOpti
 		const pointers = new Map<number, { x: number; y: number }>();
 		let grab: { planeY: number; point: Vec3 } | null = null;
 		let pinchDistance = 0;
+		let rotating: { id: number; x: number } | null = null;
 		// Recent target positions while dragging, to compute the release velocity
 		let samples: { time: number; x: number; z: number }[] = [];
 		let downAt = { x: 0, y: 0, time: 0 };
 		let lastTap = { x: 0, y: 0, time: -Infinity };
-		const pressed = new Set<string>();
+		const pressed = new Map<string, Binding>(); // by event.code, so keyup releases what keydown pressed
 
 		const toNdc = (x: number, y: number): [number, number] => {
 			const r = el.getBoundingClientRect();
@@ -95,15 +114,27 @@ export function surveyControls(camera: SurveyCamera, options: SurveyControlsOpti
 
 		const pinchState = () => {
 			const [a, b] = [...pointers.values()];
-			return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, distance: Math.hypot(a.x - b.x, a.y - b.y) };
+			return {
+				x: (a.x + b.x) / 2,
+				y: (a.y + b.y) / 2,
+				distance: Math.hypot(a.x - b.x, a.y - b.y),
+				angle: Math.atan2(b.y - a.y, b.x - a.x)
+			};
 		};
 
 		const onPointerDown = (event: PointerEvent) => {
-			if (event.pointerType === 'mouse' && event.button !== 0) return;
+			const mouse = event.pointerType === 'mouse';
+			const rotateDrag = mouse && (event.button === 2 || (event.button === 0 && event.altKey));
+			if (mouse && event.button !== 0 && !rotateDrag) return;
 			el.setPointerCapture(event.pointerId);
-			pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
 			camera.stop();
 			samples = [];
+			if (rotateDrag) {
+				rotating = { id: event.pointerId, x: event.clientX };
+				el.classList.add('rotating');
+				return;
+			}
+			pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
 			if (pointers.size === 1) {
 				downAt = { x: event.clientX, y: event.clientY, time: event.timeStamp };
 				startGrab(event.clientX, event.clientY);
@@ -116,6 +147,13 @@ export function surveyControls(camera: SurveyCamera, options: SurveyControlsOpti
 		};
 
 		const onPointerMove = (event: PointerEvent) => {
+			if (rotating?.id === event.pointerId) {
+				// Dragging right turns the heading right (clockwise seen from above)
+				const speed = (options.settings?.rotateSpeed ?? 0.3) * DEG;
+				camera.rotate(-(event.clientX - rotating.x) * speed);
+				rotating.x = event.clientX;
+				return;
+			}
 			const pointer = pointers.get(event.pointerId);
 			if (!pointer) return;
 			if (pointers.size === 1) {
@@ -129,17 +167,22 @@ export function surveyControls(camera: SurveyCamera, options: SurveyControlsOpti
 				pointer.x = event.clientX;
 				pointer.y = event.clientY;
 				const after = pinchState();
-				// Zoom around the previous midpoint, then move that ground point to the new midpoint
+				// Around the previous midpoint: zoom, then twist; then move that ground point to the new midpoint
 				startGrab(before.x, before.y);
 				if (after.distance > 0 && pinchDistance > 0) zoomAt(before.x, before.y, pinchDistance / after.distance);
 				pinchDistance = after.distance;
+				camera.rotate(wrapAngle(after.angle - before.angle));
 				dragTo(after.x, after.y);
 			}
 		};
 
 		const onPointerUp = (event: PointerEvent) => {
-			const pointer = pointers.get(event.pointerId);
-			if (!pointer) return;
+			if (rotating?.id === event.pointerId) {
+				rotating = null;
+				el.classList.remove('rotating');
+				return;
+			}
+			if (!pointers.has(event.pointerId)) return;
 			const wasSingle = pointers.size === 1;
 			pointers.delete(event.pointerId);
 
@@ -184,25 +227,33 @@ export function surveyControls(camera: SurveyCamera, options: SurveyControlsOpti
 			glideZoomAt(event.clientX, event.clientY, Math.exp(event.deltaY * scale * speed));
 		};
 
+		const onContextMenu = (event: MouseEvent) => event.preventDefault(); // right-drag rotates
+
 		const updateKeys = () => {
-			camera.keys.x = camera.keys.y = camera.keys.zoom = 0;
-			for (const key of pressed) {
-				const [axis, value] = KEYS[key];
-				camera.keys[axis] = clamp(camera.keys[axis] + value, -1, 1);
+			const keys = camera.keys;
+			keys.x = keys.y = keys.zoom = keys.rotate = 0;
+			for (const binding of pressed.values()) {
+				if (binding === 'north') continue;
+				const [axis, value] = binding;
+				keys[axis] = Math.max(-1, Math.min(1, keys[axis] + value));
 			}
 		};
 
 		const onKeyDown = (event: KeyboardEvent) => {
 			if (event.ctrlKey || event.metaKey || event.altKey) return;
-			const key = event.key.toLowerCase();
-			if (!(key in KEYS)) return;
+			const binding = KEY_CODES[event.code] ?? KEY_CHARS[event.key];
+			if (!binding) return;
 			event.preventDefault(); // arrows / page keys would scroll
-			pressed.add(key);
+			if (binding === 'north') {
+				if (!event.repeat) camera.resetNorth();
+				return;
+			}
+			pressed.set(event.code, binding);
 			updateKeys();
 		};
 
 		const onKeyUp = (event: KeyboardEvent) => {
-			if (pressed.delete(event.key.toLowerCase())) updateKeys();
+			if (pressed.delete(event.code)) updateKeys();
 		};
 
 		const onBlur = () => {
@@ -216,6 +267,7 @@ export function surveyControls(camera: SurveyCamera, options: SurveyControlsOpti
 		el.addEventListener('pointercancel', onPointerUp);
 		el.addEventListener('dblclick', onDoubleClick);
 		el.addEventListener('wheel', onWheel, { passive: false });
+		el.addEventListener('contextmenu', onContextMenu);
 		el.addEventListener('keydown', onKeyDown);
 		el.addEventListener('keyup', onKeyUp);
 		el.addEventListener('blur', onBlur);
@@ -226,14 +278,11 @@ export function surveyControls(camera: SurveyCamera, options: SurveyControlsOpti
 			el.removeEventListener('pointercancel', onPointerUp);
 			el.removeEventListener('dblclick', onDoubleClick);
 			el.removeEventListener('wheel', onWheel);
+			el.removeEventListener('contextmenu', onContextMenu);
 			el.removeEventListener('keydown', onKeyDown);
 			el.removeEventListener('keyup', onKeyUp);
 			el.removeEventListener('blur', onBlur);
 			onBlur();
 		};
 	};
-}
-
-function clamp(v: number, lo: number, hi: number) {
-	return v < lo ? lo : v > hi ? hi : v;
 }

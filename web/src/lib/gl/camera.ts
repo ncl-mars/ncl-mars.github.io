@@ -23,26 +23,29 @@ export interface CameraMotionSettings {
 	inertiaDecay: number;
 	/** Keyboard pan speed, in distances per second. */
 	keyboardSpeed: number;
+	/** Keyboard rotation speed, degrees per second. */
+	keyboardRotateSpeed: number;
 }
 
 const DEG = Math.PI / 180;
 const UP: v3.Vec3 = [0, 1, 0];
 
 /**
- * The home page's survey camera: oblique, yaw fixed (north up), pitch set by the zoom (tilts up toward the
- * horizon as it gets closer, looks down as it backs off). Moved by pan and zoom only; panning never changes
- * the view direction. Its target rides on the ground and the eye never dips into the terrain.
+ * The home page's survey camera: oblique, orbiting its target. Pitch is set by the zoom (tilts up toward
+ * the horizon as it gets closer, looks down as it backs off); yaw (heading) is turned by the user and
+ * eases back to north up on request. Panning never changes the view direction. Its target rides on the
+ * ground and the eye never dips into the terrain.
  *
- * Input (controls.ts) either acts directly (drag, pinch) or sets goals that `update` eases toward every
- * frame (wheel zoom, inertia, keyboard). The matrices are shared by every program that draws the scene
- * (raymarch now; cords, particles and splats later), so their depths agree.
+ * Input (controls.ts) either acts directly (drag, pinch, twist, rotate-drag) or sets goals that `update`
+ * eases toward every frame (wheel zoom, inertia, keyboard, north reset). The matrices are shared by every
+ * program that draws the scene (raymarch now; cords, particles and splats later), so their depths agree.
  */
 export class SurveyCamera {
 	readonly target: Vec3 = [0, 0, 0];
 	readonly eye: Vec3 = [0, 0, 0];
 	/** Current pitch in radians, derived from the distance. */
 	pitch = 0;
-	/** Radians; 0 looks north (−Z). */
+	/** Radians; 0 looks north (−Z), positive turns the heading toward the west. */
 	yaw = 0;
 	distance: number;
 	/** Where the smooth zoom is heading. */
@@ -50,8 +53,11 @@ export class SurveyCamera {
 	aspect = 1;
 	near = 1;
 	far = 2000;
-	/** Keyboard input, set by the controls: pan in screen terms (x right, y up), zoom (−1 in, +1 out). */
-	readonly keys = { x: 0, y: 0, zoom: 0 };
+	/**
+	 * Keyboard input, set by the controls: pan in screen terms (x right, y up), zoom (−1 in, +1 out),
+	 * rotate (+1 turns the heading left).
+	 */
+	readonly keys = { x: 0, y: 0, zoom: 0, rotate: 0 };
 
 	readonly view = m4.identity();
 	readonly projection = m4.identity();
@@ -63,6 +69,7 @@ export class SurveyCamera {
 	private panMax: [number, number] = [Infinity, Infinity];
 	private velocity: [number, number] = [0, 0];
 	private zoomAnchor: { ndc: [number, number]; point: Vec3 } | null = null;
+	private goalYaw = 0;
 	private grounded = false;
 
 	constructor(
@@ -104,16 +111,29 @@ export class SurveyCamera {
 		this.zoomAnchor = anchor;
 	}
 
+	/** Turn the heading around the target, immediately (rotate-drag, twist). Radians. */
+	rotate(delta: number) {
+		this.yaw += delta;
+		this.goalYaw = this.yaw;
+		this.refresh();
+	}
+
+	/** Ease back to north up, the shortest way round. */
+	resetNorth() {
+		this.goalYaw = this.yaw - wrapAngle(this.yaw);
+	}
+
 	/** Start gliding after a drag, in world units per second. */
 	fling(vx: number, vz: number) {
 		this.velocity = [vx, vz];
 	}
 
-	/** Grabbing the ground stops every glide (inertia and smooth zoom). */
+	/** Grabbing the ground stops every glide (inertia, smooth zoom, heading ease). */
 	stop() {
 		this.velocity = [0, 0];
 		this.zoomAnchor = null;
 		this.goalDistance = this.distance;
+		this.goalYaw = this.yaw;
 	}
 
 	/** Once per frame: keyboard, inertia, smooth zoom, then ground following. */
@@ -132,6 +152,13 @@ export class SurveyCamera {
 		if (zoom) {
 			this.goalDistance = this.clampDistance(this.goalDistance * Math.exp(zoom * dt * 1.6));
 			this.zoomAnchor = null;
+		}
+		if (this.keys.rotate) this.goalYaw += this.keys.rotate * motion.keyboardRotateSpeed * DEG * dt;
+		if (this.yaw !== this.goalYaw) {
+			let yaw = this.yaw + (this.goalYaw - this.yaw) * (1 - Math.exp(-dt * motion.zoomSmoothing));
+			if (Math.abs(this.goalYaw - yaw) < 1e-4) yaw = this.goalYaw;
+			this.yaw = yaw;
+			this.refresh();
 		}
 
 		if (this.velocity[0] || this.velocity[1]) {
@@ -240,4 +267,9 @@ export class SurveyCamera {
 
 function clamp(v: number, lo: number, hi: number) {
 	return v < lo ? lo : v > hi ? hi : v;
+}
+
+/** Angle in (−π, π]. */
+export function wrapAngle(a: number) {
+	return a - 2 * Math.PI * Math.ceil((a - Math.PI) / (2 * Math.PI));
 }
