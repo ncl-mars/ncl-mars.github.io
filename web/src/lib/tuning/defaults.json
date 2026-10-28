@@ -56,6 +56,26 @@
 		"blend": 0.12,
 		"offset": 0
 	},
+	"core": {
+		"dip": 20,
+		"dipVariation": 8,
+		"spacing": 0.55,
+		"relief": 0.09,
+		"margin": 0.08,
+		"focusWidth": 0.7,
+		"xray": 1,
+		"xrayColor": [0.72, 0.88, 1],
+		"mineral": [0.74, 0.72, 0.68],
+		"lightElevation": 16,
+		"lightAzimuth": 35,
+		"yaw": -28,
+		"tilt": 24,
+		"parallax": 5,
+		"distance": 3.2,
+		"fov": 30,
+		"offsetX": -0.35,
+		"smoothing": 8
+	},
 	"renderer": {
 		"maxPixelRatio": 2
 	}

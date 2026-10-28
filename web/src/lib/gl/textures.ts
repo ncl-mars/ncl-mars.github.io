@@ -1,10 +1,10 @@
 /** Texture helpers. Formats: doc/formats/. */
 
 /**
- * Half-float heightmap as R16F. LINEAR filtering on R16F is core in WebGL2 (R32F would need an extension).
- * No mipmaps: the raymarch samples it with textureLod(…, 0).
+ * Half-float data (heightmap, relief maps) as R16F. LINEAR filtering on R16F is core in WebGL2 (R32F would
+ * need an extension). No mipmaps: shaders sample it with textureLod(…, 0). Row 0 = texture row 0, no flip.
  */
-export function createHeightTexture(
+export function createHalfFloatTexture(
 	gl: WebGL2RenderingContext,
 	width: number,
 	height: number,

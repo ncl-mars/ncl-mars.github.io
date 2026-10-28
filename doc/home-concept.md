@@ -8,6 +8,7 @@ The home page is an archaeological excavation, seen the way a site survey sees i
 
 ## Mood
 
+- **Discovery over obviousness (assumed).** Readability is not immediate on purpose: you search, you dig, you find. Don't "fix" the site by making everything obvious; keep affordances discreet and let the visitor explore.
 - Heavy, misty, near-monochrome. The terrain is desaturated, and its value follows distance through the fog, almost like a depth map.
 - A fixed, low, raking sun, baked into the terrain maps.
 - One wind field moves the cords, the mist and the dust together, so gusts visibly travel across the site.
@@ -102,7 +103,7 @@ Page scroll doesn't invalidate the cache: only the blit position changes.
 ## Core viewer
 
 - **Dipping strata.** Inside the square core, the project's images are layers: subdivided planes tilted at a dip angle (around 15–25°, varying a little per layer), larger than the core and clipped to its square, so its sides show the layers as tilted bands. Earth layers between them get procedural strata shading.
-- **Images as relief, not colour.** Each image comes with a **depth map** (ML depth estimation, done in Houdini or by a script). The depth map **displaces its stratum** in the vertex shader, so the photo appears as a relief carved in the mineral, lit by a raking light, in grays. The relief fades out toward the layer's edges with an irregular mineral margin: an imprint, never cropped.
+- **Images as relief, not colour.** Each image comes with a **depth map**, made in Houdini (a render's real depth pass, or ML depth estimation), ComfyUI as a fallback. Format: [formats/relief.md](formats/relief.md). The depth map **displaces its stratum** in the vertex shader, so the photo appears as a relief carved in the mineral, lit by a raking light, in grays. The relief fades out toward the layer's edges with an irregular mineral margin: an imprint, never cropped.
 - **X-ray look.** The core is translucent: bright edges, faint strata bands, the relief layers glowing like radiograph films (additive, so no transparency sorting). The layer at the reading position **develops**: opaque, fully lit relief.
 - **Scrolling digs.** Scroll moves the reading position down or up through the stack, layer by layer. It's the real page scroll (a tall invisible container in the overlay), so touch inertia, keyboard and scrollbar come for free; the scroll position drives the depth.
 - **Text outside the core,** in HTML beside it: title, description, credits.
@@ -134,6 +135,5 @@ Page scroll doesn't invalidate the cache: only the blit position changes.
 - Grid size vs number of projects; what empty squares look like
 - Cord colours and amplitude
 - Core: extraction timing and easing; core size in the foreground; dip angles; relief amplitude; X-ray look; whether hovering a layer hints at its colour
-- Relief maps: generated in Houdini (ML) or by a script here; file format (half-float `.bin` like the heightmap, to avoid 8-bit terracing under raking light, is the likely choice)
 - Whether a splat find lives in the core or in the hole
 - No-WebGL2 fallback: a static image + the DOM grid of links, projects as plain HTML pages

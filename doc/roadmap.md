@@ -2,10 +2,10 @@
 
 Living work plan. Tick boxes as we go, add notes inline, and log decisions at the bottom. Details live in the other docs; this file is the order of work.
 
-**Status (2026-10-28):** M0, M1, M2a, dev panel and camera polish merged into `develop`. On `feature/m2b-atmosphere`: endless terrain and M2b implemented, browser check pending.
+**Status (2026-10-28):** M0–M2b merged into `develop` (pending your merge of M2b). On `feature/m3a-core-viewer`: the core viewer prototype on `/lab/core`, browser check pending.
 
 **Next:**
-- Claude: either M3a (the core viewer prototype on `/lab/core`) or M2c (stakes and cords as GPU curves, with `gust()`). Your call.
+- Claude: iterate on the core viewer from your feedback, then M2c (cords) / M2d (squares) / M3c (integration).
 - You, whenever:
   - tune the camera in the panel → Save defaults → commit `defaults.json`;
   - perf gate: `npm run dev -- --host`, phone fps + model (answers Q4);
@@ -144,17 +144,20 @@ See [home-concept.md](home-concept.md) § Click: the core sample, § Core viewer
 
 ### M3a — Viewer prototype (`/lab/core`, placeholder images, depth maps and text)
 
-- [ ] Core mesh: square prism, dipping strata planes (subdivided, tilted, clipped to the square), side bands from the same planes, procedural earth strata between
-- [ ] Relief: each image's depth map displaces its stratum in the vertex shader; raking light; irregular mineral margin (imprint)
-- [ ] X-ray look (translucent, additive, bright edges) + the focused layer "develops" (opaque, lit)
-- [ ] Scroll = dig: native scroll container drives the reading depth (smoothed)
-- [ ] Text in HTML beside the core
-- [ ] Hit areas: HTML elements over each layer with a per-frame `matrix3d`; click → HTML lightbox with the colour image (`<enhanced:img>`), Escape / arrows
-- [ ] Tuning in the panel: dip, relief amplitude, layer spacing, X-ray look, focus
+- [x] Placeholders: `npm run gen:lab-core` → five render-like images (lit spheres and discs, five aspect ratios) with their exact relief maps (`doc/formats/relief.md`); shared encoders in `scripts/lib/encode.mjs`
+- [x] Core mesh (`drawables/core/`): 128² uv grid per stratum over the square, dipping planes (per-layer dip/azimuth variation), translucent shell with glowing edges, strata lines and alternating bands on the walls
+- [x] Relief: each depth map displaces its stratum in the vertex shader; normals from the relief texture per pixel; raking light; irregular mineral margin (imprint)
+- [x] X-ray ↔ developed with one premultiplied blend (alpha 0 additive glow, alpha 1 opaque), layers sorted back to front, shell back faces → layers → shell front faces
+- [x] Scroll = dig: native scroll container (fixed, tall spacer, sticky stage) drives the reading depth (eased); pointer parallax
+- [x] Text in HTML beside the core (below on narrow screens), caption of the focused layer
+- [x] Hit areas: buttons mapped onto each image's quad with a per-frame `matrix3d` (`gl/homography.ts`), only near the reading depth; click → `Lightbox.svelte` (`<enhanced:img>`, Escape / ← → / click outside)
+- [x] Panel: Core group (dip, spacing, relief, margin, focus, X-ray, colours, light, framing, smoothing); readout "core focus"
+- [ ] Browser check and look tuning (yours)
 
 ### M3b — Relief maps
 
-- [ ] Depth maps per project image: ML depth estimation in Houdini (or a script here). Format spec `doc/formats/relief.md` (likely half-float `.bin` + `.json`, like the heightmap)
+- [x] Format spec: [formats/relief.md](formats/relief.md) (half floats + `.json`, row 0 = image top, 1 = near)
+- [ ] Depth maps per project image, made in Houdini (render depth pass, or ML); ComfyUI as a fallback
 - [ ] `projects.ts`: `{ slug, cell, title, text, images: [{ colour, relief, caption }] }`
 
 ### M3c — Integration with the dig site
@@ -241,6 +244,7 @@ Most of the transition work moved into M3 (the core extraction). What's left:
 
 ## Decision log
 
+- **2026-10-28**: M3a viewer prototype on `/lab/core`. Depth maps come from Houdini (ComfyUI fallback). Design stance recorded: readability through discovery is intended. Relief format: half floats, row 0 = image top, near = 1.
 - **2026-10-28**: Home concept revision 3: no dive, no page change. Clicking a project square cuts a square core sample; it lifts into the foreground as the project viewer (X-ray look) with the dig site live behind. Images are dipping strata carved in relief from ML depth maps (grays); scrolling digs through them; clicking one opens the colour image in an HTML lightbox. Text in HTML beside the core. One URL per project through shallow routing. M3 rewritten (M3a viewer prototype on `/lab/core`, M3b relief maps, M3c integration); M7 mostly absorbed.
 - **2026-10-28**: M2b implemented: camera revision, terrain cache + composite with the whole atmosphere (fog, height mist, wind banks, sun glow). The march pass no longer applies fog. Fragment shaders using `/noise` need `precision highp int` (mobile mediump ints would break the hash).
 - **2026-10-28**: Endless terrain (option 1, procedural): the heightmap fades into a value-noise far field, no X/Z bounds, everything dissolves into fog at the fog end; the page background is the fog colour; site palette now light (dark text). The CPU mirrors the far field exactly (`terrain/farfield.ts`) through `Ground`, which replaces `Heightfield.raycast`.

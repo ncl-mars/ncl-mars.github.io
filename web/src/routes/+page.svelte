@@ -91,7 +91,7 @@
 
 <header class="overlay">
 	<h1>Portfolio</h1>
-	<a href="/lab/views/">lab</a>
+	<a href="/lab/views/">lab: views</a> · <a href="/lab/core/">lab: core</a>
 </header>
 
 <style>

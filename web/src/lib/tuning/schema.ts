@@ -111,6 +111,30 @@ export const schema: Group[] = [
 		]
 	},
 	{
+		key: 'core',
+		label: 'Core',
+		params: [
+			{ key: 'dip', label: 'Dip (°)', min: 0, max: 40, step: 0.5, hint: 'Tilt of the strata inside the core.' },
+			{ key: 'dipVariation', label: 'Dip variation (°)', min: 0, max: 20, step: 0.5 },
+			{ key: 'spacing', label: 'Layer spacing', min: 0.2, max: 1.5, step: 0.01, hint: 'Distance between strata, in core widths.' },
+			{ key: 'relief', label: 'Relief', min: 0, max: 0.4, step: 0.005, hint: 'Height of the carved relief, in core widths.' },
+			{ key: 'margin', label: 'Imprint margin', min: 0, max: 0.3, step: 0.005, hint: 'Mineral border around each image.' },
+			{ key: 'focusWidth', label: 'Focus width', min: 0.2, max: 2, step: 0.05, hint: 'How far from the reading depth a layer stays developed.' },
+			{ key: 'xray', label: 'X-ray', min: 0, max: 3, step: 0.01 },
+			{ key: 'xrayColor', label: 'X-ray colour', kind: 'color' },
+			{ key: 'mineral', label: 'Mineral', kind: 'color', hint: 'Colour of the developed relief.' },
+			{ key: 'lightElevation', label: 'Light elevation (°)', min: 2, max: 89, step: 1, hint: 'Low = raking light, the relief reads best.' },
+			{ key: 'lightAzimuth', label: 'Light azimuth (°)', min: 0, max: 360, step: 1 },
+			{ key: 'yaw', label: 'Core yaw (°)', min: -90, max: 90, step: 1 },
+			{ key: 'tilt', label: 'Core tilt (°)', min: -10, max: 80, step: 1, hint: 'Toward the camera, to see the layer tops.' },
+			{ key: 'parallax', label: 'Parallax (°)', min: 0, max: 20, step: 0.5 },
+			{ key: 'distance', label: 'Camera distance', min: 1, max: 10, step: 0.05 },
+			{ key: 'fov', label: 'FOV (°)', min: 10, max: 80, step: 1 },
+			{ key: 'offsetX', label: 'Offset X', min: -2, max: 2, step: 0.01, hint: 'Moves the core aside for the text.' },
+			{ key: 'smoothing', label: 'Scroll smoothing', min: 1, max: 30, step: 0.5, hint: 'Lower glides longer.' }
+		]
+	},
+	{
 		key: 'renderer',
 		label: 'Renderer',
 		params: [{ key: 'maxPixelRatio', label: 'Max pixel ratio', min: 0.5, max: 3, step: 0.25 }]

@@ -1,3 +1,4 @@
 - [User profile](user-profile.md) — Houdini 22 expert; shipped Mont-Blanc (Svelte 5 + twgl); wants speed
 - [Scope: web shaders only](portfolio-scope-web-only.md) — don't cover Houdini or splat content creation unless asked
 - [Commit workflow](commit-workflow.md) — user commits; hand over one final PowerShell block, re-send if changes land after
+- [Design: discovery](design-discovery.md) — non-obvious readability is intended; don't push "make it obvious" fixes

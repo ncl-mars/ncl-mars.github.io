@@ -3,7 +3,7 @@ import vertexSource from '../../gl/fullscreen.vert';
 import marchSource from './terrain.frag';
 import compositeSource from './composite.frag';
 import { hotSwap, type Program } from '../../gl/programs';
-import { createHeightTexture, loadDataTexture } from '../../gl/textures';
+import { createHalfFloatTexture, loadDataTexture } from '../../gl/textures';
 import { createColorDepthTarget, deleteColorDepthTarget, type ColorDepthTarget } from '../../gl/targets';
 import { loadHeightfield } from '../../terrain/heightfield';
 import { Ground } from '../../terrain/ground';
@@ -119,7 +119,7 @@ export class Terrain implements Drawable {
 		const height = renderer.resource(`height:${heightmapUrl}`, (gl) =>
 			loadHeightfield(heightmapUrl, heightmap).then((field) => ({
 				field,
-				texture: createHeightTexture(gl, heightmap.width, heightmap.height, field.half)
+				texture: createHalfFloatTexture(gl, heightmap.width, heightmap.height, field.half)
 			}))
 		);
 		const maps = renderer.resource(`maps:${mapsUrl}`, (gl) => loadDataTexture(gl, mapsUrl));
