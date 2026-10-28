@@ -3,6 +3,7 @@ import vertexSource from '../../gl/fullscreen.vert';
 import fragmentSource from './core.frag';
 import { hotSwap, type Program } from '../../gl/programs';
 import { createHalfFloatTexture } from '../../gl/textures';
+import { createHashTexture, createNoiseTexture3D } from '../../gl/noise';
 import { loadRelief, type ReliefMeta } from '../../core/relief';
 import type { Renderer } from '../../gl/renderer';
 import type { DrawContext, Drawable, Frame } from '../../gl/types';
@@ -17,14 +18,18 @@ export interface CoreSettings {
 	spacing: number;
 	micro: number;
 	margin: number;
-	fade: number;
+	emerge: number;
+	sand: number;
 	topNoise: number;
 	topScale: number;
-	topEvolve: number;
 	sideNoise: number;
 	sideScale: number;
+	band: number;
+	warp: number;
 	dip: number;
 	strata: number;
+	grain: number;
+	noiseScale: number;
 	mineral: number[];
 	mineral2: number[];
 	lightElevation: number;
@@ -54,11 +59,11 @@ export interface CoreViewerOptions {
 
 /**
  * The project viewer: a core sample of rock in the foreground, raymarched (core.frag, rock.glsl). Its top
- * is the cut: scrolling removes matter (the cut descends) or stacks it back. The images sit at depths one
- * strata thickness apart; when the cut reaches one, the cut face shows that image's depth map as micro
- * relief, plain rock in between. `focus` is the cut depth in images (0 = first), eased toward
- * `targetFocus`, which the page sets from its scroll. `layerQuad(i)` gives image i's on-screen quad on the
- * cut face while it shows, so the page can lay an HTML hit area over it.
+ * is the cut: scrolling removes matter (the cut descends) or stacks it back. The images are buried one
+ * strata thickness apart; as the cut comes down to one, its relief emerges (highest parts first), then
+ * gets sanded flat below it: tied to the cut by construction. `focus` is the cut depth in images
+ * (0 = first image), eased toward `targetFocus`, which the page sets from its scroll. `layerQuad(i)` gives
+ * image i's on-screen quad on the cut face while it's exposed, so the page can lay a hit area over it.
  */
 export class CoreViewer implements Drawable {
 	/** Cut depth in images (0 = first), set by the page from its scroll. */
@@ -74,6 +79,8 @@ export class CoreViewer implements Drawable {
 
 	private program: Program | null = null;
 	private vao: WebGLVertexArrayObject | null = null;
+	private noise3D: WebGLTexture | null = null;
+	private hash: WebGLTexture | null = null;
 	private textures: (WebGLTexture | null)[];
 	private generation = 0;
 	private readonly parallax = [0, 0];
@@ -102,6 +109,9 @@ export class CoreViewer implements Drawable {
 	init(gl: WebGL2RenderingContext, renderer: Renderer) {
 		this.program = renderer.program(vertex, fragment);
 		this.vao = gl.createVertexArray(); // empty: fullscreen.vert builds the triangle from gl_VertexID
+		// Shared per context: generated once, reused by every drawable that needs smooth noise
+		this.noise3D = renderer.resource('noise:3d', (gl) => createNoiseTexture3D(gl));
+		this.hash = renderer.resource('noise:hash', (gl) => createHashTexture(gl));
 
 		const generation = ++this.generation;
 		this.layers.forEach((layer, i) => {
@@ -143,35 +153,43 @@ export class CoreViewer implements Drawable {
 
 		const s = this.settings;
 		const n = this.layers.length;
-		// The two images nearest the cut, and how present each is (plain rock between them)
+		// The two images nearest the cut (only these can be exposed: emerge + sand ≤ one strata thickness)
 		const a = Math.min(n - 1, Math.max(0, Math.round(this.focus)));
 		const b = Math.min(n - 1, Math.max(0, this.focus >= a ? a + 1 : a - 1));
-		const weightA = this.textures[a] ? this.weight(a) : 0;
-		const weightB = b !== a && this.textures[b] ? this.weight(b) : 0;
+		const activeA = this.textures[a] ? 1 : 0;
+		const activeB = b !== a && this.textures[b] ? 1 : 0;
 		const dip = s.dip * DEG;
 
 		const u = this.uniforms;
+		u.uNoise3D = this.noise3D;
+		u.uHash = this.hash;
 		u.uInvMvp = this.inverseMvp;
 		u.uMvp = this.mvp;
 		u.uCamLocal = this.camLocal;
 		u.uLightLocal = this.lightLocal;
 		u.uSteps = s.steps;
 		u.uShade = [s.shadow, s.ao];
-		u.uCut = -this.focus * s.spacing;
+		u.uCut = this.cut();
 		u.uBottom = -(n - 1) * s.spacing - s.spacing * 1.5;
-		u.uTopNoise = [s.topNoise, s.topScale, s.topEvolve];
+		u.uTopNoise = [s.topNoise, s.topScale];
 		u.uSideNoise = [s.sideNoise, s.sideScale];
 		u.uReliefA = this.textures[a] ?? this.anyTexture();
 		u.uReliefB = this.textures[b] ?? this.anyTexture();
 		u.uRectA = this.imageRect(a);
 		u.uRectB = this.imageRect(b);
-		u.uWeights = [weightA, weightB];
+		u.uDepths = [this.depth(a), this.depth(b)];
+		u.uActive = [activeA, activeB];
 		u.uMicro = s.micro;
-		u.uSpacing = s.spacing;
+		u.uEmerge = s.emerge * s.spacing;
+		u.uSand = Math.max(1e-3, s.sand * s.spacing);
+		u.uBand = Math.max(1e-3, s.band);
+		u.uWarp = s.warp;
 		u.uDip = [Math.tan(dip) * 0.8, Math.tan(dip) * 0.6];
 		u.uMineral = s.mineral;
 		u.uMineral2 = s.mineral2;
 		u.uStrata = s.strata;
+		u.uGrain = s.grain;
+		u.uNoiseScale = s.noiseScale;
 
 		const info = this.program!.info;
 		gl.useProgram(info.program);
@@ -189,14 +207,16 @@ export class CoreViewer implements Drawable {
 		this.generation++; // ignore loads still in flight
 		gl.deleteVertexArray(this.vao);
 		this.vao = null;
-		this.textures = this.layers.map(() => null); // textures stay in the renderer's per-context cache
+		// Textures (reliefs, noise) stay in the renderer's per-context cache
+		this.textures = this.layers.map(() => null);
+		this.noise3D = this.hash = null;
 	}
 
-	/** Image i's rectangle on the cut face on screen (CSS px, TL, TR, BR, BL), or null while it doesn't show. */
+	/** Image i's rectangle on the cut face on screen (CSS px, TL, TR, BR, BL), or null while it isn't exposed. */
 	layerQuad(i: number): [number, number][] | null {
-		if (!this.textures[i] || this.weight(i) < 0.5) return null;
+		if (!this.textures[i] || this.exposure(i) < 0.5) return null;
 		const [x0, y0, w, h] = this.imageRect(i);
-		const cut = -this.focus * this.settings.spacing;
+		const cut = this.cut();
 		const out: [number, number][] = [];
 		for (const [u, v] of [
 			[x0, y0],
@@ -215,10 +235,24 @@ export class CoreViewer implements Drawable {
 		return out;
 	}
 
-	/** How present image i is at the current cut depth: 1 at its depth, 0 a little away (plain rock). */
-	private weight(i: number) {
-		const fade = Math.max(0.02, this.settings.fade);
-		return 1 - smoothstep(fade * 0.5, fade, Math.abs(this.focus - i));
+	/** Height of the cut in local space (images sit at depth(i)). */
+	private cut() {
+		return -this.focus * this.settings.spacing;
+	}
+
+	private depth(i: number) {
+		return -i * this.settings.spacing;
+	}
+
+	/** How exposed image i is overall (its mid-relief), as in rock.glsl's exposure(): for the hit area. */
+	private exposure(i: number) {
+		const s = this.settings;
+		const emerge = Math.max(1e-3, s.emerge * s.spacing);
+		const sand = Math.max(1e-3, s.sand * s.spacing);
+		const c = this.cut();
+		const d = this.depth(i);
+		const emerged = Math.min(1, Math.max(0, (d + emerge * 0.5 - c) / (emerge * 0.5)));
+		return emerged * (1 - smoothstep(0, sand, d - c));
 	}
 
 	/** The image inside the top square's uv: aspect-fit with a margin. [x, y, width, height]. */

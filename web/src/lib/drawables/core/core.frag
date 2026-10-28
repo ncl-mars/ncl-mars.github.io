@@ -1,12 +1,11 @@
 #version 300 es
 precision highp float;
-precision highp int; // the noise hash needs 32-bit integers (fragment ints default to mediump)
+precision highp int;
 
-// The core sample, raymarched: a solid of rock (./rock) whose cut face carries the micro relief of the
+// The core sample, raymarched: a solid of rock (./rock) whose cut face reveals the micro relief of the
 // image at that depth. Raking light with soft shadows and occlusion, so the fine relief reads. Pixels that
 // miss the core are discarded; hits write depth so the core composites with a scene.
 
-#include /noise;
 #include ./rock;
 
 uniform mat4 uInvMvp;     // clip → core local space
