@@ -1,0 +1,98 @@
+#version 300 es
+precision highp float;
+precision highp int; // the noise hash needs 32-bit integers (fragment ints default to mediump)
+
+// The core sample, raymarched: a solid of rock (./rock) whose cut face carries the micro relief of the
+// image at that depth. Raking light with soft shadows and occlusion, so the fine relief reads. Pixels that
+// miss the core are discarded; hits write depth so the core composites with a scene.
+
+#include /noise;
+#include ./rock;
+
+uniform mat4 uInvMvp;     // clip → core local space
+uniform mat4 uMvp;        // core local → clip (depth)
+uniform vec3 uCamLocal;   // camera, in core local space
+uniform vec3 uLightLocal; // raking light direction, local space
+uniform int uSteps;       // march iteration cap
+uniform vec2 uShade;      // x: soft-shadow strength, y: occlusion strength
+
+in vec2 vUv;
+out vec4 outColor;
+
+// Ray vs the core's bounds, padded for the displacements: (enter, exit)
+vec2 boundsInterval(vec3 ro, vec3 rd) {
+	float pad = uSideNoise.x + 0.002;
+	vec3 lo = vec3(-0.5 - pad, uBottom, -0.5 - pad);
+	vec3 hi = vec3(0.5 + pad, uCut + uTopNoise.x + uMicro + 0.002, 0.5 + pad);
+	vec3 inv = 1.0 / rd;
+	vec3 t0 = (lo - ro) * inv;
+	vec3 t1 = (hi - ro) * inv;
+	vec3 tNear = min(t0, t1);
+	vec3 tFar = max(t0, t1);
+	return vec2(max(max(tNear.x, tNear.y), max(tNear.z, 0.0)), min(min(tFar.x, tFar.y), tFar.z));
+}
+
+vec3 coreNormal(vec3 p) {
+	const vec2 e = vec2(0.0012, 0.0);
+	return normalize(vec3(
+		sdCore(p + e.xyy) - sdCore(p - e.xyy),
+		sdCore(p + e.yxy) - sdCore(p - e.yxy),
+		sdCore(p + e.yyx) - sdCore(p - e.yyx)
+	));
+}
+
+float softShadow(vec3 p, vec3 l) {
+	float result = 1.0;
+	float t = 0.004;
+	for (int i = 0; i < 24; i++) {
+		float d = sdCore(p + l * t);
+		result = min(result, 10.0 * d / t);
+		if (result < 0.01) break;
+		t += clamp(d, 0.004, 0.08);
+		if (t > 1.5) break;
+	}
+	return clamp(result, 0.0, 1.0);
+}
+
+float occlusion(vec3 p, vec3 n) {
+	float o = 0.0;
+	float w = 1.0;
+	for (int i = 1; i <= 5; i++) {
+		float h = 0.012 * float(i);
+		o += (h - sdCore(p + n * h)) * w;
+		w *= 0.6;
+	}
+	return clamp(1.0 - o * 12.0, 0.0, 1.0);
+}
+
+void main() {
+	vec4 farLocal = uInvMvp * vec4(vUv * 2.0 - 1.0, 1.0, 1.0);
+	vec3 ro = uCamLocal;
+	vec3 rd = normalize(farLocal.xyz / farLocal.w - ro);
+
+	vec2 span = boundsInterval(ro, rd);
+	if (span.x >= span.y) discard;
+	float t = span.x;
+	bool hit = false;
+	for (int i = 0; i < uSteps; i++) {
+		float d = sdCore(ro + rd * t);
+		if (d < 0.0004 * t + 0.0002) {
+			hit = true;
+			break;
+		}
+		t += d * 0.6;
+		if (t > span.y) break;
+	}
+	if (!hit) discard;
+
+	vec3 p = ro + rd * t;
+	vec3 n = coreNormal(p);
+	float diffuse = max(dot(n, uLightLocal), 0.0);
+	float shadow = diffuse > 0.0 ? mix(1.0, softShadow(p + n * 0.003, uLightLocal), uShade.x) : 1.0;
+	float ao = mix(1.0, occlusion(p, n), uShade.y);
+	vec3 col = rockColour(p) * (0.22 * ao + 0.85 * diffuse * shadow);
+
+	vec4 clip = uMvp * vec4(p, 1.0);
+	gl_FragDepth = clip.z / clip.w * 0.5 + 0.5;
+	outColor = vec4(col, 1.0);
+}

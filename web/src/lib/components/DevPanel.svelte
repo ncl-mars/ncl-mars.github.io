@@ -8,7 +8,7 @@
 	// Toggle with P.
 	import type { Renderer, RendererStats } from '$lib/gl/renderer';
 	import { schema, type Param } from '$lib/tuning/schema';
-	import { readouts, savedDefaults, setTuning, tuning, type TuningValue } from '$lib/tuning';
+	import { onTuningChange, readouts, savedDefaults, setTuning, tuning, type TuningValue } from '$lib/tuning';
 	import { formatTuning } from '$lib/tuning/format';
 
 	type Values = Record<string, Record<string, TuningValue>>;
@@ -55,10 +55,20 @@
 	});
 
 	$effect(() => {
+		// Values changed elsewhere (defaults.json reloaded): mirror them in the inputs
+		const stopListening = onTuningChange((group, key) => {
+			const live = (tuning as unknown as Values)[group]?.[key];
+			if (live !== undefined && values[group]) values[group][key] = structuredClone(live);
+		});
+		let savedRef = savedDefaults();
 		const poll = () => {
 			stats = renderer.readStats();
 			lines = [...readouts.values()].map((read) => read());
 			fontSize = panelFontSize(); // follows the window to another screen
+			if (savedDefaults() !== savedRef) {
+				savedRef = savedDefaults();
+				saved = structuredClone(savedRef) as unknown as Values;
+			}
 		};
 		poll();
 		const interval = setInterval(poll, 250);
@@ -76,6 +86,7 @@
 			}
 		}
 		return () => {
+			stopListening();
 			clearInterval(interval);
 			window.removeEventListener('keydown', onKey);
 		};

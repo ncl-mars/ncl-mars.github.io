@@ -24,6 +24,7 @@
 
 	onMount(() => {
 		renderer.mount(canvas);
+		document.documentElement.style.setProperty('--bg', cssColor(tuning.fog.color)); // the browser's value wins
 		const stopListening = onTuningChange((group) => {
 			if (group === 'renderer') renderer.setMaxPixelRatio(tuning.renderer.maxPixelRatio);
 			if (group === 'fog') document.documentElement.style.setProperty('--bg', cssColor(tuning.fog.color));

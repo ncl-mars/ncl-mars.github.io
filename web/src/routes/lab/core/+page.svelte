@@ -14,7 +14,8 @@
 	const HIT_SIZE = 100; // hit areas are 100×100 px boxes mapped onto each layer's quad
 
 	const renderer = getRenderer();
-	const viewer = new CoreViewer(tuning.core, project.images);
+	// Alone on this page (no terrain behind), so the core paints the fog colour behind itself
+	const viewer = new CoreViewer(tuning.core, project.images, { backdrop: () => tuning.fog.color });
 
 	let scroller: HTMLElement;
 	const hits: HTMLButtonElement[] = [];
@@ -41,12 +42,12 @@
 	onMount(() => {
 		scroller.focus({ preventScroll: true, focusVisible: false } as FocusOptions);
 
-		// Hit areas follow their layer's image on screen (perspective included), written after each frame.
-		// Only the layers near the reading depth are clickable: the X-ray ghosts are not.
+		// Hit areas follow the image on the cut face (perspective included), written after each frame.
+		// Only the image showing at the current depth is clickable.
 		const stopHits = renderer.onFrame(() => {
 			for (let i = 0; i < hits.length; i++) {
 				const el = hits[i];
-				const quad = Math.abs(i - viewer.focus) < 0.75 ? viewer.layerQuad(i) : null;
+				const quad = viewer.layerQuad(i);
 				const transform = quad ? quadToMatrix3d(quad, HIT_SIZE, HIT_SIZE) : 'none';
 				if (transform === shownTransforms[i]) continue;
 				shownTransforms[i] = transform;
@@ -56,7 +57,11 @@
 			const nearest = Math.round(viewer.focus);
 			if (nearest !== focused) focused = nearest;
 		});
-		readouts.set('core', () => `core focus ${viewer.focus.toFixed(2)} / ${project.images.length - 1}`);
+		readouts.set(
+			'core',
+			() =>
+				`core focus ${viewer.focus.toFixed(2)} / ${project.images.length - 1} · frames ${viewer.stats.frames} · reliefs ${viewer.stats.reliefs}/${project.images.length}`
+		);
 
 		return () => {
 			stopHits();
@@ -102,7 +107,7 @@
 			<h1>{project.title}</h1>
 			<p>{project.text}</p>
 			<p class="caption">{focused + 1} / {project.images.length} · {project.images[focused].caption}</p>
-			<p class="hint">Scroll to dig · click the layer to see it</p>
+			<p class="hint">Scroll to dig · click the relief to see it</p>
 			<p class="back"><a href="/">← Dig site</a></p>
 		</aside>
 	</div>

@@ -43,8 +43,8 @@ export const labProject: Project = {
 	cell: 'C4',
 	title: 'Placeholder project',
 	text:
-		'A stand-in project to prototype the core viewer: five render-like images, each carved as a relief ' +
-		'stratum from its depth map. Scroll to dig through the layers; click one to see it in colour.',
+		'A stand-in project to prototype the core viewer: five render-like images, buried in the rock one ' +
+		'stratum apart. Scroll to dig; when the cut reaches an image, its relief appears. Click it to see it in colour.',
 	images: captions.map((caption, i) => {
 		const name = `image-${i + 1}`;
 		return {
