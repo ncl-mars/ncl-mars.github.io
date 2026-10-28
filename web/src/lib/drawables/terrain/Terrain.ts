@@ -3,7 +3,9 @@ import vertexSource from '../../gl/fullscreen.vert';
 import fragmentSource from './terrain.frag';
 import { hotSwap, type Program } from '../../gl/programs';
 import { createHeightTexture, loadDataTexture } from '../../gl/textures';
-import { loadHeightfield, type Heightfield } from '../../terrain/heightfield';
+import { loadHeightfield } from '../../terrain/heightfield';
+import { Ground } from '../../terrain/ground';
+import type { FarFieldSettings } from '../../terrain/farfield';
 import type { TerrainAssets } from '../../terrain/assets';
 import type { SurveyCamera } from '../../gl/camera';
 import type { Renderer } from '../../gl/renderer';
@@ -16,18 +18,20 @@ let fragment = fragmentSource;
 export interface TerrainSettings {
 	march: { stepScale: number; precision: number; steps: number; refineSteps: number };
 	shading: { tint: number[]; shadowLight: number; aoStrength: number; cavityStrength: number; exposure: number };
-	fog: { color: number[]; density: number };
+	fog: { color: number[]; skyColor: number[]; density: number; end: number };
+	farField: FarFieldSettings;
 }
 
 /**
- * The dig site's ground: a raymarched heightfield (surface stage: march.glsl) shaded from the baked maps
- * (shading stage: shade.glsl). It writes depth, so later passes (cords, particles, splats) composite against
- * it. It also drives the camera (`camera.update`). Draws nothing until the heightmap and maps are loaded,
+ * The dig site's ground: the heightmap blended into an endless far field, raymarched (surface stage:
+ * march.glsl) and shaded from the baked maps (shading stage: shade.glsl), dissolving into fog and sky.
+ * It writes depth, so later passes (cords, particles, splats) composite against it. It also drives the
+ * camera (`camera.update`) with the CPU `Ground`. Draws nothing until the heightmap and maps are loaded,
  * then fades in. Textures are cached per GL context, so coming back to the page doesn't reload them.
  */
 export class Terrain implements Drawable {
-	/** CPU copy of the heightmap, once loaded (camera following, picking). */
-	field: Heightfield | null = null;
+	/** The whole ground on the CPU (heightmap + far field), once loaded: camera following, picking. */
+	ground: Ground | null = null;
 
 	private program: Program | null = null;
 	private vao: WebGLVertexArrayObject | null = null;
@@ -36,6 +40,8 @@ export class Terrain implements Drawable {
 	private fade = 0;
 	private generation = 0;
 	private readonly shadingVector = new Float32Array(4);
+	private readonly farFieldVector = new Float32Array(4);
+	private readonly slabVector = new Float32Array(2);
 	private readonly uniforms: Record<string, unknown>;
 
 	constructor(
@@ -43,6 +49,7 @@ export class Terrain implements Drawable {
 		private readonly assets: TerrainAssets,
 		private readonly settings: TerrainSettings
 	) {
+		// Panning stays over the heightmap (where the projects are); the far field is scenery
 		const { min, max } = assets.heightmap.bounds;
 		const marginX = (max[0] - min[0]) * 0.1;
 		const marginZ = (max[2] - min[2]) * 0.1;
@@ -52,7 +59,9 @@ export class Terrain implements Drawable {
 			uBoundsMin: min,
 			uBoundsMax: max,
 			uSunDir: assets.maps.sunDir,
-			uShading: this.shadingVector
+			uShading: this.shadingVector,
+			uFarField: this.farFieldVector,
+			uSlab: this.slabVector
 		};
 	}
 
@@ -72,7 +81,7 @@ export class Terrain implements Drawable {
 		Promise.all([height, maps])
 			.then(([h, mapsTexture]) => {
 				if (generation !== this.generation) return; // disposed or re-initialised meanwhile
-				this.field = h.field;
+				this.ground = new Ground(h.field, this.settings.farField, this.settings.fog);
 				this.heightTexture = h.texture;
 				this.mapsTexture = mapsTexture;
 			})
@@ -80,21 +89,30 @@ export class Terrain implements Drawable {
 	}
 
 	update(frame: Frame) {
-		this.camera.update(frame.dt, this.field);
+		this.camera.update(frame.dt, this.ground);
 		if (this.heightTexture && this.mapsTexture) this.fade = Math.min(1, this.fade + frame.dt / 0.6);
 	}
 
 	draw(gl: WebGL2RenderingContext, { rect }: DrawContext) {
-		if (!this.heightTexture || !this.mapsTexture || !this.field) return;
+		const ground = this.ground;
+		if (!this.heightTexture || !this.mapsTexture || !ground) return;
 		const camera = this.camera;
 		camera.setAspect(rect.width / rect.height);
 
-		const { march, shading, fog } = this.settings;
+		const { march, shading, fog, farField } = this.settings;
 		const s = this.shadingVector;
 		s[0] = shading.shadowLight;
 		s[1] = shading.aoStrength;
 		s[2] = shading.cavityStrength;
 		s[3] = shading.exposure;
+		const f = this.farFieldVector;
+		f[0] = ground.farBase;
+		f[1] = farField.amplitude;
+		f[2] = farField.scale;
+		f[3] = ground.band;
+		const [slabMin, slabMax] = ground.slab;
+		this.slabVector[0] = slabMin;
+		this.slabVector[1] = slabMax;
 
 		const u = this.uniforms;
 		u.uInvViewProj = camera.inverseViewProjection;
@@ -106,9 +124,12 @@ export class Terrain implements Drawable {
 		u.uRefineSteps = march.refineSteps;
 		u.uStepScale = march.stepScale;
 		u.uPrecision = march.precision;
+		u.uMaxDistance = fog.end;
 		u.uTint = shading.tint;
 		u.uFogColor = fog.color;
+		u.uSkyColor = fog.skyColor;
 		u.uFogDensity = fog.density;
+		u.uFogEnd = fog.end;
 		u.uFade = this.fade;
 
 		const info = this.program!.info;

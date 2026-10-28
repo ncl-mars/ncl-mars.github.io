@@ -14,6 +14,11 @@
 	const renderer = new Renderer({ maxPixelRatio: tuning.renderer.maxPixelRatio });
 	setRenderer(renderer);
 
+	// The page background is the fog colour, so the endless terrain has no visible edge (and loading
+	// doesn't flash another colour). Prerendered into the HTML, then kept in sync with the dev panel.
+	const cssColor = (c: number[]) => `rgb(${c.map((v) => Math.round(v * 255)).join(' ')})`;
+	const backgroundStyle = `<style>:root{--bg:${cssColor(tuning.fog.color)}}</style>`;
+
 	let canvas: HTMLCanvasElement;
 	let DevPanel = $state<Component<{ renderer: Renderer }> | null>(null);
 
@@ -21,6 +26,7 @@
 		renderer.mount(canvas);
 		const stopListening = onTuningChange((group) => {
 			if (group === 'renderer') renderer.setMaxPixelRatio(tuning.renderer.maxPixelRatio);
+			if (group === 'fog') document.documentElement.style.setProperty('--bg', cssColor(tuning.fog.color));
 		});
 		if (import.meta.env.DEV) {
 			import('$lib/components/DevPanel.svelte').then((module) => (DevPanel = module.default));
@@ -34,6 +40,8 @@
 
 <svelte:head>
 	<link rel="icon" href={favicon} />
+	<!-- --bg = fog colour, built from defaults.json at prerender (no user content) -->
+	{@html backgroundStyle}
 </svelte:head>
 
 <canvas bind:this={canvas} class="gl" aria-hidden="true"></canvas>

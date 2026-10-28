@@ -41,16 +41,17 @@ Page scroll doesn't invalidate the cache: only the blit position changes.
 
 ## Terrain
 
+- **Endless, no edges, no thickness.** The heightmap fades into a procedural **far field** (low-frequency value noise) over a band along its edges. The far field's base level is the mean height of the heightmap's edges, and it continues to the horizon, where full fog at the fog end distance dissolves it. The sky is the fog colour with a soft gradient overhead, and the page background is the fog colour too (live from the panel), so nothing ever shows an edge. Panning stays over the heightmap (where the projects are); the far field is scenery.
 - **Surface/shading split.** The surface stage (the raymarch) outputs world position, normal and depth. The shading stage (shared chunk) applies the baked maps, pits, square state and thumbnail. Plan B: if the raymarcher misses the performance gate, the surface stage becomes a rasterized displaced grid mesh with the same shading, possibly chosen per device.
 - **Raymarch:**
   - Rays come from `invViewProj` (a full-screen triangle; the viewport maps it onto the view rect).
-  - The march only covers the part of the ray inside the terrain's box.
+  - The march is bounded by the ground's height range (heightmap + far field) and the fog end distance; there's no X/Z box any more.
   - Height-relative steps (big far above the ground, small near it, at least the pixel footprint) + binary refinement, behind a strategy hook (max-mip or cone stepping later). Steep rays converge in a few steps, and the grazing rays of the zoomed-in, tilted-up camera stay accurate.
   - The hit writes depth with `viewProj`.
 - **Height functions** (shared chunk):
   - `terrainHeight(p)`: the original surface, used by stakes and cords.
   - `height(p)`: `terrainHeight` minus the pits, plus the hover slab. Used by the raymarcher and the particles.
-- **Shading:** the grayscale maps baked in Houdini (light/shadow, AO, cavity) are combined with adjustable strengths into a near-gray value, with maybe a very slight cool tint. There are no runtime shadows or AO. Format: [formats/terrain-maps.md](formats/terrain-maps.md). The heightmap format is in [formats/heightmap.md](formats/heightmap.md).
+- **Shading:** the grayscale maps baked in Houdini (light/shadow, AO, cavity) are combined with adjustable strengths into a near-gray value, with maybe a very slight cool tint. The far field has no maps: it gets plain light from the same `sunDir`, blended with the baked maps across the band. There are no runtime shadows or AO. Format: [formats/terrain-maps.md](formats/terrain-maps.md). The heightmap format is in [formats/heightmap.md](formats/heightmap.md).
 - **Pits** are shaded procedurally in grays: strata bands, the same sun direction as the bake, darker with depth.
 
 ## Wind and mist

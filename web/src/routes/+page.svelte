@@ -68,7 +68,7 @@
 	tabindex="0"
 	bind:this={site}
 	{@attach renderer.view(terrain)}
-	{@attach surveyControls(camera, { field: () => terrain.field, settings: tuning.controls })}
+	{@attach surveyControls(camera, { ground: () => terrain.ground, settings: tuning.controls })}
 ></div>
 
 <button class="compass" onclick={() => camera.resetNorth()} aria-label="Face north" title="Face north (N)">
@@ -160,7 +160,7 @@
 		top: 0;
 		left: 0;
 		padding: 1.25rem 1.5rem;
-		color: #1d1f21;
+		color: var(--fg);
 		pointer-events: none;
 	}
 

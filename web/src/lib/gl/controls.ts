@@ -1,10 +1,10 @@
 import type { Attachment } from 'svelte/attachments';
 import { wrapAngle, type SurveyCamera } from './camera';
-import type { Heightfield, Vec3 } from '$lib/terrain/heightfield';
+import type { Vec3 } from '$lib/terrain/heightfield';
 
 export interface SurveyControlsOptions {
-	/** The CPU heightfield once loaded: grabs and zooms anchor on the real ground under the pointer. */
-	field?: () => Heightfield | null;
+	/** The CPU ground once loaded (terrain/ground.ts): grabs and zooms anchor on the real ground. */
+	ground?: () => { raycast(origin: Vec3, direction: Vec3): Vec3 | null } | null;
 	/** Read live (the dev panel edits them). */
 	settings?: { wheelSpeed: number; rotateSpeed: number };
 }
@@ -45,7 +45,7 @@ const DEG = Math.PI / 180;
 
 /**
  * Input for the survey camera, attached to the view element (the canvas ignores pointers):
- * `<div tabindex="0" {@attach surveyControls(camera, { field, settings })}>`. Native Pointer Events.
+ * `<div tabindex="0" {@attach surveyControls(camera, { ground, settings })}>`. Native Pointer Events.
  * - Drag (mouse, one finger) grabs the ground: the point under the pointer stays under it. Releasing
  *   while moving leaves some inertia.
  * - Right-drag or Alt+drag rotates the heading around the view centre.
@@ -74,13 +74,13 @@ export function surveyControls(camera: SurveyCamera, options: SurveyControlsOpti
 			return [((x - r.left) / r.width) * 2 - 1, 1 - ((y - r.top) / r.height) * 2];
 		};
 
-		/** The ground under (x, y): a CPU raycast when the heightfield is loaded, else the target's plane. */
+		/** The ground under (x, y): a CPU raycast once the ground is loaded, else the target's plane. */
 		const pick = (x: number, y: number): Vec3 | null => {
 			const ndc = toNdc(x, y);
-			const field = options.field?.();
-			if (field) {
+			const ground = options.ground?.();
+			if (ground) {
 				const { origin, direction } = camera.ray(...ndc);
-				const hit = field.raycast(origin, direction);
+				const hit = ground.raycast(origin, direction);
 				if (hit) return hit;
 			}
 			return camera.groundPoint(...ndc, camera.target[1]);

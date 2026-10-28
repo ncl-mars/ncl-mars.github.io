@@ -1,11 +1,12 @@
 /* Global styles. The WebGL canvas sits behind the page (z-index -1): the background lives on <html>,
-   and anything drawn over a view must stay transparent or it hides the canvas. */
+   and anything drawn over a view must stay transparent or it hides the canvas.
+   --bg is the fog colour: the root layout overrides it from tuning (defaults.json), this is a fallback. */
 
 :root {
-	color-scheme: dark;
-	--bg: #1b1c1e;
-	--fg: #d8d9db;
-	--muted: #8b8e92;
+	color-scheme: light;
+	--bg: #758fa9;
+	--fg: #1d1f21;
+	--muted: #4a4f55;
 	--font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 

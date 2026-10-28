@@ -71,8 +71,20 @@ export const schema: Group[] = [
 		key: 'fog',
 		label: 'Fog',
 		params: [
-			{ key: 'color', label: 'Colour', kind: 'color' },
-			{ key: 'density', label: 'Density', min: 0, max: 0.006, step: 0.00005 }
+			{ key: 'color', label: 'Colour', kind: 'color', hint: 'Fog and horizon. Also the page background.' },
+			{ key: 'skyColor', label: 'Sky', kind: 'color', hint: 'Sky overhead, above the horizon fog.' },
+			{ key: 'density', label: 'Density', min: 0, max: 0.006, step: 0.00005 },
+			{ key: 'end', label: 'End distance', min: 200, max: 4000, step: 10, hint: 'Fully fogged from here. The raymarch stops here too.' }
+		]
+	},
+	{
+		key: 'farField',
+		label: 'Far field',
+		params: [
+			{ key: 'amplitude', label: 'Amplitude', min: 0, max: 100, step: 0.5, hint: 'Height variation (±) of the endless ground around the heightmap.' },
+			{ key: 'scale', label: 'Feature size', min: 30, max: 2000, step: 10 },
+			{ key: 'blend', label: 'Blend band', min: 0.01, max: 0.5, step: 0.01, hint: 'Band along the heightmap edges where it fades into the far field (fraction of its size).' },
+			{ key: 'offset', label: 'Base offset', min: -60, max: 60, step: 0.5, hint: 'Added to the far field base (the mean height of the heightmap edges).' }
 		]
 	},
 	{

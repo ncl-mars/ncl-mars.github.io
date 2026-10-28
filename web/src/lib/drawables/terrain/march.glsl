@@ -1,30 +1,32 @@
-// Surface stage: where a view ray first hits the heightfield. Needs /terrain and ./surface.
-// Strategy: height-relative steps inside the terrain's box. Far above the ground the ray takes big steps,
-// near it small ones (step = uStepScale × clearance, at least the pixel footprint), then a binary search
-// once a sample lands below ground. Steep rays (zoomed out) converge in a few steps; grazing rays (zoomed
-// in, camera tilted up) stay accurate. A max-mip or cone-step strategy would replace marchSurface() and
-// keep the same signature.
+// Surface stage: where a view ray first hits the ground. Needs /terrain and ./surface.
+// The ground is endless (heightmap + far field), so the search is bounded only by its height range (the
+// slab) and the fog end distance, past which nothing is visible anyway.
+// Strategy: height-relative steps. Far above the ground the ray takes big steps, near it small ones
+// (step = uStepScale × clearance, at least the pixel footprint), then a binary search once a sample lands
+// below ground. Steep rays converge in a few steps; grazing rays stay accurate. A max-mip or cone-step
+// strategy would replace marchSurface() and keep the same signature.
 
 uniform int uSteps;        // iteration cap
 uniform int uRefineSteps;  // binary-search steps after the first sample below ground
 uniform float uStepScale;  // fraction of the clearance to step (< 1: steep slopes would be overshot)
 uniform float uPrecision;  // minimum step and hit tolerance, relative to the distance (~ pixel footprint)
+uniform vec2 uSlab;        // height range of the whole ground (min, max)
+uniform float uMaxDistance; // fog end: nothing is searched beyond
 
-// Ray vs the terrain's world box: (tEnter, tExit), with tEnter >= tExit when it misses.
-vec2 boundsInterval(vec3 ro, vec3 rd) {
-	vec3 inv = 1.0 / rd;
-	vec3 t0 = (uBoundsMin - ro) * inv;
-	vec3 t1 = (uBoundsMax - ro) * inv;
-	vec3 tNear = min(t0, t1);
-	vec3 tFar = max(t0, t1);
-	float enter = max(max(tNear.x, tNear.y), max(tNear.z, 0.0));
-	float exit = min(min(tFar.x, tFar.y), tFar.z);
-	return vec2(enter, exit);
+// Ray vs the ground's height slab, capped at uMaxDistance: (tEnter, tExit), tEnter >= tExit when it misses.
+vec2 slabInterval(vec3 ro, vec3 rd) {
+	if (abs(rd.y) < 1e-6) {
+		bool inside = ro.y >= uSlab.x && ro.y <= uSlab.y;
+		return inside ? vec2(0.0, uMaxDistance) : vec2(1.0, 0.0);
+	}
+	float t0 = (uSlab.y - ro.y) / rd.y;
+	float t1 = (uSlab.x - ro.y) / rd.y;
+	return vec2(max(min(t0, t1), 0.0), min(max(t0, t1), uMaxDistance));
 }
 
 Surface marchSurface(vec3 ro, vec3 rd) {
 	Surface s = Surface(false, vec3(0.0), 0.0);
-	vec2 span = boundsInterval(ro, rd);
+	vec2 span = slabInterval(ro, rd);
 	if (span.x >= span.y) return s;
 
 	float t = span.x;

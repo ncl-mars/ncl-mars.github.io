@@ -34,6 +34,7 @@ Notes live in `.claude/memory/`, **not** in the global `~/.claude/projects/.../m
 - Drawables (`lib/drawables/<name>/`) implement `init` / `update` / `draw` / `dispose` (`lib/gl/types.ts`). Constructors must not touch the DOM or GL (prerender runs in Node). Create GL resources in `init`.
 - Programs come from `renderer.program(vs, fs)`, cached by source for the life of the context. Textures and other per-context resources go through `renderer.resource(key, create)`, cached the same way.
 - State that must survive navigation (the home camera, the terrain drawable) lives in the page's `<script module>`.
+- The ground exists twice and must stay identical: `lib/gl/chunks/terrain.glsl` (GPU) and `lib/terrain/farfield.ts` + `ground.ts` (CPU: camera following, picking). Change both together. CPU code samples the ground through `Ground`, never the raw `Heightfield`.
 - Views are expected in normal document flow: rects are cached in document space, so a `position: fixed` view on a scrolling page would drift.
 - Shader hot reload: each drawable module ends with `import.meta.hot.accept([...shader paths], …)` calling `hotSwap()`. Copy the block from `drawables/test/TestPattern.ts`, using relative paths.
 - Never read layout in the frame loop. Rects are cached in document space; visibility is arithmetic.

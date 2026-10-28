@@ -1,7 +1,7 @@
 /**
- * CPU copy of the terrain heightmap (format: doc/formats/heightmap.md). Used for everything the CPU needs
- * to know about the ground: camera following and collision now, picking later. Sampling matches the GPU's
- * LINEAR + CLAMP_TO_EDGE filtering, so the CPU and the shader agree on the height.
+ * CPU copy of the terrain heightmap (format: doc/formats/heightmap.md). Sampling matches the GPU's
+ * LINEAR + CLAMP_TO_EDGE filtering, so the CPU and the shader agree on the height. Code that needs the
+ * ground (camera, picking) goes through Ground (ground.ts), which adds the endless far field around it.
  */
 
 export type Vec3 = [number, number, number];
@@ -23,6 +23,8 @@ export interface TerrainMapsMeta {
 export class Heightfield {
 	/** World heights, row-major (index = j * width + i, i along +X, j along +Z). */
 	readonly heights: Float32Array;
+	/** Mean height along the four edges: the level the far field continues at (see ground.ts). */
+	readonly edgeMean: number;
 
 	constructor(
 		readonly meta: HeightmapMeta,
@@ -33,6 +35,12 @@ export class Heightfield {
 		const range = max[1] - min[1];
 		this.heights = new Float32Array(half.length);
 		for (let k = 0; k < half.length; k++) this.heights[k] = min[1] + HALF_TO_FLOAT[half[k]] * range;
+
+		const { width, height } = meta;
+		let sum = 0;
+		for (let i = 0; i < width; i++) sum += this.heights[i] + this.heights[(height - 1) * width + i];
+		for (let j = 0; j < height; j++) sum += this.heights[j * width] + this.heights[j * width + width - 1];
+		this.edgeMean = sum / (2 * (width + height));
 	}
 
 	/** Ground height at a world position, bilinear between sample centres, clamped at the edges. */
@@ -50,48 +58,6 @@ export class Heightfield {
 		const top = h[j0 * width + i0] + (h[j0 * width + i1] - h[j0 * width + i0]) * fu;
 		const bottom = h[j1 * width + i0] + (h[j1 * width + i1] - h[j1 * width + i0]) * fu;
 		return top + (bottom - top) * fv;
-	}
-
-	/**
-	 * First point where a ray meets the ground, or null (picking, grab-to-pan). Fixed steps across the
-	 * terrain's box, then bisection: precise enough for input, cheap enough for pointer events.
-	 */
-	raycast(origin: Vec3, direction: Vec3, steps = 256): Vec3 | null {
-		const { min, max } = this.meta.bounds;
-		let enter = 0;
-		let exit = Infinity;
-		for (let axis = 0; axis < 3; axis++) {
-			if (direction[axis] === 0) {
-				if (origin[axis] < min[axis] || origin[axis] > max[axis]) return null;
-				continue;
-			}
-			const t0 = (min[axis] - origin[axis]) / direction[axis];
-			const t1 = (max[axis] - origin[axis]) / direction[axis];
-			enter = Math.max(enter, Math.min(t0, t1));
-			exit = Math.min(exit, Math.max(t0, t1));
-		}
-		if (enter >= exit) return null;
-
-		const below = (t: number) =>
-			origin[1] + direction[1] * t <= this.heightAt(origin[0] + direction[0] * t, origin[2] + direction[2] * t);
-		const dt = (exit - enter) / steps;
-		let above = enter;
-		for (let i = 1; i <= steps; i++) {
-			const t = enter + dt * i;
-			if (below(t)) {
-				let a = above;
-				let b = t;
-				for (let k = 0; k < 20; k++) {
-					const m = (a + b) / 2;
-					if (below(m)) b = m;
-					else a = m;
-				}
-				const hit = (a + b) / 2;
-				return [origin[0] + direction[0] * hit, origin[1] + direction[1] * hit, origin[2] + direction[2] * hit];
-			}
-			above = t;
-		}
-		return null;
 	}
 }
 
