@@ -5,7 +5,7 @@ Living work plan. Tick boxes as we go, add notes inline, and log decisions at th
 **Status (2026-10-28):** M0, M1, M2a, dev panel and camera polish merged into `develop`. On `feature/m2b-atmosphere`: endless terrain and M2b implemented, browser check pending.
 
 **Next:**
-- Claude: M2c (stakes and cords as GPU curves, with `gust()` in the wind chunk), unless the graphics need another pass first.
+- Claude: either M3a (the core viewer prototype on `/lab/core`) or M2c (stakes and cords as GPU curves, with `gust()`). Your call.
 - You, whenever:
   - tune the camera in the panel → Save defaults → commit `defaults.json`;
   - perf gate: `npm run dev -- --host`, phone fps + model (answers Q4);
@@ -138,17 +138,33 @@ See [home-concept.md](home-concept.md) § Square state, § Hover.
 
 ---
 
-## M3 — Project pages + the dive
+## M3 — Core sample + project viewer
 
-- [ ] `web/src/routes/projects/[slug]/` with `entries()` + `load` from `projects.ts`
-- [ ] Image drawable (textured quad, cover-fit UVs, texture cache by URL across navigations); non-GL images via `<enhanced:img>`
-- [ ] The dive (see [home-concept.md](home-concept.md) § Click, § The pit):
-  - input locked, camera eases from oblique to top-down into the square (terrain re-marched every frame)
-  - dig progress 0→1: analytic pit in `height()`, sloped/benched walls, procedural strata
-  - final frame = thumbnail filling the view → `goto`; the project page opens with the same image as its hero, in the same place
-  - back: camera state restored, the rise plays in reverse; `snapshot` for back/forward
+See [home-concept.md](home-concept.md) § Click: the core sample, § Core viewer. No page change: the project opens as a core sample cut out of its square.
 
-**Done when:** `/` → dive → project → back works, reusing the same canvas and GL context (same context id in the HUD, no recompiled programs). `build` outputs a static site and `check` passes.
+### M3a — Viewer prototype (`/lab/core`, placeholder images, depth maps and text)
+
+- [ ] Core mesh: square prism, dipping strata planes (subdivided, tilted, clipped to the square), side bands from the same planes, procedural earth strata between
+- [ ] Relief: each image's depth map displaces its stratum in the vertex shader; raking light; irregular mineral margin (imprint)
+- [ ] X-ray look (translucent, additive, bright edges) + the focused layer "develops" (opaque, lit)
+- [ ] Scroll = dig: native scroll container drives the reading depth (smoothed)
+- [ ] Text in HTML beside the core
+- [ ] Hit areas: HTML elements over each layer with a per-frame `matrix3d`; click → HTML lightbox with the colour image (`<enhanced:img>`), Escape / arrows
+- [ ] Tuning in the panel: dip, relief amplitude, layer spacing, X-ray look, focus
+
+### M3b — Relief maps
+
+- [ ] Depth maps per project image: ML depth estimation in Houdini (or a script here). Format spec `doc/formats/relief.md` (likely half-float `.bin` + `.json`, like the heightmap)
+- [ ] `projects.ts`: `{ slug, cell, title, text, images: [{ colour, relief, caption }] }`
+
+### M3c — Integration with the dig site
+
+- [ ] Cut: `height()` drops to the core depth inside the square (vertical walls), strata on the walls, driven by the square state's `b` channel
+- [ ] Extract: the core lifts, turns toward the camera and grows into the foreground (model matrix tween); the dig site stays live behind (a bit more fog)
+- [ ] Shallow routing: `/projects/<slug>` without leaving home; back closes; a direct visit opens the core; `routes/projects/[slug]` prerendered (home + core open) with `entries()`
+- [ ] Close: ×, Escape, click outside, back → reverse animation
+
+**Done when:** clicking a project square cuts and extracts its core, scrolling digs through its relief layers, clicking a layer shows the colour image, and back closes it, all on the same canvas and GL context. `build` outputs a static site (one HTML per project) and `check` passes.
 
 ---
 
@@ -166,7 +182,7 @@ See [home-concept.md](home-concept.md) § Square state, § Hover.
 
 ## M5 — Splat finds
 
-Finds revealed in dug squares (see [home-concept.md](home-concept.md) § Splat finds). Rendering in WebGL2: a CPU sort in a worker, instanced quads, premultiplied blending. Panning never changes the view direction, so a find re-sorts only when the zoom (pitch) or the heading changes, and during the dive. Fill rate is the main cost, so scenes stay small.
+Finds in the core or at the bottom of its hole (see [home-concept.md](home-concept.md) § Splat finds). Rendering in WebGL2: a CPU sort in a worker, instanced quads, premultiplied blending. Panning never changes the view direction, so a find re-sorts only when the zoom (pitch) or the heading changes, or when the core moves. Fill rate is the main cost, so scenes stay small.
 
 ### M5a — Spike (time-box ~2 sessions, hidden `/lab/splat` route)
 
@@ -177,12 +193,12 @@ Finds revealed in dug squares (see [home-concept.md](home-concept.md) § Splat f
 - [ ] Blending back-to-front `ONE, ONE_MINUS_SRC_ALPHA`, depth test on, depth write off
 - [ ] Measure on desktop + Q4 device: fps, sort ms, memory, download size
 
-**Go/no-go:** ≥ 60 fps desktop, ≥ 30 fps on the Q4 device with a find on screen, no visible popping during the dive, ≤ ~5 MB per find.
+**Go/no-go:** ≥ 60 fps desktop, ≥ 30 fps on the Q4 device with a find on screen, no visible popping while the core moves, ≤ ~5 MB per find.
 
 ### M5b — Integration
 
-- [ ] Finds placed in their squares, revealed by the dig progress, composited against the terrain depth, fogged per splat
-- [ ] Re-sort during the dive only; progressive loading
+- [ ] Finds placed in their core / hole, composited against the terrain depth, in the atmosphere
+- [ ] Re-sort only on zoom, heading or core movement; progressive loading
 - [ ] Optional: SH degree 1, SPZ decode (`DecompressionStream`)
 
 ---
@@ -196,8 +212,10 @@ Finds revealed in dug squares (see [home-concept.md](home-concept.md) § Splat f
 
 ## M7 — Transitions polish
 
-- [ ] Render-to-texture through the drawable `target` (RGBA8 FBOs)
-- [ ] Sequence with `onNavigate` for every navigation, not just the dive; coordinate the DOM fade; respect `prefers-reduced-motion`
+Most of the transition work moved into M3 (the core extraction). What's left:
+
+- [ ] Any remaining navigation (other pages, if any) through `onNavigate`, coordinated with the DOM; render-to-texture via `gl/targets.ts` if needed
+- [ ] `prefers-reduced-motion`: instant core open/close, no glides
 
 ---
 
@@ -223,6 +241,7 @@ Finds revealed in dug squares (see [home-concept.md](home-concept.md) § Splat f
 
 ## Decision log
 
+- **2026-10-28**: Home concept revision 3: no dive, no page change. Clicking a project square cuts a square core sample; it lifts into the foreground as the project viewer (X-ray look) with the dig site live behind. Images are dipping strata carved in relief from ML depth maps (grays); scrolling digs through them; clicking one opens the colour image in an HTML lightbox. Text in HTML beside the core. One URL per project through shallow routing. M3 rewritten (M3a viewer prototype on `/lab/core`, M3b relief maps, M3c integration); M7 mostly absorbed.
 - **2026-10-28**: M2b implemented: camera revision, terrain cache + composite with the whole atmosphere (fog, height mist, wind banks, sun glow). The march pass no longer applies fog. Fragment shaders using `/noise` need `precision highp int` (mobile mediump ints would break the hash).
 - **2026-10-28**: Endless terrain (option 1, procedural): the heightmap fades into a value-noise far field, no X/Z bounds, everything dissolves into fog at the fog end; the page background is the fog colour; site palette now light (dark text). The CPU mirrors the far field exactly (`terrain/farfield.ts`) through `Ground`, which replaces `Heightfield.raycast`.
 - **2026-10-27**: Camera polish (`feature/cam-controls`): compass (needle follows the heading, click = north), line-of-sight lift, rotation inertia, keyboard focus on load. New `renderer.onFrame()` hook for DOM overlays (the M2c labels will use it). Still to come with their milestones: a camera change signal (M2b terrain cache) and scripted moves with a pitch override (M2d / M3 dive).

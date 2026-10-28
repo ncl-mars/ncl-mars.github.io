@@ -58,11 +58,9 @@ Installed in M0 (2026-10-27). `web/package-lock.json` has the exact tree.
 ## SvelteKit
 
 **Used for:**
-- routes: `+layout.svelte` (owns the canvas), `/`, `/projects/[slug]`;
+- routes: `+layout.svelte` (owns the canvas), `/`, `/projects/[slug]` (prerendered: home with that project's core open, for deep links and search engines);
 - `entries()` + `load` to prerender project pages from `projects.ts`;
-- `preloadData` on hover, `goto` after the dive;
-- `snapshot` to restore the camera on back/forward;
-- `onNavigate` for shader transitions (M7);
+- **shallow routing** (`pushState` / `page.state` from `$app/navigation` / `$app/state`): opening a core sets `/projects/<slug>` without leaving the home page; back closes it;
 - `{@attach}` (or an action) to register views with the renderer.
 
 **Rules:**
