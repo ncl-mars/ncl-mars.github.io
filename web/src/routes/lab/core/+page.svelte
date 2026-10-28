@@ -39,6 +39,19 @@
 		lightboxOpen = true;
 	}
 
+	function closeLightbox() {
+		lightboxOpen = false;
+		scroller.focus({ preventScroll: true }); // keyboard scrolling works again right away
+	}
+
+	// While the carousel is open, the core follows it: the cut moves to the image shown, so closing lands
+	// on that image's stratum. Scrolling the (inert) scroller drives the core like a user scroll would.
+	$effect(() => {
+		if (!lightboxOpen) return;
+		const max = scroller.scrollHeight - scroller.clientHeight;
+		scroller.scrollTop = (lightboxIndex / Math.max(1, project.images.length - 1)) * max;
+	});
+
 	onMount(() => {
 		scroller.focus({ preventScroll: true, focusVisible: false } as FocusOptions);
 
@@ -115,7 +128,7 @@
 </div>
 
 {#if lightboxOpen}
-	<Lightbox images={project.images} bind:index={lightboxIndex} onclose={() => (lightboxOpen = false)} />
+	<Lightbox images={project.images} bind:index={lightboxIndex} onclose={closeLightbox} />
 {/if}
 
 <style>
