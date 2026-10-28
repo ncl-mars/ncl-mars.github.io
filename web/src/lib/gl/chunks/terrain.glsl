@@ -1,6 +1,6 @@
 // The ground, shared by every program that needs it (terrain now; cords, particles later): the heightmap
 // (doc/formats/heightmap.md) blended into an endless far field over a band along its edges, so the
-// terrain has no border. Include with `#include /terrain;`
+// terrain has no border. Include with `#include /terrain;`, after `#include /noise;`.
 //
 // MIRROR OF web/src/lib/terrain/farfield.ts + ground.ts: the CPU (camera, picking) must agree with this.
 // Change both together.
@@ -14,29 +14,7 @@ vec2 terrainUv(vec2 xz) {
 	return (xz - uBoundsMin.xz) / (uBoundsMax.xz - uBoundsMin.xz);
 }
 
-// Integer hash of a lattice point → [0, 1), 24-bit precision (exact in float, like the TS version)
-float latticeHash(ivec2 c) {
-	uint h = (uint(c.x) * 0x8da6b343u) ^ (uint(c.y) * 0xd8163841u);
-	h = (h ^ (h >> 16u)) * 0x7feb352du;
-	h = (h ^ (h >> 15u)) * 0x846ca68bu;
-	h ^= h >> 16u;
-	return float(h >> 8u) * (1.0 / 16777216.0);
-}
-
-// Value noise in [0, 1], quintic interpolation
-float valueNoise(vec2 p) {
-	vec2 i = floor(p);
-	vec2 f = p - i;
-	vec2 u = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
-	ivec2 c = ivec2(i);
-	float a = latticeHash(c);
-	float b = latticeHash(c + ivec2(1, 0));
-	float d = latticeHash(c + ivec2(0, 1));
-	float e = latticeHash(c + ivec2(1, 1));
-	return mix(mix(a, b, u.x), mix(d, e, u.x), u.y);
-}
-
-// Four octaves, normalised to [0, 1]
+// Four octaves of value noise (/noise), normalised to [0, 1]
 float farFbm(vec2 p) {
 	float sum = 0.0;
 	float amp = 0.5;

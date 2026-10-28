@@ -2,10 +2,10 @@
 
 Living work plan. Tick boxes as we go, add notes inline, and log decisions at the bottom. Details live in the other docs; this file is the order of work.
 
-**Status (end of 2026-10-27):** M0, M1, M2a, the dev panel and the camera polish are merged into `develop`. Now on `feature/m2b-atmosphere`, nothing started yet.
+**Status (2026-10-28):** M0, M1, M2a, dev panel and camera polish merged into `develop`. On `feature/m2b-atmosphere`: endless terrain and M2b implemented, browser check pending.
 
-**Next session:**
-- Claude: M2b. First a camera change signal (a revision counter that only moves on real changes), then the terrain cache, the mist pass, and the `wind` / `fog` chunks, all tunable in the panel.
+**Next:**
+- Claude: M2c (stakes and cords as GPU curves, with `gust()` in the wind chunk), unless the graphics need another pass first.
 - You, whenever:
   - tune the camera in the panel → Save defaults → commit `defaults.json`;
   - perf gate: `npm run dev -- --host`, phone fps + model (answers Q4);
@@ -96,12 +96,14 @@ See [home-concept.md](home-concept.md) § Camera, § Terrain.
 See [home-concept.md](home-concept.md) § Frame structure, § Wind and mist.
 
 - [x] Endless terrain: procedural far field around the heightmap (`terrain.glsl` + its TS mirror `terrain/farfield.ts`), blend band, slab-bounded march capped at the fog end, far-field shading from `sunDir`, sky gradient, page background = fog colour; CPU `Ground` (heights + raycast) for the camera and picking
-- [ ] Camera change signal (revision counter that only moves on real changes)
-- [ ] Terrain cache: FBO with `RGBA8` colour + `DEPTH_COMPONENT24` texture, at a render scale; re-marched only when the camera moves, a square animates or the view resizes
-- [ ] Mist composite pass every frame: cached colour + depth → world position → fog → colour + `gl_FragDepth`
-- [ ] `wind.glsl` chunk (`windScroll()`, `gust()`) and `fog.glsl` chunk (closed-form height fog, wind-scrolled banks, brighter toward the sun)
+- [x] Camera change signal: `camera.revision` moves only when the view-projection matrix changes; every easing snaps to its goal so a still camera is exactly still
+- [x] Terrain cache (`gl/targets.ts`: RGBA8 + `DEPTH_COMPONENT24`), at `march.renderScale`; re-marched only when the camera revision, the view size, a ground setting (`terrain.invalidate()` from panel edits) or the march shader (hot reload) changes
+- [x] Composite pass every frame (`composite.frag`): cached colour + depth → world position → atmosphere → colour + `gl_FragDepth`
+- [x] Chunks: `noise.glsl` (shared hash + value noise), `wind.glsl` (`windScroll()`), `fog.glsl` (distance fog, closed-form height mist, two-layer wind-scrolled banks, sun glow, sky). `gust()` for the cords comes with M2c.
+- [x] Panel: render scale; Mist (density, base height, falloff, banks, bank size); Wind (direction, speed); sun glow colour/strength/tightness; readout "terrain cached / marching · N marches"
+- [ ] Browser check (yours): mist drifts, and the readout says **cached** while the camera is still
 
-**Done when:** the mist drifts with the wind, and idle frames don't re-march the terrain (visible in the HUD).
+**Done when:** the mist drifts with the wind, and idle frames don't re-march the terrain (visible in the dev panel).
 
 ---
 
@@ -221,6 +223,7 @@ Finds revealed in dug squares (see [home-concept.md](home-concept.md) § Splat f
 
 ## Decision log
 
+- **2026-10-28**: M2b implemented: camera revision, terrain cache + composite with the whole atmosphere (fog, height mist, wind banks, sun glow). The march pass no longer applies fog. Fragment shaders using `/noise` need `precision highp int` (mobile mediump ints would break the hash).
 - **2026-10-28**: Endless terrain (option 1, procedural): the heightmap fades into a value-noise far field, no X/Z bounds, everything dissolves into fog at the fog end; the page background is the fog colour; site palette now light (dark text). The CPU mirrors the far field exactly (`terrain/farfield.ts`) through `Ground`, which replaces `Heightfield.raycast`.
 - **2026-10-27**: Camera polish (`feature/cam-controls`): compass (needle follows the heading, click = north), line-of-sight lift, rotation inertia, keyboard focus on load. New `renderer.onFrame()` hook for DOM overlays (the M2c labels will use it). Still to come with their milestones: a camera change signal (M2b terrain cache) and scripted moves with a pitch override (M2d / M3 dive).
 - **2026-10-27**: Camera rotation added after all: free heading (right-drag / Alt+drag, two-finger twist, Q/E, N back to north), pitch still tied to zoom. Keyboard bindings by physical key position (`event.code`). The dive will ease the heading back to north so thumbnails land upright. Splats re-sort on rotation too.

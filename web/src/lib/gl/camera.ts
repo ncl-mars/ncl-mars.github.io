@@ -70,7 +70,14 @@ export class SurveyCamera {
 	readonly projection = m4.identity();
 	readonly viewProjection = m4.identity();
 	readonly inverseViewProjection = m4.identity();
+	/**
+	 * Goes up only when the view actually changes (matrices differ), so passes can cache what they drew
+	 * (the terrain re-marches only when this moves). Every easing snaps to its goal so a still camera is
+	 * exactly still.
+	 */
+	revision = 0;
 	private readonly world = m4.identity();
+	private readonly lastViewProjection = new Float32Array(16);
 
 	private panMin: [number, number] = [-Infinity, -Infinity];
 	private panMax: [number, number] = [Infinity, Infinity];
@@ -246,6 +253,16 @@ export class SurveyCamera {
 		m4.perspective(this.settings.fov * DEG, this.aspect, this.near, this.far, this.projection);
 		m4.multiply(this.projection, this.view, this.viewProjection);
 		m4.inverse(this.viewProjection, this.inverseViewProjection);
+
+		const vp = this.viewProjection;
+		const last = this.lastViewProjection;
+		for (let i = 0; i < 16; i++) {
+			if (vp[i] !== last[i]) {
+				last.set(vp);
+				this.revision++;
+				break;
+			}
+		}
 	}
 
 	/**
@@ -271,6 +288,7 @@ export class SurveyCamera {
 		} else {
 			const rate = desired > this.target[1] ? 10 : 3;
 			this.target[1] += (desired - this.target[1]) * (1 - Math.exp(-dt * rate));
+			if (Math.abs(desired - this.target[1]) < 1e-3) this.target[1] = desired; // settle exactly
 		}
 		this.refresh();
 	}

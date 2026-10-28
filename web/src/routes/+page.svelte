@@ -16,7 +16,7 @@
 	import { onMount } from 'svelte';
 	import { getRenderer } from '$lib/gl/context';
 	import { surveyControls } from '$lib/gl/controls';
-	import { readouts } from '$lib/tuning';
+	import { onTuningChange, readouts } from '$lib/tuning';
 
 	const renderer = getRenderer();
 
@@ -35,6 +35,12 @@
 			needle.setAttribute('transform', `rotate(${(camera.yaw * 180) / Math.PI} 16 16)`);
 		});
 
+		// Panel edits to the ground itself (not the atmosphere) need a re-march of the terrain cache
+		const stopTuning = onTuningChange((group) => {
+			if (group === 'march' || group === 'shading' || group === 'farField' || group === 'fog') terrain.invalidate();
+		});
+		readouts.set('terrain', () => `terrain ${terrain.marchedLastFrame ? 'marching' : 'cached'} · ${terrain.marches} marches`);
+
 		readouts.set('camera', () => {
 			const deg = 180 / Math.PI;
 			const heading = (((-camera.yaw * deg) % 360) + 360) % 360; // compass: 0 north, 90 east
@@ -49,6 +55,8 @@
 
 		return () => {
 			stopCompass();
+			stopTuning();
+			readouts.delete('terrain');
 			readouts.delete('camera');
 			if (previous !== null) renderer.setMaxPixelRatio(previous);
 		};

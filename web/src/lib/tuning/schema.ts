@@ -53,7 +53,8 @@ export const schema: Group[] = [
 			{ key: 'stepScale', label: 'Step scale', min: 0.1, max: 1, step: 0.01, hint: 'Fraction of the ground clearance per step. Lower: safer on steep slopes, slower.' },
 			{ key: 'precision', label: 'Precision', min: 0.0001, max: 0.01, step: 0.0001, hint: 'Minimum step and hit tolerance, relative to distance.' },
 			{ key: 'steps', label: 'Max steps', kind: 'int', min: 8, max: 512, step: 1 },
-			{ key: 'refineSteps', label: 'Refine steps', kind: 'int', min: 0, max: 16, step: 1 }
+			{ key: 'refineSteps', label: 'Refine steps', kind: 'int', min: 0, max: 16, step: 1 },
+			{ key: 'renderScale', label: 'Render scale', min: 0.25, max: 1, step: 0.05, hint: 'Resolution of the terrain cache (the raymarch). Lower is cheaper; the mist stays full resolution.' }
 		]
 	},
 	{
@@ -74,7 +75,29 @@ export const schema: Group[] = [
 			{ key: 'color', label: 'Colour', kind: 'color', hint: 'Fog and horizon. Also the page background.' },
 			{ key: 'skyColor', label: 'Sky', kind: 'color', hint: 'Sky overhead, above the horizon fog.' },
 			{ key: 'density', label: 'Density', min: 0, max: 0.006, step: 0.00005 },
-			{ key: 'end', label: 'End distance', min: 200, max: 4000, step: 10, hint: 'Fully fogged from here. The raymarch stops here too.' }
+			{ key: 'end', label: 'End distance', min: 200, max: 4000, step: 10, hint: 'Fully fogged from here. The raymarch stops here too.' },
+			{ key: 'sunColor', label: 'Sun glow colour', kind: 'color' },
+			{ key: 'sunGlow', label: 'Sun glow', min: 0, max: 2, step: 0.01, hint: 'How much the fog brightens toward the sun.' },
+			{ key: 'sunPower', label: 'Sun glow tightness', min: 1, max: 64, step: 0.5 }
+		]
+	},
+	{
+		key: 'mist',
+		label: 'Mist',
+		params: [
+			{ key: 'density', label: 'Density', min: 0, max: 0.05, step: 0.0005, hint: 'Mist thickness at its base height.' },
+			{ key: 'height', label: 'Base height', min: -20, max: 100, step: 0.5, hint: 'Above the lowest ground. Below it the mist is densest.' },
+			{ key: 'falloff', label: 'Falloff', min: 1, max: 80, step: 0.5, hint: 'Height over which the mist thins out (×1/e).' },
+			{ key: 'banks', label: 'Banks', min: 0, max: 1, step: 0.01, hint: 'How patchy the mist is (0: uniform).' },
+			{ key: 'bankScale', label: 'Bank size', min: 20, max: 1500, step: 10 }
+		]
+	},
+	{
+		key: 'wind',
+		label: 'Wind',
+		params: [
+			{ key: 'direction', label: 'Direction (°)', min: 0, max: 360, step: 1, hint: 'Compass direction the wind blows toward (0 north, 90 east).' },
+			{ key: 'speed', label: 'Speed', min: 0, max: 60, step: 0.5, hint: 'World units per second.' }
 		]
 	},
 	{

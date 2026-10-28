@@ -2,8 +2,9 @@
  * The endless ground around the heightmap: low-frequency value noise that the heightmap fades into over
  * a band along its edges, so the terrain has no border, no thickness, and dissolves into the fog.
  *
- * MIRROR OF web/src/lib/gl/chunks/terrain.glsl (latticeHash, valueNoise, farFbm, coreMask, terrain
- * height): the CPU (camera, picking) and the GPU must agree on the ground. Change both together.
+ * MIRROR OF web/src/lib/gl/chunks/noise.glsl (latticeHash, valueNoise) and terrain.glsl (farFbm,
+ * coreMask, terrain height): the CPU (camera, picking) and the GPU must agree on the ground. Change both
+ * together.
  */
 
 /** Read live (dev panel). */

@@ -116,6 +116,8 @@ Installed in M0 (2026-10-27). `web/package-lock.json` has the exact tree.
 - Types for shader imports come from `vite-plugin-glsl/ext`, referenced in `web/src/ambient.d.ts`.
 - **First line is `#version 300 es`**, before any `#include`.
 - **Fragment shaders declare `precision highp float;`.** WebGL2 guarantees highp in fragment shaders, and the raymarch and fog break with mediump on phones.
+- **Fragment shaders that include `/noise` also declare `precision highp int;`.** Fragment ints default to mediump (16-bit on some phones), which breaks the 32-bit hash.
+- **Depth textures are sampled with `highp sampler2D`.** Samplers default to lowp, which would ruin the depth.
 - **Hot reload:** each shader file is a Vite module. The drawable module accepts its shader imports (`import.meta.hot.accept`) and calls `hotSwap(prev, next)`, which recompiles that program in place. The GL context, camera and views survive. A shader that fails to compile logs the error and leaves the previous program running. Editing an included chunk reloads every shader that includes it.
 - `web/src/lib/gl/fullscreen.vert` draws a full-screen triangle from `gl_VertexID` (no vertex buffer; bind an empty VAO and call `drawArrays(TRIANGLES, 0, 3)`).
 

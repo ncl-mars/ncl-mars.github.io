@@ -71,6 +71,7 @@ export class Renderer {
 	private readonly drawContext: DrawContext = {
 		frame: this.frame,
 		rect: { x: 0, y: 0, width: 0, height: 0 },
+		scissor: { x: 0, y: 0, width: 0, height: 0 },
 		pixelRatio: 1,
 		target: null
 	};
@@ -464,6 +465,11 @@ export class Renderer {
 			rect.y = y0;
 			rect.width = width;
 			rect.height = height;
+			const scissor = ctx.scissor;
+			scissor.x = sx;
+			scissor.y = sy;
+			scissor.width = sw;
+			scissor.height = sh;
 			try {
 				view.drawable.draw(gl, ctx);
 			} catch (error) {

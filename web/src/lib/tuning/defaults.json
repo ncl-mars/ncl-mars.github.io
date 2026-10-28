@@ -3,10 +3,10 @@
 		"pitchNear": 10.5,
 		"pitchFar": 49.5,
 		"tiltCurve": 3.05,
-		"fov": 35,
-		"distance": 350,
-		"minDistance": 27,
-		"maxDistance": 550
+		"fov": 90,
+		"distance": 225,
+		"minDistance": 92,
+		"maxDistance": 480
 	},
 	"controls": {
 		"wheelSpeed": 0.002,
@@ -20,7 +20,8 @@
 		"stepScale": 0.45,
 		"precision": 0.0015,
 		"steps": 128,
-		"refineSteps": 6
+		"refineSteps": 6,
+		"renderScale": 1
 	},
 	"shading": {
 		"tint": [0.8, 0.81, 0.83],
@@ -32,8 +33,22 @@
 	"fog": {
 		"color": [0.459, 0.561, 0.663],
 		"skyColor": [0.56, 0.64, 0.73],
-		"density": 0.0023,
-		"end": 1500
+		"density": 0.0029,
+		"end": 1500,
+		"sunColor": [0.95, 0.86, 0.72],
+		"sunGlow": 0.35,
+		"sunPower": 6
+	},
+	"mist": {
+		"density": 0.008,
+		"height": 18,
+		"falloff": 10,
+		"banks": 0.7,
+		"bankScale": 260
+	},
+	"wind": {
+		"direction": 60,
+		"speed": 8
 	},
 	"farField": {
 		"amplitude": 20,
