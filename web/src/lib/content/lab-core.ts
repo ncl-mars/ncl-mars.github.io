@@ -1,14 +1,22 @@
-// Placeholder project for the core viewer prototype (/lab/core). Images and relief maps come from
-// `npm run gen:lab-core` (scripts/gen-lab-core.mjs) until real projects and Houdini depth maps exist.
+// Placeholder project for the core viewer prototype (/lab/core): image-1 … image-5, each a colour image
+// (png, jpg or webp) + its relief map, from `npm run gen:lab-core` or your own exports
+// (hou/snippets/export_relief.py). Replace any image-N.* + image-N.relief.* pair to test your own.
 import type { Picture } from 'vite-imagetools';
 import { parseReliefMeta, type ReliefMeta } from '$lib/core/relief';
 
 const DIR = '../assets/lab/core';
-const pictures = import.meta.glob<Picture>('../assets/lab/core/*.png', {
+const pictures = import.meta.glob<Picture>('../assets/lab/core/*.{png,jpg,jpeg,webp}', {
 	eager: true,
 	query: '?enhanced',
 	import: 'default'
 });
+
+/** The colour image whose base name is `name`, whatever its extension. */
+function colourImage(name: string): Picture {
+	const key = Object.keys(pictures).find((path) => path.slice(path.lastIndexOf('/') + 1).split('.')[0] === name);
+	if (!key) throw new Error(`lab core: no colour image for ${name}`);
+	return pictures[key];
+}
 const reliefUrls = import.meta.glob<string>('../assets/lab/core/*.relief.bin', {
 	eager: true,
 	query: '?url',
@@ -48,7 +56,7 @@ export const labProject: Project = {
 	images: captions.map((caption, i) => {
 		const name = `image-${i + 1}`;
 		return {
-			picture: pictures[`${DIR}/${name}.png`],
+			picture: colourImage(name),
 			reliefUrl: reliefUrls[`${DIR}/${name}.relief.bin`],
 			relief: parseReliefMeta(reliefMetas[`${DIR}/${name}.relief.json`], `${name}.relief.json`),
 			caption

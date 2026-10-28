@@ -136,6 +136,7 @@ export const schema: Group[] = [
 			{ key: 'shadow', label: 'Shadows', min: 0, max: 1, step: 0.01 },
 			{ key: 'ao', label: 'Occlusion', min: 0, max: 1, step: 0.01 },
 			{ key: 'steps', label: 'March steps', kind: 'int', min: 16, max: 256, step: 1 },
+			{ key: 'stepScale', label: 'March step', min: 0.1, max: 1, step: 0.01, hint: 'Fraction of the distance per step. Lower is safer on steep relief, slower.' },
 			{ key: 'yaw', label: 'Core yaw (°)', min: -90, max: 90, step: 1 },
 			{ key: 'tilt', label: 'Core tilt (°)', min: -10, max: 80, step: 1, hint: 'Toward the camera, to see the cut face.' },
 			{ key: 'parallax', label: 'Parallax (°)', min: 0, max: 20, step: 0.5 },

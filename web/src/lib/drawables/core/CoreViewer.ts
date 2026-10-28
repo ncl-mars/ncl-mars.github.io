@@ -37,6 +37,7 @@ export interface CoreSettings {
 	shadow: number;
 	ao: number;
 	steps: number;
+	stepScale: number;
 	yaw: number;
 	tilt: number;
 	parallax: number;
@@ -168,6 +169,7 @@ export class CoreViewer implements Drawable {
 		u.uCamLocal = this.camLocal;
 		u.uLightLocal = this.lightLocal;
 		u.uSteps = s.steps;
+		u.uStepScale = s.stepScale;
 		u.uShade = [s.shadow, s.ao];
 		u.uCut = this.cut();
 		u.uBottom = -(n - 1) * s.spacing - s.spacing * 1.5;

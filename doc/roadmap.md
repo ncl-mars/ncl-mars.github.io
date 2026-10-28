@@ -147,10 +147,11 @@ See [home-concept.md](home-concept.md) § Click: the core sample, § Core viewer
 - [x] Placeholders: `npm run gen:lab-core` → five render-like images (lit spheres and discs, five aspect ratios) with their exact relief maps (`doc/formats/relief.md`); shared encoders in `scripts/lib/encode.mjs`
 - [x] ~~First pass: mesh strata + X-ray shell~~ → replaced after review: the core is solid rock, the X-ray idea belongs to the terrain
 - [x] Raymarched rock core (`drawables/core/core.frag` + `rock.glsl`): square prism SDF, walls roughened by low-frequency 3D noise (`valueNoise3` in `/noise`), dipping colour bands, grain; raking light, soft shadows, occlusion; misses discarded, depth written
-- [x] The cut: top face displaced by low-frequency noise evolving with depth; images one strata thickness apart; at an image's depth its depth map micro-displaces the cut face (imprint margin), plain rock between
+- [x] ~~Value noise~~ → noise textures (`gl/noise.ts`): 64³ tileable 3D gradient noise (4 channels, ~73 ms once per context) + 256² hash; fine wavy strata bands, smooth grain
+- [x] The cut: undulates with the rock's own noise; images buried one strata thickness apart, revealed by the cut (emerge highest-first, then sanded flat), plain rock between
 - [x] Scroll = dig: native scroll container (fixed, tall spacer, sticky stage) drives the cut depth (eased); pointer parallax
 - [x] Text in HTML beside the core (below on narrow screens), caption of the focused layer
-- [x] Hit area: button mapped onto the showing image's quad on the cut face with a per-frame `matrix3d` (`gl/homography.ts`); click → `Lightbox.svelte` (`<enhanced:img>`, Escape / ← → / click outside)
+- [x] Hit area: button mapped onto the showing image's quad on the cut face with a per-frame `matrix3d` (`gl/homography.ts`); click → `Lightbox.svelte`, a carousel (arrow buttons, ← →, swipe, wrap, directional slide; Escape / × / click outside), with the core following the image shown
 - [x] Panel: Core group (strata thickness, image relief, presence, cut undulation, wall roughness, strata colours, light, shadows, occlusion, steps, framing, smoothing); readout "core focus · frames · reliefs"
 - [ ] Browser check and look tuning (yours)
 

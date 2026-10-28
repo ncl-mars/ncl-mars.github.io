@@ -13,6 +13,7 @@ uniform mat4 uMvp;        // core local → clip (depth)
 uniform vec3 uCamLocal;   // camera, in core local space
 uniform vec3 uLightLocal; // raking light direction, local space
 uniform int uSteps;       // march iteration cap
+uniform float uStepScale; // fraction of the distance taken per step (the displaced top isn't exact)
 uniform vec2 uShade;      // x: soft-shadow strength, y: occlusion strength
 
 in vec2 vUv;
@@ -40,14 +41,17 @@ vec3 coreNormal(vec3 p) {
 	));
 }
 
+// Soft shadow toward the light. Starts off the surface, and only counts a blocker once the ray has left
+// the surface's neighbourhood: the distance field is inexact on steep relief, and a sample grazing the
+// surface it starts from must not shadow it (that drew dark stripes on the relief's flanks).
 float softShadow(vec3 p, vec3 l) {
 	float result = 1.0;
-	float t = 0.004;
+	float t = 0.01;
 	for (int i = 0; i < 24; i++) {
 		float d = sdCore(p + l * t);
-		result = min(result, 10.0 * d / t);
+		if (t > 0.03) result = min(result, 10.0 * max(d, 0.0) / t);
 		if (result < 0.01) break;
-		t += clamp(d, 0.004, 0.08);
+		t += clamp(abs(d), 0.004, 0.08);
 		if (t > 1.5) break;
 	}
 	return clamp(result, 0.0, 1.0);
@@ -72,14 +76,29 @@ void main() {
 	vec2 span = boundsInterval(ro, rd);
 	if (span.x >= span.y) discard;
 	float t = span.x;
+	float tOutside = t;
 	bool hit = false;
 	for (int i = 0; i < uSteps; i++) {
 		float d = sdCore(ro + rd * t);
+		if (d < 0.0) {
+			// Overshot into the rock (steep relief): bisect back to the surface, keep the outside point
+			float a = tOutside;
+			float b = t;
+			for (int j = 0; j < 10; j++) {
+				float m = 0.5 * (a + b);
+				if (sdCore(ro + rd * m) < 0.0) b = m;
+				else a = m;
+			}
+			t = a;
+			hit = true;
+			break;
+		}
 		if (d < 0.0004 * t + 0.0002) {
 			hit = true;
 			break;
 		}
-		t += d * 0.6;
+		tOutside = t;
+		t += d * uStepScale;
 		if (t > span.y) break;
 	}
 	if (!hit) discard;
@@ -87,7 +106,7 @@ void main() {
 	vec3 p = ro + rd * t;
 	vec3 n = coreNormal(p);
 	float diffuse = max(dot(n, uLightLocal), 0.0);
-	float shadow = diffuse > 0.0 ? mix(1.0, softShadow(p + n * 0.003, uLightLocal), uShade.x) : 1.0;
+	float shadow = diffuse > 0.0 ? mix(1.0, softShadow(p + n * 0.004, uLightLocal), uShade.x) : 1.0;
 	float ao = mix(1.0, occlusion(p, n), uShade.y);
 	vec3 col = rockColour(p) * (0.22 * ao + 0.85 * diffuse * shadow);
 

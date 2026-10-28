@@ -6,7 +6,7 @@ portfolio/
 │  ├─ src/
 │  │  ├─ routes/                 +layout.svelte (owns the canvas), +page.svelte, projects/[slug]/, lab/views, lab/core
 │  │  ├─ lib/
-│  │  │  ├─ gl/                  renderer core: renderer, programs, textures, targets, camera, controls, homography, types
+│  │  │  ├─ gl/                  renderer core: renderer, programs, textures, noise, targets, camera, controls, homography, types
 │  │  │  │  └─ chunks/           shared GLSL (`#include /name;`): common, noise, terrain, wind, fog
 │  │  │  ├─ drawables/           one folder per drawable, its TS and shaders side by side
 │  │  │  │  ├─ terrain/          Terrain.ts, terrain.frag (march → cache), composite.frag (atmosphere), surface/march/shade.glsl

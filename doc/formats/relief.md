@@ -2,6 +2,8 @@
 
 A depth map per project image. It displaces the image's stratum in the core viewer, so the photo appears as a relief carved in the mineral (see [home-concept.md](../home-concept.md) § Core viewer). Produced in Houdini (ML depth estimation, or better a render's real depth pass), or with ComfyUI. Contract between that export and the web loader: change it here first, then on both sides.
 
+Exporter: `hou/snippets/export_relief.py` (a Python SOP on a 2D volume, e.g. a HeightField File loading the depth map).
+
 ## Files
 
 Next to the colour image, same base name:
