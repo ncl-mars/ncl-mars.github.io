@@ -36,7 +36,7 @@ The home page is an archaeological excavation, seen the way a site survey sees i
 | 3. Cords, stakes, cord shadows (M2c) | every frame, full resolution | GPU curves, depth-tested, in the same atmosphere |
 | 4. Splat finds (M5) | every frame | transparent pass, depth test without depth writes, in the atmosphere |
 | 5. Particles (M8) | every frame | additive, depth-tested, in the atmosphere |
-| 6. Core sample (M3) | while a core is out | strata slabs, X-ray layers, drawn last, in front of the scene |
+| 6. Core sample (M3) | while a core is out | raymarched rock core (full-screen pass, discards outside the core), writes depth |
 
 Page scroll doesn't invalidate the cache: only the blit position changes.
 
@@ -96,19 +96,18 @@ Page scroll doesn't invalidate the cache: only the blit position changes.
 
 1. **Cut:** the ground is cut along the square. The hole is `height()` dropping to the core's depth with vertical walls (the march's binary search finds a vertical wall fine); the walls show procedural strata, the mist pools in it.
 2. **Extract:** the core (a square prism: the terrain surface patch on top, strata on its sides) lifts out of the hole, turns toward the camera and grows until it stands in the foreground. One model matrix animated in TS; dust bursts out (M8). The camera doesn't move.
-3. **X-ray:** reaching the foreground, the core turns into the viewer (see **Core viewer**). The dig site stays live behind it, with a little more fog to separate the planes; with the camera still, the terrain comes from the cache, so it costs almost nothing.
+3. **Viewer:** in the foreground, the core is the viewer (see **Core viewer**). **The dig site behind is isolated: desaturated and blurred**, ramping in during the extraction like a focus pull onto the core. The camera is still while the core is out, so the terrain cache doesn't change: it's blurred once (half resolution, a few separable passes) and reused every frame; the mist keeps drifting on top. Nearly free.
 4. **URL:** SvelteKit shallow routing sets `/projects/<slug>` without leaving the home page. Back closes the core; a shared link opens the site with that core already out. Each `/projects/<slug>` is also prerendered (home + core open) for deep links and search engines.
 5. **Close** (×, Escape, click outside, back): the reverse. The viewer collapses into the core, which turns, shrinks and drops back into its hole; the ground closes.
 
 ## Core viewer
 
-- **Dipping strata.** Inside the square core, the project's images are layers: subdivided planes tilted at a dip angle (around 15–25°, varying a little per layer), larger than the core and clipped to its square, so its sides show the layers as tilted bands. Earth layers between them get procedural strata shading.
-- **Images as relief, not colour.** Each image comes with a **depth map**, made in Houdini (a render's real depth pass, or ML depth estimation), ComfyUI as a fallback. Format: [formats/relief.md](formats/relief.md). The depth map **displaces its stratum** in the vertex shader, so the photo appears as a relief carved in the mineral, lit by a raking light, in grays. The relief fades out toward the layer's edges with an irregular mineral margin: an imprint, never cropped.
-- **X-ray look.** The core is translucent: bright edges, faint strata bands, the relief layers glowing like radiograph films (additive, so no transparency sorting). The layer at the reading position **develops**: opaque, fully lit relief.
-- **Scrolling digs.** Scroll moves the reading position down or up through the stack, layer by layer. It's the real page scroll (a tall invisible container in the overlay), so touch inertia, keyboard and scrollbar come for free; the scroll position drives the depth.
+- **A solid core of rock, raymarched.** A square prism as a distance field: walls roughened by low-frequency 3D fbm (continuous around the corners), subtle dipping strata bands in two mineral tones, fine grain. Raking light with soft shadows and occlusion. No transparency, no visible layers.
+- **The cut.** The top face is the cut, displaced by low-frequency noise that evolves with depth. **Scrolling removes matter (the cut descends) or stacks it back up.** It's the real page scroll (a tall invisible container in the overlay), so touch inertia, keyboard and scrollbar come for free.
+- **Images as micro relief, not colour.** The project's images sit at depths one strata thickness apart. When the cut reaches one, the cut face shows that image's **depth map as micro-displacement**, an imprint with an irregular rock margin, read under the raking light. Between images: plain rock. Depth maps are made in Houdini (a render's real depth pass, or ML depth estimation), ComfyUI as a fallback. Format: [formats/relief.md](formats/relief.md).
 - **Text outside the core,** in HTML beside it: title, description, credits.
-- **Click a layer → the colour image** in an HTML lightbox (`<enhanced:img>`, AVIF/WebP at the right size); Escape or click closes, arrows go to the next / previous image.
-- **Hit areas** are HTML elements laid over each layer's image face with a CSS `matrix3d` updated every frame (`renderer.onFrame()`), so clicks, keyboard focus and screen readers work on the 3D layers.
+- **Click the image → the colour image** in an HTML lightbox (`<enhanced:img>`, AVIF/WebP at the right size); Escape or click closes, arrows go to the next / previous image.
+- **Hit area:** an HTML element laid over the image on the cut face with a CSS `matrix3d` updated every frame (`renderer.onFrame()`), only while an image shows, so clicks, keyboard focus and screen readers work on the 3D face.
 - Relief maps load only when a core opens (or on hover); the colour images only for the lightbox.
 
 ## Splat finds (M5)
@@ -134,6 +133,7 @@ Page scroll doesn't invalidate the cache: only the blit position changes.
 
 - Grid size vs number of projects; what empty squares look like
 - Cord colours and amplitude
-- Core: extraction timing and easing; core size in the foreground; dip angles; relief amplitude; X-ray look; whether hovering a layer hints at its colour
+- Core: extraction timing and easing; core size in the foreground; strata thickness; image relief; cut undulation (all in the panel)
+- Isolation look: how much desaturation and blur, how fast it ramps in (panel)
 - Whether a splat find lives in the core or in the hole
 - No-WebGL2 fallback: a static image + the DOM grid of links, projects as plain HTML pages

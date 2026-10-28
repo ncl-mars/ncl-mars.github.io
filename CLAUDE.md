@@ -42,7 +42,7 @@ Notes live in `.claude/memory/`, **not** in the global `~/.claude/projects/.../m
 - Never read layout in the frame loop. Rects are cached in document space; visibility is arithmetic.
 - DOM overlays that follow the scene (compass, labels) update from `renderer.onFrame(cb)`, which runs after each rendered frame. Write `el.style` / attributes directly, only when the value changed, never through Svelte state.
 - `/lab/views/` is the view-system test page; `/lab/core/` is the core viewer prototype.
-- Core viewer (`drawables/core/`): one premultiplied blend for X-ray (alpha 0, additive) and developed (alpha 1, opaque) layers, sorted back to front. Vertex attributes use explicit `layout(location = 0)` so VAOs survive shader hot reload. HTML hit areas follow 3D quads through `gl/homography.ts` (`matrix3d`), updated in `renderer.onFrame()`.
+- Core viewer (`drawables/core/`): a raymarched rock core (`core.frag` + `rock.glsl`, a full-screen pass that discards outside the core). The two images nearest the cut are bound as `uReliefA/B` with weights (GLSL ES 3.00 can't index sampler arrays dynamically). HTML hit areas follow 3D quads through `gl/homography.ts` (`matrix3d`), updated in `renderer.onFrame()`. Meshes with vertex attributes use explicit `layout(location = 0)` so VAOs survive shader hot reload.
 - Pages whose content scrolls over a fixed GL view (`/lab/core`) scroll an inner fixed container, never the window, so the view's cached rect stays valid.
 
 ## Tuning (`web/src/lib/tuning/`)

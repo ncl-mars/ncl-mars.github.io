@@ -10,7 +10,7 @@ portfolio/
 │  │  │  │  └─ chunks/           shared GLSL (`#include /name;`): common, noise, terrain, wind, fog
 │  │  │  ├─ drawables/           one folder per drawable, its TS and shaders side by side
 │  │  │  │  ├─ terrain/          Terrain.ts, terrain.frag (march → cache), composite.frag (atmosphere), surface/march/shade.glsl
-│  │  │  │  ├─ core/             CoreViewer.ts, core.glsl, layer.vert/.frag (relief strata), shell.vert/.frag
+│  │  │  │  ├─ core/             CoreViewer.ts, core.frag (raymarch + light), rock.glsl (SDF, cut, micro relief, colour)
 │  │  │  │  ├─ splat/            later, includes sort.worker.ts
 │  │  │  │  └─ particles/        later
 │  │  │  ├─ terrain/             CPU side of the terrain: heightfield (load, sample), far field (mirror of terrain.glsl), ground (heights + raycast), asset imports
