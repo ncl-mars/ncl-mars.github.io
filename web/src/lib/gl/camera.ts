@@ -1,5 +1,10 @@
 import { m4, type v3 } from 'twgl.js';
-import type { Heightfield, Vec3 } from '$lib/terrain/heightfield';
+import type { Vec3 } from '$lib/terrain/heightfield';
+
+/** What the camera needs from the ground (terrain/ground.ts): heights, past the heightmap edges too. */
+export interface GroundHeights {
+	heightAt(x: number, z: number): number;
+}
 
 /** Read live (the dev panel edits them). Angles in degrees, distances in world units. */
 export interface CameraSettings {
@@ -65,7 +70,14 @@ export class SurveyCamera {
 	readonly projection = m4.identity();
 	readonly viewProjection = m4.identity();
 	readonly inverseViewProjection = m4.identity();
+	/**
+	 * Goes up only when the view actually changes (matrices differ), so passes can cache what they drew
+	 * (the terrain re-marches only when this moves). Every easing snaps to its goal so a still camera is
+	 * exactly still.
+	 */
+	revision = 0;
 	private readonly world = m4.identity();
+	private readonly lastViewProjection = new Float32Array(16);
 
 	private panMin: [number, number] = [-Infinity, -Infinity];
 	private panMax: [number, number] = [Infinity, Infinity];
@@ -147,7 +159,7 @@ export class SurveyCamera {
 	}
 
 	/** Once per frame: keyboard, inertia, smooth zoom, then ground following. */
-	update(dt: number, field: Heightfield | null) {
+	update(dt: number, ground: GroundHeights | null) {
 		const motion = this.motion;
 		// Zoom limits may have been edited
 		this.goalDistance = this.clampDistance(this.goalDistance);
@@ -199,7 +211,7 @@ export class SurveyCamera {
 			if (d === this.goalDistance) this.zoomAnchor = null;
 		}
 
-		if (field) this.follow(field, dt);
+		if (ground) this.follow(ground, dt);
 		else this.refresh();
 	}
 
@@ -241,6 +253,16 @@ export class SurveyCamera {
 		m4.perspective(this.settings.fov * DEG, this.aspect, this.near, this.far, this.projection);
 		m4.multiply(this.projection, this.view, this.viewProjection);
 		m4.inverse(this.viewProjection, this.inverseViewProjection);
+
+		const vp = this.viewProjection;
+		const last = this.lastViewProjection;
+		for (let i = 0; i < 16; i++) {
+			if (vp[i] !== last[i]) {
+				last.set(vp);
+				this.revision++;
+				break;
+			}
+		}
 	}
 
 	/**
@@ -248,17 +270,17 @@ export class SurveyCamera {
 	 * sight to the eye (eye included, with some clearance) above the terrain: a ridge in between lifts the
 	 * camera instead of hiding what it looks at. Rises faster than it sinks.
 	 */
-	private follow(field: Heightfield, dt: number) {
+	private follow(ground: GroundHeights, dt: number) {
 		const horizontal = this.distance * Math.cos(this.pitch);
 		const rise = this.distance * Math.sin(this.pitch); // eye height above the target
 		const dx = Math.sin(this.yaw) * horizontal;
 		const dz = Math.cos(this.yaw) * horizontal;
 		const clearance = 2 + this.distance * 0.05;
-		let desired = field.heightAt(this.target[0], this.target[2]);
+		let desired = ground.heightAt(this.target[0], this.target[2]);
 		for (let i = 1; i <= LINE_OF_SIGHT_SAMPLES; i++) {
 			const f = i / LINE_OF_SIGHT_SAMPLES; // 1 = the eye
-			const ground = field.heightAt(this.target[0] + dx * f, this.target[2] + dz * f);
-			desired = Math.max(desired, ground + (clearance - rise) * f);
+			const h = ground.heightAt(this.target[0] + dx * f, this.target[2] + dz * f);
+			desired = Math.max(desired, h + (clearance - rise) * f);
 		}
 		if (!this.grounded) {
 			this.target[1] = desired;
@@ -266,6 +288,7 @@ export class SurveyCamera {
 		} else {
 			const rate = desired > this.target[1] ? 10 : 3;
 			this.target[1] += (desired - this.target[1]) * (1 - Math.exp(-dt * rate));
+			if (Math.abs(desired - this.target[1]) < 1e-3) this.target[1] = desired; // settle exactly
 		}
 		this.refresh();
 	}

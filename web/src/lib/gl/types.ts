@@ -26,6 +26,8 @@ export interface DrawContext {
 	frame: Frame;
 	/** The view's rectangle in the current target. */
 	rect: PixelRect;
+	/** The scissor box set by the renderer (`rect` clipped to the target): restore it after offscreen work. */
+	scissor: PixelRect;
 	/** CSS pixels → device pixels (devicePixelRatio, capped by the renderer). */
 	pixelRatio: number;
 	/** Framebuffer being drawn into; null is the canvas. */

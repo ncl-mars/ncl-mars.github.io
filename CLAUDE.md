@@ -34,11 +34,17 @@ Notes live in `.claude/memory/`, **not** in the global `~/.claude/projects/.../m
 - Drawables (`lib/drawables/<name>/`) implement `init` / `update` / `draw` / `dispose` (`lib/gl/types.ts`). Constructors must not touch the DOM or GL (prerender runs in Node). Create GL resources in `init`.
 - Programs come from `renderer.program(vs, fs)`, cached by source for the life of the context. Textures and other per-context resources go through `renderer.resource(key, create)`, cached the same way.
 - State that must survive navigation (the home camera, the terrain drawable) lives in the page's `<script module>`.
+- The terrain draws in two passes: the march (`terrain.frag`) into a cache, only when `camera.revision` or a ground setting changes; and the composite (`composite.frag`), every frame, with the atmosphere from `chunks/fog.glsl`. Anything drawn later in the scene includes `/noise`, `/wind`, `/fog` and uses `atmosphere()`, so it sits in the same mist.
+- Smooth noise in shaders: prefer the noise textures from `gl/noise.ts` (`renderer.resource('noise:3d' | 'noise:hash', …)`: tileable 3D gradient noise, 4 channels, sample with `p / 8`; hash for per-cell random values) over hashed value noise, which looks blocky at fine scale. `sampler3D` has no default precision in fragment shaders: declare it `highp`. The value noise in `/noise` stays for the terrain's far field, which the CPU mirrors.
+- Shader chunks don't include each other: each shader includes what it needs, in order (`/common`, `/noise`, `/terrain`, `/wind`, `/fog`). Fragment shaders that use `/noise` declare `precision highp int`.
+- The ground exists twice and must stay identical: `lib/gl/chunks/terrain.glsl` (GPU) and `lib/terrain/farfield.ts` + `ground.ts` (CPU: camera following, picking). Change both together. CPU code samples the ground through `Ground`, never the raw `Heightfield`.
 - Views are expected in normal document flow: rects are cached in document space, so a `position: fixed` view on a scrolling page would drift.
 - Shader hot reload: each drawable module ends with `import.meta.hot.accept([...shader paths], …)` calling `hotSwap()`. Copy the block from `drawables/test/TestPattern.ts`, using relative paths.
 - Never read layout in the frame loop. Rects are cached in document space; visibility is arithmetic.
 - DOM overlays that follow the scene (compass, labels) update from `renderer.onFrame(cb)`, which runs after each rendered frame. Write `el.style` / attributes directly, only when the value changed, never through Svelte state.
-- `/lab/views/` is the view-system test page.
+- `/lab/views/` is the view-system test page; `/lab/core/` is the core viewer prototype.
+- Core viewer (`drawables/core/`): a raymarched rock core (`core.frag` + `rock.glsl`, a full-screen pass that discards outside the core). The two images nearest the cut are bound as `uReliefA/B` with weights (GLSL ES 3.00 can't index sampler arrays dynamically). HTML hit areas follow 3D quads through `gl/homography.ts` (`matrix3d`), updated in `renderer.onFrame()`. Meshes with vertex attributes use explicit `layout(location = 0)` so VAOs survive shader hot reload.
+- Pages whose content scrolls over a fixed GL view (`/lab/core`) scroll an inner fixed container, never the window, so the view's cached rect stays valid.
 
 ## Tuning (`web/src/lib/tuning/`)
 
@@ -54,5 +60,6 @@ Run from `web/` (in Bash: `cd web && …`). The default Node is 22.12.0 and **mu
 - `npm run build`: static site to `web/build/`
 - `npm run check`: type check (`svelte-check`). This is the only static check: no linter, no tests.
 - `npm run gen:terrain`: placeholder heightmap + maps into `src/lib/assets/terrain/` (refuses to overwrite without `-- --force`, the files may be a real Houdini export)
+- `npm run gen:lab-core`: placeholder project images + relief maps for `/lab/core` (same `--force` rule)
 
 Smoke-testing the dev server on Windows: stopping the background `npx vite dev` leaves its `node` child listening. Kill the process that owns the port afterwards (PowerShell `Get-NetTCPConnection -LocalPort <port>` → `Stop-Process`).

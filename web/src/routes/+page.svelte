@@ -16,7 +16,7 @@
 	import { onMount } from 'svelte';
 	import { getRenderer } from '$lib/gl/context';
 	import { surveyControls } from '$lib/gl/controls';
-	import { readouts } from '$lib/tuning';
+	import { onTuningChange, readouts } from '$lib/tuning';
 
 	const renderer = getRenderer();
 
@@ -35,6 +35,12 @@
 			needle.setAttribute('transform', `rotate(${(camera.yaw * 180) / Math.PI} 16 16)`);
 		});
 
+		// Panel edits to the ground itself (not the atmosphere) need a re-march of the terrain cache
+		const stopTuning = onTuningChange((group) => {
+			if (group === 'march' || group === 'shading' || group === 'farField' || group === 'fog') terrain.invalidate();
+		});
+		readouts.set('terrain', () => `terrain ${terrain.marchedLastFrame ? 'marching' : 'cached'} · ${terrain.marches} marches`);
+
 		readouts.set('camera', () => {
 			const deg = 180 / Math.PI;
 			const heading = (((-camera.yaw * deg) % 360) + 360) % 360; // compass: 0 north, 90 east
@@ -49,6 +55,8 @@
 
 		return () => {
 			stopCompass();
+			stopTuning();
+			readouts.delete('terrain');
 			readouts.delete('camera');
 			if (previous !== null) renderer.setMaxPixelRatio(previous);
 		};
@@ -68,7 +76,7 @@
 	tabindex="0"
 	bind:this={site}
 	{@attach renderer.view(terrain)}
-	{@attach surveyControls(camera, { field: () => terrain.field, settings: tuning.controls })}
+	{@attach surveyControls(camera, { ground: () => terrain.ground, settings: tuning.controls })}
 ></div>
 
 <button class="compass" onclick={() => camera.resetNorth()} aria-label="Face north" title="Face north (N)">
@@ -83,7 +91,7 @@
 
 <header class="overlay">
 	<h1>Portfolio</h1>
-	<a href="/lab/views/">lab</a>
+	<a href="/lab/views/">lab: views</a> · <a href="/lab/core/">lab: core</a>
 </header>
 
 <style>
@@ -160,7 +168,7 @@
 		top: 0;
 		left: 0;
 		padding: 1.25rem 1.5rem;
-		color: #1d1f21;
+		color: var(--fg);
 		pointer-events: none;
 	}
 

@@ -4,28 +4,30 @@
 portfolio/
 ├─ web/                          SvelteKit app: the only thing CI builds and deploys
 │  ├─ src/
-│  │  ├─ routes/                 +layout.svelte (owns the canvas), +page.svelte, projects/[slug]/, lab/
+│  │  ├─ routes/                 +layout.svelte (owns the canvas), +page.svelte, projects/[slug]/, lab/views, lab/core
 │  │  ├─ lib/
-│  │  │  ├─ gl/                  renderer core: renderer, programs, textures, camera, controls, types
-│  │  │  │  └─ chunks/           shared GLSL (`#include /name;`): noise, wind, fog, height, common
+│  │  │  ├─ gl/                  renderer core: renderer, programs, textures, noise, targets, camera, controls, homography, types
+│  │  │  │  └─ chunks/           shared GLSL (`#include /name;`): common, noise, terrain, wind, fog
 │  │  │  ├─ drawables/           one folder per drawable, its TS and shaders side by side
-│  │  │  │  ├─ terrain/          Terrain.ts, terrain.frag, surface/march/shade.glsl
-│  │  │  │  ├─ image/
+│  │  │  │  ├─ terrain/          Terrain.ts, terrain.frag (march → cache), composite.frag (atmosphere), surface/march/shade.glsl
+│  │  │  │  ├─ core/             CoreViewer.ts, core.frag (raymarch + light), rock.glsl (SDF, cut, micro relief, colour)
 │  │  │  │  ├─ splat/            later, includes sort.worker.ts
 │  │  │  │  └─ particles/        later
-│  │  │  ├─ terrain/             CPU side of the terrain: heightfield (load, sample, raycast), asset imports
+│  │  │  ├─ terrain/             CPU side of the terrain: heightfield (load, sample), far field (mirror of terrain.glsl), ground (heights + raycast), asset imports
 │  │  │  ├─ tuning/              defaults.json (every tunable value), schema.ts (dev panel layout)
-│  │  │  ├─ components/          Svelte UI
-│  │  │  ├─ content/             projects.ts
+│  │  │  ├─ core/                relief maps (load, validate)
+│  │  │  ├─ components/          Svelte UI: DevPanel, Lightbox
+│  │  │  ├─ content/             project data (lab-core.ts now, projects.ts later)
 │  │  │  └─ assets/              pipeline exports + project images (imported → hashed URLs)
 │  │  │     ├─ terrain/          heightmap.bin/.json, maps.png/.json
+│  │  │     ├─ lab/core/         placeholder project: image-N.png + .relief.bin/.json
 │  │  │     ├─ splats/
 │  │  │     └─ projects/<slug>/
 │  │  ├─ app.html
 │  │  ├─ app.d.ts
 │  │  └─ ambient.d.ts            module types: shaders, texture imports
 │  ├─ static/                    only files that need a fixed URL: favicon, robots.txt, CNAME
-│  ├─ scripts/                   npm scripts (gen-terrain.mjs: placeholder heightmap + maps)
+│  ├─ scripts/                   npm scripts: gen-terrain.mjs, gen-lab-core.mjs, lib/encode.mjs (PNG + half floats)
 │  └─ package.json, svelte.config.js, vite.config.ts, tsconfig.json
 ├─ hou/                          Houdini ($JOB)
 │  ├─ *.hip*, hda/               tracked

@@ -12,6 +12,11 @@ node_modules/
 # Scratch files (kept inside the project, never in system temp)
 .tmp/
 
+# Python (virtual environments, bytecode)
+.venv/
+__pycache__/
+*.pyc
+
 # Houdini: autosave backups, caches and renders (.hip* and .hda files are tracked)
 hou/**/backup/
 hou/geo/

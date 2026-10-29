@@ -36,9 +36,28 @@ export function setTuning(group: string, key: string, value: TuningValue) {
 /** Live read-outs shown by the dev panel (e.g. the camera's current pitch), registered by pages. */
 export const readouts = new Map<string, () => string>();
 
-// Saving defaults.json from the panel must not reload the app: take the new file as the saved values only
+// defaults.json changed (panel Save, or edited / checked out): no app reload. The new file becomes the
+// saved values, and the live values are updated in place (group objects keep their identity), with
+// listeners notified. This also keeps the dev server's prerender in step with the browser.
 if (import.meta.hot) {
 	import.meta.hot.accept('./defaults.json', (module) => {
-		if (module) saved = structuredClone(module.default as Tuning);
+		if (!module) return;
+		saved = structuredClone(module.default as Tuning);
+		const live = tuning as unknown as Record<string, Record<string, TuningValue>>;
+		const next = saved as unknown as Record<string, Record<string, TuningValue>>;
+		// Groups and keys removed from the file are removed live too (Save checks the shape)
+		for (const group of Object.keys(live)) {
+			if (!(group in next)) delete live[group];
+			else for (const key of Object.keys(live[group])) if (!(key in next[group])) delete live[group][key];
+		}
+		for (const group of Object.keys(next)) {
+			live[group] ??= {};
+			for (const key of Object.keys(next[group])) {
+				const value = next[group][key];
+				if (JSON.stringify(live[group][key]) === JSON.stringify(value)) continue;
+				live[group][key] = structuredClone(value);
+				for (const listener of listeners) listener(group, key);
+			}
+		}
 	});
 }

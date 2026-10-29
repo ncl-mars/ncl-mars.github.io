@@ -53,7 +53,8 @@ export const schema: Group[] = [
 			{ key: 'stepScale', label: 'Step scale', min: 0.1, max: 1, step: 0.01, hint: 'Fraction of the ground clearance per step. Lower: safer on steep slopes, slower.' },
 			{ key: 'precision', label: 'Precision', min: 0.0001, max: 0.01, step: 0.0001, hint: 'Minimum step and hit tolerance, relative to distance.' },
 			{ key: 'steps', label: 'Max steps', kind: 'int', min: 8, max: 512, step: 1 },
-			{ key: 'refineSteps', label: 'Refine steps', kind: 'int', min: 0, max: 16, step: 1 }
+			{ key: 'refineSteps', label: 'Refine steps', kind: 'int', min: 0, max: 16, step: 1 },
+			{ key: 'renderScale', label: 'Render scale', min: 0.25, max: 1, step: 0.05, hint: 'Resolution of the terrain cache (the raymarch). Lower is cheaper; the mist stays full resolution.' }
 		]
 	},
 	{
@@ -71,8 +72,78 @@ export const schema: Group[] = [
 		key: 'fog',
 		label: 'Fog',
 		params: [
-			{ key: 'color', label: 'Colour', kind: 'color' },
-			{ key: 'density', label: 'Density', min: 0, max: 0.006, step: 0.00005 }
+			{ key: 'color', label: 'Colour', kind: 'color', hint: 'Fog and horizon. Also the page background.' },
+			{ key: 'skyColor', label: 'Sky', kind: 'color', hint: 'Sky overhead, above the horizon fog.' },
+			{ key: 'density', label: 'Density', min: 0, max: 0.006, step: 0.00005 },
+			{ key: 'end', label: 'End distance', min: 200, max: 4000, step: 10, hint: 'Fully fogged from here. The raymarch stops here too.' },
+			{ key: 'sunColor', label: 'Sun glow colour', kind: 'color' },
+			{ key: 'sunGlow', label: 'Sun glow', min: 0, max: 2, step: 0.01, hint: 'How much the fog brightens toward the sun.' },
+			{ key: 'sunPower', label: 'Sun glow tightness', min: 1, max: 64, step: 0.5 }
+		]
+	},
+	{
+		key: 'mist',
+		label: 'Mist',
+		params: [
+			{ key: 'density', label: 'Density', min: 0, max: 0.05, step: 0.0005, hint: 'Mist thickness at its base height.' },
+			{ key: 'height', label: 'Base height', min: -20, max: 100, step: 0.5, hint: 'Above the lowest ground. Below it the mist is densest.' },
+			{ key: 'falloff', label: 'Falloff', min: 1, max: 80, step: 0.5, hint: 'Height over which the mist thins out (×1/e).' },
+			{ key: 'banks', label: 'Banks', min: 0, max: 1, step: 0.01, hint: 'How patchy the mist is (0: uniform).' },
+			{ key: 'bankScale', label: 'Bank size', min: 20, max: 1500, step: 10 }
+		]
+	},
+	{
+		key: 'wind',
+		label: 'Wind',
+		params: [
+			{ key: 'direction', label: 'Direction (°)', min: 0, max: 360, step: 1, hint: 'Compass direction the wind blows toward (0 north, 90 east).' },
+			{ key: 'speed', label: 'Speed', min: 0, max: 60, step: 0.5, hint: 'World units per second.' }
+		]
+	},
+	{
+		key: 'farField',
+		label: 'Far field',
+		params: [
+			{ key: 'amplitude', label: 'Amplitude', min: 0, max: 100, step: 0.5, hint: 'Height variation (±) of the endless ground around the heightmap.' },
+			{ key: 'scale', label: 'Feature size', min: 30, max: 2000, step: 10 },
+			{ key: 'blend', label: 'Blend band', min: 0.01, max: 0.5, step: 0.01, hint: 'Band along the heightmap edges where it fades into the far field (fraction of its size).' },
+			{ key: 'offset', label: 'Base offset', min: -60, max: 60, step: 0.5, hint: 'Added to the far field base (the mean height of the heightmap edges).' }
+		]
+	},
+	{
+		key: 'core',
+		label: 'Core',
+		params: [
+			{ key: 'spacing', label: 'Strata thickness', min: 0.1, max: 1.5, step: 0.01, hint: 'Rock between two images, in core widths.' },
+			{ key: 'micro', label: 'Image relief', min: 0, max: 0.15, step: 0.001, hint: 'Height of the micro-displaced depth map on the cut face.' },
+			{ key: 'margin', label: 'Imprint margin', min: 0, max: 0.3, step: 0.005, hint: 'Rock border around each image.' },
+			{ key: 'emerge', label: 'Emerge range', min: 0.02, max: 0.9, step: 0.01, hint: 'Above an image (fraction of the strata thickness), where its relief emerges as the cut comes down.' },
+			{ key: 'sand', label: 'Sand range', min: 0.02, max: 0.9, step: 0.01, hint: 'Below an image, where its relief is sanded flat. Emerge + sand ≤ 1.' },
+			{ key: 'topNoise', label: 'Cut undulation', min: 0, max: 0.2, step: 0.001, hint: 'Low-frequency displacement of the cut face (the rock’s own noise).' },
+			{ key: 'topScale', label: 'Cut undulation freq.', min: 0.2, max: 6, step: 0.05, hint: 'Noise cells per core width.' },
+			{ key: 'sideNoise', label: 'Wall roughness', min: 0, max: 0.1, step: 0.001 },
+			{ key: 'sideScale', label: 'Wall roughness freq.', min: 0.2, max: 10, step: 0.05 },
+			{ key: 'band', label: 'Band thickness', min: 0.005, max: 0.3, step: 0.001, hint: 'Thickness of the fine colour strata.' },
+			{ key: 'warp', label: 'Band waviness', min: 0, max: 3, step: 0.01 },
+			{ key: 'dip', label: 'Strata dip (°)', min: 0, max: 40, step: 0.5, hint: 'Tilt of the colour bands.' },
+			{ key: 'strata', label: 'Strata contrast', min: 0, max: 1, step: 0.01 },
+			{ key: 'grain', label: 'Grain', min: 0, max: 2, step: 0.01 },
+			{ key: 'noiseScale', label: 'Colour noise freq.', min: 0.5, max: 30, step: 0.1, hint: 'Noise cells per core width for the colour.' },
+			{ key: 'mineral', label: 'Rock', kind: 'color' },
+			{ key: 'mineral2', label: 'Rock 2', kind: 'color', hint: 'Second tone of the strata bands.' },
+			{ key: 'lightElevation', label: 'Light elevation (°)', min: 2, max: 89, step: 1, hint: 'Low = raking light, the relief reads best.' },
+			{ key: 'lightAzimuth', label: 'Light azimuth (°)', min: 0, max: 360, step: 1 },
+			{ key: 'shadow', label: 'Shadows', min: 0, max: 1, step: 0.01 },
+			{ key: 'ao', label: 'Occlusion', min: 0, max: 1, step: 0.01 },
+			{ key: 'steps', label: 'March steps', kind: 'int', min: 16, max: 256, step: 1 },
+			{ key: 'stepScale', label: 'March step', min: 0.1, max: 1, step: 0.01, hint: 'Fraction of the distance per step. Lower is safer on steep relief, slower.' },
+			{ key: 'yaw', label: 'Core yaw (°)', min: -90, max: 90, step: 1 },
+			{ key: 'tilt', label: 'Core tilt (°)', min: -10, max: 80, step: 1, hint: 'Toward the camera, to see the cut face.' },
+			{ key: 'parallax', label: 'Parallax (°)', min: 0, max: 20, step: 0.5 },
+			{ key: 'distance', label: 'Camera distance', min: 1, max: 10, step: 0.05 },
+			{ key: 'fov', label: 'FOV (°)', min: 10, max: 80, step: 1 },
+			{ key: 'offsetX', label: 'Offset X', min: -2, max: 2, step: 0.01, hint: 'Moves the core aside for the text.' },
+			{ key: 'smoothing', label: 'Scroll smoothing', min: 1, max: 30, step: 0.5, hint: 'Lower glides longer.' }
 		]
 	},
 	{

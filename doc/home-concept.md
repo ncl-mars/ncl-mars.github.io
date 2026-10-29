@@ -1,66 +1,59 @@
 # Home page: the dig site
 
-**Status:** agreed 2026-10-27, revision 2. Implemented in M1/M2 (renderer, terrain, mist, cords, hover, enter), M5 (splat finds), M7 (transition polish) and M8 (particles).
+**Status:** revision 3, 2026-10-28 (the core sample replaces the dive and the page change). Implemented so far: renderer, camera, endless terrain, atmosphere (M1–M2b). Next: grid (M2c), squares and hover (M2d), core sample (M3), splat finds (M5), particles (M8).
 
-The home page is an archaeological excavation, seen the way a site survey sees it. The terrain is a raymarched heightmap drowned in heavy mist. A grid of stakes and cords (*carroyage*) divides the site into squares, and each project sits in one square. Hovering a project square turns it into a screen showing the project's thumbnail. Clicking it sends the camera down into the square, which becomes the page change.
+The home page is an archaeological excavation, seen the way a site survey sees it. The terrain is a raymarched heightmap drowned in heavy mist. A grid of stakes and cords (*carroyage*) divides the site into squares, and each project sits in one square. Hovering a project square turns it into a screen showing the project's thumbnail. Clicking it **cuts a square core sample out of the ground**: the core lifts out, comes to the foreground and becomes the project viewer, with the dig site still alive behind it. Inside the core, the project's images are strata carved in relief; scrolling digs through them; clicking one shows it in colour. There is no page change.
 
 ---
 
 ## Mood
 
+- **Discovery over obviousness (assumed).** Readability is not immediate on purpose: you search, you dig, you find. Don't "fix" the site by making everything obvious; keep affordances discreet and let the visitor explore.
 - Heavy, misty, near-monochrome. The terrain is desaturated, and its value follows distance through the fog, almost like a depth map.
 - A fixed, low, raking sun, baked into the terrain maps.
 - One wind field moves the cords, the mist and the dust together, so gusts visibly travel across the site.
-- Colour is reserved for meaning: the hovered thumbnail in full colour, and the cords in vivid nylon colours (orange, pink or yellow, to choose).
+- Colour is reserved for meaning: the hovered thumbnail, the cords in vivid nylon colours (orange, pink or yellow, to choose), and the project images in the lightbox. Inside the core, images are mineral relief, not colour.
 
 ## Camera: survey view, pan + zoom
 
-- Oblique, orbiting its target. **Heading (yaw) is free:** right-drag or Alt+drag, two-finger twist, Q / E (A / E on AZERTY); N eases back to north up. DOM labels stay upright whatever the heading. **Pitch follows the zoom:** about 60° looking down when zoomed out, tilting up to about 25° toward the horizon when zoomed in (smoothstep on a log scale, to tune). An optional parallax tilt can follow the mouse.
-- **Pan:** dragging grabs the actual ground under the pointer (CPU raycast). Limited to the terrain bounds (the fog hides the edges). A released drag keeps some inertia.
+- Oblique, orbiting its target. **Heading (yaw) is free:** right-drag or Alt+drag, two-finger twist, Q / E (A / E on AZERTY); N eases back to north up. DOM labels stay upright whatever the heading. **Pitch follows the zoom:** looking down when zoomed out, tilting up toward the horizon when zoomed in (smoothstep on a log scale, tuned in the panel).
+- **Pan:** dragging grabs the actual ground under the pointer (CPU raycast). Limited to the heightmap area (the far field is scenery). A released drag keeps some inertia.
 - **Zoom:** distance to the target, clamped. Wheel and trackpad pinch glide smoothly toward the pointer; two-finger pinch is direct; double-click or double-tap zooms in toward that point.
 - **Compass** (bottom right): its needle follows the heading; clicking it eases back to north. Released rotations keep a little inertia, like pans.
 - **Line of sight:** the camera rises when a ridge would come between it and its target (terrain sampled along the whole target → eye line).
 - **Keyboard** (the view takes focus when the page loads, no focus ring): movement keys by physical position, so WASD is ZQSD on AZERTY; arrows pan too; Q / E rotate, N north, `+` / `−` zoom.
-- Panning never changes the view direction, so splat depth order only changes with zoom (pitch), rotation (heading) and the dive. Splats re-sort then, never on pan.
-- Built in TS with `twgl.m4` (`lookAt` → `inverse` = view, `perspective` with the **view rect's** aspect). The same matrices (`view`, `proj`, `viewProj`, `invViewProj`, `camPos`) go to the raymarcher and to everything rasterized.
-- The camera never goes through the terrain (it checks the CPU height under the camera).
+- Panning never changes the view direction, so splat depth order only changes with zoom (pitch) and rotation (heading). Splats re-sort then, never on pan.
+- Built in TS with `twgl.m4`. The same matrices go to the raymarcher and to everything rasterized. `camera.revision` moves only on real changes (the terrain cache relies on it).
 - Input: the canvas is `pointer-events: none`, so the home page's view element receives pointer and touch events (`touch-action: none`).
-- Camera state lives in a module and survives client-side navigation. SvelteKit `snapshot` covers back/forward.
+- Camera state lives in a module and survives client-side navigation.
 
 ## Frame structure
 
 | Step | When | What |
 |------|------|------|
-| 1. Terrain cache | only when the camera moves, a square animates or the view resizes | raymarch → FBO: grayscale colour (RGBA8) + `DEPTH_COMPONENT24` texture, at a render scale of 0.5–1 |
-| 2. Mist composite | every frame | read cached colour + depth → world position → animated height fog → write colour + `gl_FragDepth` into the view |
-| 3. Cords, stakes, cord shadows | every frame, full resolution | GPU curves, depth-tested, fogged in their own shader |
-| 4. Splat finds (M5) | every frame | transparent pass, depth test without depth writes, fogged |
-| 5. Particles (M8) | every frame | additive, depth-tested, fogged |
+| 1. Terrain cache | only when the camera, the view size or a ground setting changes | raymarch → RGBA8 colour + `DEPTH_COMPONENT24` texture, at a render scale |
+| 2. Atmosphere composite | every frame | cached colour + depth → world position → fog, height mist, wind banks, sun glow → colour + `gl_FragDepth` |
+| 3. Cords, stakes, cord shadows (M2c) | every frame, full resolution | GPU curves, depth-tested, in the same atmosphere |
+| 4. Splat finds (M5) | every frame | transparent pass, depth test without depth writes, in the atmosphere |
+| 5. Particles (M8) | every frame | additive, depth-tested, in the atmosphere |
+| 6. Core sample (M3) | while a core is out | raymarched rock core (full-screen pass, discards outside the core), writes depth |
 
 Page scroll doesn't invalidate the cache: only the blit position changes.
 
 ## Terrain
 
-- **Surface/shading split.** The surface stage (the raymarch) outputs world position, normal and depth. The shading stage (shared chunk) applies the baked maps, pits, square state and thumbnail. Plan B: if the raymarcher misses the performance gate, the surface stage becomes a rasterized displaced grid mesh with the same shading, possibly chosen per device.
-- **Raymarch:**
-  - Rays come from `invViewProj` (a full-screen triangle; the viewport maps it onto the view rect).
-  - The march only covers the part of the ray inside the terrain's box.
-  - Height-relative steps (big far above the ground, small near it, at least the pixel footprint) + binary refinement, behind a strategy hook (max-mip or cone stepping later). Steep rays converge in a few steps, and the grazing rays of the zoomed-in, tilted-up camera stay accurate.
-  - The hit writes depth with `viewProj`.
-- **Height functions** (shared chunk):
+- **Endless, no edges, no thickness.** The heightmap fades into a procedural **far field** (low-frequency value noise) over a band along its edges. The far field's base level is the mean height of the heightmap's edges, and it continues to the horizon, where full fog at the fog end distance dissolves it. The sky is the fog colour with a soft gradient overhead, and the page background is the fog colour too (live from the panel), so nothing ever shows an edge.
+- **Surface/shading split.** The surface stage (the raymarch) outputs world position and depth; the shading stage applies the baked maps, the core hole's strata, square state and thumbnail. Plan B: if the raymarcher misses the performance gate, the surface stage becomes a rasterized displaced grid mesh with the same shading.
+- **Raymarch:** rays from `invViewProj`; bounded by the ground's height range and the fog end distance; height-relative steps + binary refinement, behind a strategy hook (max-mip or cone stepping later). Writes depth.
+- **Height functions** (shared chunk, mirrored on the CPU by `Ground`):
   - `terrainHeight(p)`: the original surface, used by stakes and cords.
-  - `height(p)`: `terrainHeight` minus the pits, plus the hover slab. Used by the raymarcher and the particles.
-- **Shading:** the grayscale maps baked in Houdini (light/shadow, AO, cavity) are combined with adjustable strengths into a near-gray value, with maybe a very slight cool tint. There are no runtime shadows or AO. Format: [formats/terrain-maps.md](formats/terrain-maps.md). The heightmap format is in [formats/heightmap.md](formats/heightmap.md).
-- **Pits** are shaded procedurally in grays: strata bands, the same sun direction as the bake, darker with depth.
+  - `height(p)`: `terrainHeight` minus the core hole, plus the hover slab. Used by the raymarcher and the particles.
+- **Shading:** the grayscale maps baked in Houdini (light/shadow, AO, cavity), combined with adjustable strengths into a near-gray value. The far field gets plain light from the same `sunDir`, blended across the band. No runtime shadows or AO. Formats: [formats/heightmap.md](formats/heightmap.md), [formats/terrain-maps.md](formats/terrain-maps.md).
 
-## Wind and mist
+## Wind and atmosphere
 
-- **Wind chunk:** `uWindDir` (xz), `uWindSpeed`, `uTime` → `windScroll()` and `gust(xz)` (world-space noise scrolled by the wind). Used by the cords, the mist and the particles.
-- **Height fog:** density `a·exp(−b·y)`, integrated along the ray in closed form. Rays always point downward, so `rd.y < 0`. The mist pools in valleys and dug pits.
-- **Drifting banks:** the density is modulated by 2–3 noise octaves scrolled by `windScroll()`, sampled at the hit point and at one mid-point.
-- The fog colour is brighter toward the sun.
-- Heavy fog plus the pan limits hide the world edges.
-- **One `fog` chunk for everything:** the terrain (in the mist pass), cords, stakes and shadows, splats (fog evaluated at each splat's centre) and particles. Otherwise rasterized things look pasted on top of the mist.
+- **Wind chunk:** `uWindDir` (xz), `uWindSpeed`, `uTime` → `windScroll()`; `gust(xz)` comes with the cords. Used by the mist now, the cords and the dust later.
+- **Fog chunk**, one for everything drawn in the scene: distance fog (opaque at the fog end), closed-form height mist (dense low down, pooling in valleys and in the core hole), two-layer wind-scrolled banks, fog brighter toward the sun, sky gradient.
 
 ## Grid: stakes and cords
 
@@ -69,78 +62,78 @@ Page scroll doesn't invalidate the cache: only the blit position changes.
 - **Cords are GPU curves:**
   - Each cord is one instance of a triangle strip (~8 segments). The vertex shader evaluates the curve from `gl_VertexID` (parameter `s`, side ±1).
   - Constant on-screen width (~1.5 px) with anti-aliased edges. When a cord is thinner than a pixel, it fades out.
-  - Segments are clamped against the near plane, which matters during the dive.
+  - Segments are clamped against the near plane.
 - **Cord curve,** applied in this order:
   1. a straight line between the two stake tops, with a slight sag;
   2. wind: a sideways push perpendicular to the cord, with a `sin(πs)` envelope (still at the stakes), weighted by how much the cord faces the wind, plus a small fast shiver;
   3. rest on bumps: `y = max(y, terrainHeight + radius)`.
-- Dug squares keep their cords stretched across the pit, because the corner stakes stay on undug ground.
+- A cored square keeps its cords stretched across the hole, because the corner stakes stay on undug ground.
 - **Cord shadows:** the same displaced curve, projected onto the ground along the sun direction. Drawn with a small depth bias.
 - Project squares are marked at rest by their cords (accent colour) and their label. Empty squares keep neutral cords.
 - There are no grid lines painted in the terrain shader: the cords are the grid.
-- **Labels:** DOM elements projected each frame (plain arithmetic, no layout reads). They are real `<a>` links: accessible, found by the prerender crawler, and the fallback when WebGL2 is missing.
-- Later, the same renderer can draw Houdini curves (`.bin` + `.json`), or verlet cords simulated with transform feedback (M8).
+- **Labels:** DOM elements projected each frame through `renderer.onFrame()` (plain arithmetic, no layout reads). They are real `<a>` links: accessible, found by the prerender crawler, and the fallback when WebGL2 is missing.
 
 ## Square state
 
 - One texel per square (RGBA8), read with `texelFetch`:
   - `r`: thumbnail layer + 1 (0 = no project)
   - `g`: hover, 0→1, animated in TS
-  - `b`: dig progress, 0→1
+  - `b`: core extraction, 0→1 (the hole opens as the core lifts)
   - `a`: reserved
-- Updated with `texSubImage2D` only when something changes. A change invalidates the terrain cache while it animates.
+- Updated with `texSubImage2D` only when something changes; a change invalidates the terrain cache while it animates.
 - Each project declares its square in `projects.ts` (`cell: 'C4'`). One project per square.
 
 ## Hover: the square becomes a screen
 
-- Picking happens on the CPU: a ray from the pointer is marched through the CPU copy of the heightmap with the same algorithm as the GLSL. No GPU readback.
-- On hover:
-  - the square levels into a flat slab (`height()` blends toward a per-square plate height precomputed on the CPU at load);
-  - the thumbnail shows on the slab, in full colour against the gray world, slightly emissive;
-  - the square's 4 cords highlight.
-- Thumbnails: one `TEXTURE_2D_ARRAY`, one layer per project, all the same size via imagetools (`?w=512&h=512&fit=cover&format=webp`).
+- Picking happens on the CPU (`Ground.raycast`). No GPU readback.
+- On hover: the square levels into a flat slab; the thumbnail shows on it in full colour against the gray world, slightly emissive; the square's 4 cords highlight.
+- Thumbnails: one `TEXTURE_2D_ARRAY`, one layer per project, all the same size via imagetools.
 - Keyboard focus on a project's DOM link triggers the same hover.
-- On hover, `preloadData('/projects/<slug>')` and the hero image start loading.
-- Mobile: the first tap acts as hover, the second tap enters.
+- On hover, the project's relief maps start loading.
+- Mobile: the first tap acts as hover, the second tap opens the core.
 
-## Click: enter the square → page change
+## Click: the core sample
 
-1. Input is disabled.
-2. The camera eases from oblique to top-down while descending between the cords into the square, and its heading eases back to north, so the thumbnail (and the project's hero image after it) lands upright. The terrain is re-marched every frame and splats re-sort during it. At the same time the dig progress animates 0→1: the pit walls with their strata rise around the camera, the find is revealed, and dust bursts out.
-3. The final frame is the thumbnail filling the view. Then `goto('/projects/<slug>')`. The project page opens with the same image as its hero, in the same place. The canvas persists, so the hand-off is seamless.
-4. Back: the camera state is still in memory, and the rise out of the square plays in reverse.
+1. **Cut:** the ground is cut along the square. The hole is `height()` dropping to the core's depth with vertical walls (the march's binary search finds a vertical wall fine); the walls show procedural strata, the mist pools in it.
+2. **Extract:** the core (a square prism: the terrain surface patch on top, strata on its sides) lifts out of the hole, turns toward the camera and grows until it stands in the foreground. One model matrix animated in TS; dust bursts out (M8). The camera doesn't move.
+3. **Viewer:** in the foreground, the core is the viewer (see **Core viewer**). **The dig site behind is isolated: desaturated and blurred**, ramping in during the extraction like a focus pull onto the core. The camera is still while the core is out, so the terrain cache doesn't change: it's blurred once (half resolution, a few separable passes) and reused every frame; the mist keeps drifting on top. Nearly free.
+4. **URL:** SvelteKit shallow routing sets `/projects/<slug>` without leaving the home page. Back closes the core; a shared link opens the site with that core already out. Each `/projects/<slug>` is also prerendered (home + core open) for deep links and search engines.
+5. **Close** (×, Escape, click outside, back): the reverse. The viewer collapses into the core, which turns, shrinks and drops back into its hole; the ground closes.
 
-## The pit
+## Core viewer
 
-- Analytic, inside `height()`: terrain minus the pit of the current square, scaled by its dig progress. No texture is modified.
-- Pit walls are sloped or stepped (benches), not vertical: vertical walls in a heightfield cause stair-stepping with fixed-step marching.
+- **A solid core of rock, raymarched.** A square prism as a distance field: walls roughened by low-frequency fbm, fine dipping strata bands with wavy boundaries (one tone per band), thin lines between bands, smooth grain. All noise comes from **noise textures** (`gl/noise.ts`: a tileable 3D gradient noise and a hash texture), so it's smooth, wrapped around the corners, and cheap. Raking light with soft shadows and occlusion. No transparency.
+- **The cut.** The top face is the cut, undulating with the rock's own low-frequency noise (so its shape changes as fast as the material goes by). **Scrolling removes matter (the cut descends) or stacks it back up.** It's the real page scroll (a tall invisible container in the overlay), so touch inertia, keyboard and scrollbar come for free.
+- **Images as micro relief, buried in the rock.** The project's images sit at depths one strata thickness apart, each as its **depth map's micro relief** with an irregular rock margin. They're **revealed by the cut**: as it comes down, the highest parts emerge first, then the whole image; below it, the relief is sanded flat. Plain rock between images. Tied to the scroll by construction. Depth maps are made in Houdini (a render's real depth pass, or ML depth estimation), ComfyUI as a fallback. Format: [formats/relief.md](formats/relief.md).
+- **Text outside the core,** in HTML beside it: title, description, credits.
+- **Click the image → the colour images as a carousel** in an HTML lightbox (`<enhanced:img>`, AVIF/WebP at the right size): arrow buttons, ← / →, horizontal swipe, wrapping around, with a directional slide (none under reduced motion). Behind it, **the core follows**: its cut moves to the image shown, so closing lands on that image's stratum. Escape, × or a click outside closes.
+- **Hit area:** an HTML element laid over the image on the cut face with a CSS `matrix3d` updated every frame (`renderer.onFrame()`), only while an image shows, so clicks, keyboard focus and screen readers work on the 3D face.
+- Relief maps load only when a core opens (or on hover); the colour images only for the lightbox.
 
 ## Splat finds (M5)
 
-- Small splat scenes: the find at the bottom of a dug square, tools, rocks, a hero object per project.
-- Composited against the terrain depth (transparent pass), fogged per splat.
-- Re-sorted only when the zoom (pitch) changes and during the dive, never on pan.
+- Small splat scenes: a find inside the core or at the bottom of the hole, tools, rocks, a hero object per project.
+- Composited against the terrain depth (transparent pass), in the atmosphere.
+- Re-sorted only when the zoom (pitch) or the heading changes, never on pan.
 
 ## Particles (M8)
 
-- **Dig dust:** a burst when a square is entered and dug.
+- **Dig dust:** a burst when a core is cut and lifted.
 - **Ambient dust:** a few particles drifting in the raking light, carried by the wind field.
-- Transform feedback. They collide with `height()` (pits included), are depth-tested against the terrain, blend additively and are fogged.
+- Transform feedback. They collide with `height()` (hole included), are depth-tested against the terrain, blend additively, in the atmosphere.
 
 ## Performance
 
 - Baked light, AO and cavity: no runtime shadows or AO.
-- Steep rays and the height slab keep the march short.
-- The terrain cache means idle frames cost only the mist pass plus the cords.
-- The terrain cache can render at 0.5–0.75 scale on weak devices, while cords stay at full resolution.
+- The terrain cache: idle frames cost only the atmosphere composite plus what's drawn on top (cords, core).
+- Render scale for the terrain cache on weak devices; everything else stays at full resolution.
 - **M2 gate:** measure on the weak device (roadmap Q4). If the raymarcher misses the target, switch the surface stage to the displaced mesh.
 
 ## To decide / tune
 
 - Grid size vs number of projects; what empty squares look like
-- Pitch and zoom limits; parallax tilt or not; dive duration and easing
-- Cord colours, cord amplitude, wind speed and direction
-- Fog density, falloff and tint
-- How the find and the thumbnail share the pit floor
-- Thumbnail size
-- No-WebGL2 fallback: a static image + the DOM grid of links
+- Cord colours and amplitude
+- Core: extraction timing and easing; core size in the foreground; strata thickness; image relief; cut undulation (all in the panel)
+- Isolation look: how much desaturation and blur, how fast it ramps in (panel)
+- Whether a splat find lives in the core or in the hole
+- No-WebGL2 fallback: a static image + the DOM grid of links, projects as plain HTML pages

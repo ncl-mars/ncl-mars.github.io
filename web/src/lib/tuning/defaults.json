@@ -1,16 +1,16 @@
 {
 	"camera": {
-		"pitchNear": 25,
-		"pitchFar": 60,
-		"tiltCurve": 1,
-		"fov": 35,
-		"distance": 350,
-		"minDistance": 60,
-		"maxDistance": 700
+		"pitchNear": 10.5,
+		"pitchFar": 49.5,
+		"tiltCurve": 3.05,
+		"fov": 90,
+		"distance": 225,
+		"minDistance": 92,
+		"maxDistance": 480
 	},
 	"controls": {
 		"wheelSpeed": 0.002,
-		"zoomSmoothing": 10,
+		"zoomSmoothing": 1,
 		"inertiaDecay": 4,
 		"keyboardSpeed": 1.1,
 		"rotateSpeed": 0.3,
@@ -20,7 +20,8 @@
 		"stepScale": 0.45,
 		"precision": 0.0015,
 		"steps": 128,
-		"refineSteps": 6
+		"refineSteps": 6,
+		"renderScale": 1
 	},
 	"shading": {
 		"tint": [0.8, 0.81, 0.83],
@@ -30,8 +31,62 @@
 		"exposure": 1.05
 	},
 	"fog": {
-		"color": [0.6, 0.62, 0.64],
-		"density": 0.0011
+		"color": [0.459, 0.561, 0.663],
+		"skyColor": [0.56, 0.64, 0.73],
+		"density": 0.0029,
+		"end": 1500,
+		"sunColor": [0.95, 0.86, 0.72],
+		"sunGlow": 0.35,
+		"sunPower": 6
+	},
+	"mist": {
+		"density": 0.008,
+		"height": 18,
+		"falloff": 10,
+		"banks": 0.7,
+		"bankScale": 260
+	},
+	"wind": {
+		"direction": 60,
+		"speed": 8
+	},
+	"farField": {
+		"amplitude": 20,
+		"scale": 300,
+		"blend": 0.12,
+		"offset": 0
+	},
+	"core": {
+		"spacing": 0.67,
+		"micro": 0.101,
+		"margin": 0,
+		"emerge": 0.51,
+		"sand": 0.54,
+		"topNoise": 0.04,
+		"topScale": 0.9,
+		"sideNoise": 0.002,
+		"sideScale": 1.05,
+		"band": 0.032,
+		"warp": 2.17,
+		"dip": 13.5,
+		"strata": 0.59,
+		"grain": 0.62,
+		"noiseScale": 8.7,
+		"mineral": [1, 0.992, 0.98],
+		"mineral2": [0.204, 0.208, 0.216],
+		"lightElevation": 18,
+		"lightAzimuth": 35,
+		"shadow": 0.85,
+		"ao": 0.8,
+		"steps": 96,
+		"stepScale": 0.5,
+		"yaw": -30,
+		"tilt": 33,
+		"parallax": 5,
+		"distance": 3.2,
+		"fov": 30,
+		"offsetX": -0.35,
+		"smoothing": 15
 	},
 	"renderer": {
 		"maxPixelRatio": 2

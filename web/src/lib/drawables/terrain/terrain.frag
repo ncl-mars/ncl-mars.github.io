@@ -1,7 +1,12 @@
 #version 300 es
 precision highp float;
+precision highp int; // the noise hash needs 32-bit integers (fragment ints default to mediump)
+
+// Renders the ground into the terrain cache (colour + depth), only when the camera or a terrain setting
+// changes. No fog here: composite.frag adds the atmosphere every frame.
 
 #include /common;
+#include /noise;
 #include /terrain;
 #include ./surface;
 #include ./march;
@@ -10,7 +15,6 @@ precision highp float;
 uniform mat4 uInvViewProj;
 uniform mat4 uViewProj;
 uniform vec3 uCamPos;
-uniform float uFade; // 0 → 1 once the textures are loaded
 
 in vec2 vUv;
 out vec4 outColor;
@@ -21,15 +25,13 @@ void main() {
 	vec3 rd = normalize(farPoint.xyz / farPoint.w - uCamPos);
 
 	Surface s = marchSurface(uCamPos, rd);
-	vec3 col = shadeSurface(s, rd);
 
-	// Depth from the same matrices as the rasterized passes, so they composite against the ground
+	// Depth from the same matrices as the rasterized passes; 1.0 (far plane) where the ray found nothing
 	if (s.hit) {
 		vec4 clip = uViewProj * vec4(s.position, 1.0);
 		gl_FragDepth = clip.z / clip.w * 0.5 + 0.5;
 	} else {
 		gl_FragDepth = 1.0;
 	}
-
-	outColor = vec4(col * uFade, uFade); // premultiplied: fades in over the page background
+	outColor = vec4(shadeSurface(s), 1.0);
 }
