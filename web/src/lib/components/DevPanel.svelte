@@ -6,7 +6,7 @@
 	// /__tuning/save) without reloading the app; "Copy" puts the JSON on the clipboard; "Reset" goes back
 	// to the saved values. The dot before a label marks a changed value (click it to reset that one).
 	// The root layout loads this with a dynamic import behind import.meta.env.DEV: not in production builds.
-	// Toggle with P.
+	// Toggle with P, or the × / "dev" tab in its corner (phones have no P). Shown or hidden is remembered.
 	import type { Renderer, RendererStats } from '$lib/gl/renderer';
 	import { schema, type Param } from '$lib/tuning/schema';
 	import { actions, onTuningChange, readouts, savedDefaults, setTuning, tuning, type TuningValue } from '$lib/tuning';
@@ -16,11 +16,12 @@
 
 	let { renderer }: { renderer: Renderer } = $props();
 
-	// Panel layout state (controls shown, which groups are collapsed), remembered in this browser
+	// Panel layout state (shown, controls shown, which groups are collapsed), remembered in this browser
 	const UI_KEY = 'dev-panel-ui';
 	const storedUi = (() => {
 		try {
 			return JSON.parse(localStorage.getItem(UI_KEY) ?? '{}') as {
+				open?: boolean;
 				controlsOpen?: boolean;
 				collapsed?: Record<string, boolean>;
 			};
@@ -33,7 +34,7 @@
 	let lines = $state<string[]>([]);
 	let actionNames = $state<string[]>([]);
 	let actionStatus = $state('');
-	let open = $state(true);
+	let open = $state(storedUi.open ?? true);
 	let controlsOpen = $state(storedUi.controlsOpen ?? true);
 	let collapsed = $state<Record<string, boolean>>(storedUi.collapsed ?? {});
 	let values = $state<Values>(structuredClone(tuning) as unknown as Values);
@@ -49,7 +50,7 @@
 	const panelFontSize = () => Math.min(22, Math.max(10, Math.round((screen.height / 148) * 10) / 10));
 
 	$effect(() => {
-		const ui = JSON.stringify({ controlsOpen, collapsed });
+		const ui = JSON.stringify({ open, controlsOpen, collapsed });
 		try {
 			localStorage.setItem(UI_KEY, ui);
 		} catch {
@@ -158,6 +159,9 @@
 
 {#if open}
 	<aside class="panel" style:font-size="{fontSize}px">
+		<button class="hide" type="button" title="Hide the panel (P)" aria-label="Hide the dev panel" onclick={() => (open = false)}>
+			×
+		</button>
 		{#if stats}
 			<section class="stats">
 				<div>ctx #{stats.contextId} · {stats.running ? 'running' : 'idle'}</div>
@@ -255,6 +259,10 @@
 		</footer>
 		{/if}
 	</aside>
+{:else}
+	<button class="tab" type="button" style:font-size="{fontSize}px" title="Show the dev panel (P)" onclick={() => (open = true)}>
+		dev
+	</button>
 {/if}
 
 <style>
@@ -275,6 +283,49 @@
 		font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
 		line-height: 1.45;
 		backdrop-filter: blur(4px);
+	}
+
+	/* In the panel's corner, over the end of the short first stats line */
+	.hide {
+		position: absolute;
+		top: 0.3em;
+		right: 0.35em;
+		width: 2.2em;
+		height: 2.2em;
+		padding: 0;
+		border: 0;
+		border-radius: 0.4em;
+		background: none;
+		color: #9fc9bb;
+		font: inherit;
+		font-size: 1.25em;
+		line-height: 1;
+		cursor: pointer;
+	}
+
+	.hide:hover {
+		background: rgb(255 255 255 / 0.08);
+		color: #e8efe9;
+	}
+
+	/* The hidden panel: a small tab in the same corner */
+	.tab {
+		position: fixed;
+		top: 0.7em;
+		right: 0.7em;
+		z-index: 1000;
+		padding: 0.45em 0.8em;
+		border: 0;
+		border-radius: 0.55em;
+		background: rgb(16 17 19 / 0.55);
+		color: #d6e4df;
+		font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+		cursor: pointer;
+		backdrop-filter: blur(4px);
+	}
+
+	.tab:hover {
+		background: rgb(16 17 19 / 0.82);
 	}
 
 	.panel-title {
