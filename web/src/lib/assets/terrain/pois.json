@@ -1,9 +1,9 @@
 {
 	"version": 1,
 	"pois": [
-		{ "id": "test-pit", "x": 130, "z": -230 },
-		{ "id": "trench-a", "x": -70, "z": 40 },
-		{ "id": "spoil-heap", "x": 90, "z": -60 },
-		{ "id": "north-ridge", "x": -260, "z": -220 }
+		{ "id": "trench-a", "site": "VFX", "x": -70, "z": 40 },
+		{ "id": "spoil-heap", "site": "VFX", "x": 90, "z": -60 },
+		{ "id": "test-pit", "site": "Simulation", "x": 130, "z": -230 },
+		{ "id": "north-ridge", "site": "Tools", "x": -260, "z": -220 }
 	]
 }

@@ -14,8 +14,9 @@ portfolio/
 │  │  │  ├─ terrain/             CPU side of the terrain: heightfield (load, sample), far field (mirror of terrain.glsl), ground (heights + raycast), asset imports
 │  │  │  ├─ tuning/              defaults.json (every tunable value), schema.ts (dev panel layout)
 │  │  │  ├─ components/          Svelte UI: DevPanel, Lightbox
-│  │  │  ├─ content/             reads and checks the content: pois.ts (pois.json + framing), projects.ts (project folders)
-│  │  │  └─ assets/              pipeline exports + project folders (imported → hashed URLs)
+│  │  │  ├─ content/             reads and checks the content: portfolio.ts, pois.ts (pois.json + framing, sites), projects.ts (project folders)
+│  │  │  └─ assets/              pipeline exports + content (imported → hashed URLs)
+│  │  │     ├─ portfolio.yaml    your name, the home description
 │  │  │     ├─ terrain/          heightmap.bin/.json, maps.png/.json, pois.json (Houdini exports)
 │  │  │     └─ projects/<id>/    project.md (title, framing, credits, media list, text) + its images and videos
 │  │  ├─ app.html
@@ -32,7 +33,7 @@ portfolio/
 ├─ doc/
 │  ├─ roadmap.md
 │  ├─ project-structure.md
-│  └─ formats/                   heightmap.md, terrain-maps.md, pois.md: layouts shared by exporters and loaders; projects.md: the project folders
+│  └─ formats/                   heightmap.md, terrain-maps.md, pois.md: layouts shared by exporters and loaders; projects.md, portfolio.md: the content files
 ├─ .github/workflows/deploy.yml
 ├─ .claude/memory/               Claude's project notes (tracked)
 ├─ .vscode/                      terminals open in web/; Houdini caches excluded from watch/search

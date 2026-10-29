@@ -23,7 +23,7 @@ Living work plan. Tick boxes as we go, add notes inline, and log decisions at th
 | Q4 | Reference weak device (phone/GPU) for the performance gate, and max pixel ratio | M2a | Your old, cheap phone (90 Hz screen): the weakest device to support. Target 60 fps |
 | Q6 | Rough march while moving (March: motion scale 0.5) applies on every device. On desktop the softness shows in motion, but it isn't disturbing. Keep it, or make it automatic: march sharp while moving, and fall back to rough only on a device whose moving frames drop under ~52 fps (desktop stays sharp, the phone switches by itself)? | M9 | Automatic (2026-10-29, `feature/adaptive-march`): March → Rough in motion, 1 by default |
 
-| Q7 | More sites (topics: simulation, web 3D, archviz, video mapping…), each with its own POIs and a menu headed by its name, like Dig site. Is each site its own scene (its own terrain or world, its own URL), or a group of POIs in the one landscape? | Next site | |
+| Q7 | More sites (topics: simulation, web 3D, archviz, video mapping…), each with its own POIs and a menu headed by its name, like Dig site. Is each site its own scene (its own terrain or world, its own URL), or a group of POIs in the one landscape? | Next site | Groups in the one landscape, by discipline (VFX, simulation, tools…) (2026-10-29). Own scene per site: a nice-to-have for later, the site id on every POI keeps it possible |
 
 Q2, Q3, Q5 were about splats, dropped on 2026-10-29.
 
@@ -244,6 +244,7 @@ Dropped (2026-10-29): simpler, faster without.
 - [x] `lib/assets/projects/<id>/project.md`: title, framing (`view`, from "Copy pose"), credits, media list in a YAML header, the paragraphs under it; media files beside it, a video's poster by name. Contract: [formats/projects.md](formats/projects.md)
 - [x] Read at build time (`vite.config.ts`, `yaml` package, nothing shipped), checked in `content/pois.ts` and `content/projects.ts` with messages naming the file. A POI without a folder gets a label from its id; a folder without a POI is left out (console warnings). No text and no media: no card
 - [x] The four placeholders moved to the new files
+- [x] Sites (Q7): each POI has a site, its discipline written as the menu heading reads (`s@site = "VFX"` in Houdini); each distinct value is a menu, in order of first POI, numbered from 01, folded one at a time on phones. `lib/assets/portfolio.yaml` holds your name and the home description ([formats/portfolio.md](formats/portfolio.md)). No names left in the code
 - [ ] First real export from Houdini with the real heightmap (M6), yours
 
 ---
@@ -268,6 +269,7 @@ Dropped (2026-10-29): simpler, faster without.
 
 ## Decision log
 
+- **2026-10-29**: Q7, sites: groups of POIs by discipline in the one landscape, one menu each. The site is written on each POI in Houdini as its heading reads (`s@site = "VFX"`), not listed anywhere else (a first version listed ids and headings in `portfolio.yaml`: duplicated, dropped). `portfolio.yaml` holds your name and the home description, so no name is written in the code. "Dig site" is gone as a name (it stays the scene's metaphor). A scene per site stays possible later: every POI already carries its site.
 - **2026-10-29**: Content pipeline: where a POI stands comes from Houdini (`pois.json`, positions only), what it shows from its project folder (`project.md` + media), matched by id, so a re-export never overwrites text or framing. Framing stays tuned in the web (Copy pose), since the site's camera ties its tilt to its distance and a Houdini camera can't be matched. YAML for `project.md`'s header (nicer than JSON to write by hand), parsed at build time. Houdini only, no Blender exporter.
 - **2026-10-29**: Sites: the POIs belong to a site (Dig site, `site` in `content/pois.ts`) whose name heads their menu (on phones, the button that unfolds it). More sites to come, by topic (Q7).
 - **2026-10-29**: The first POI is a POI like the others (a project page too), not home. Home is the overview framed by the start view, where no POI is current: every label rearranges alike there. Escape, the current POI's label and the Home key go back to it. The POI was "Dig site" at the origin, confusing with the scene's own name: renamed Test pit (`test-pit`) and moved to the hollow north-east of the plateau.

@@ -1,12 +1,16 @@
 <script lang="ts">
-	// Home: the dig site itself, drawn by the (site) layout. Nothing else on this page.
+	// Home: the landscape itself, drawn by the (site) layout. Nothing else on this page.
+	import { portfolio } from '$lib/content/portfolio';
 </script>
 
 <svelte:head>
-	<title>Portfolio</title>
+	<title>{portfolio.name}</title>
+	{#if portfolio.description}
+		<meta name="description" content={portfolio.description} />
+	{/if}
 </svelte:head>
 
-<h1 class="visually-hidden">Portfolio</h1>
+<h1 class="visually-hidden">{portfolio.name}</h1>
 
 <style>
 	.visually-hidden {

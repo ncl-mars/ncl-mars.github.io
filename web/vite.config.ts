@@ -21,9 +21,11 @@ export default defineConfig({
 });
 
 /**
- * Project text files (src/lib/assets/projects/<id>/project.md, format: doc/formats/projects.md) become
- * modules at build time: the YAML header between the `---` lines parsed, the text under it split into
- * paragraphs (blank lines between them). The browser gets plain data; content/projects.ts checks it.
+ * Content files become modules at build time, so the browser gets plain data (lib/content/ checks it):
+ * - `.yaml` files (src/lib/assets/portfolio.yaml, format: doc/formats/portfolio.md): parsed;
+ * - project text files (src/lib/assets/projects/<id>/project.md, format: doc/formats/projects.md): the
+ *   YAML header between the `---` lines parsed, the text under it split into paragraphs (blank lines
+ *   between them).
  */
 function projectFiles(): Plugin {
 	return {
@@ -31,6 +33,7 @@ function projectFiles(): Plugin {
 		enforce: 'pre',
 		transform(code, id) {
 			const file = id.split('?')[0];
+			if (file.endsWith('.yaml')) return { code: `export default ${JSON.stringify(parseYaml(code) ?? null)};`, map: null };
 			if (!file.endsWith('/project.md')) return;
 			const match = /^﻿?---\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n([\s\S]*))?$/.exec(code);
 			if (!match) throw new Error(`${file}: no header (the YAML between two --- lines, at the top)`);

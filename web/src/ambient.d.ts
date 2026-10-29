@@ -7,3 +7,9 @@ declare module '*format=webp' {
 	const url: string;
 	export default url;
 }
+
+// Content files, parsed at build time (vite.config.ts) and checked in lib/content/
+declare module '*.yaml' {
+	const data: unknown;
+	export default data;
+}
