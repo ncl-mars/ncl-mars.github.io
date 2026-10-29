@@ -90,6 +90,7 @@
 		"ink": [0.1, 0.11, 0.13],
 		"opacity": 0.85,
 		"scale": 1,
+		"smallScale": 0.7,
 		"stroke": 1,
 		"anchorSize": 0.2,
 		"rise": 3.5,
@@ -115,6 +116,8 @@
 		"fadeTime": 0.4
 	},
 	"renderer": {
-		"maxPixelRatio": 2
+		"maxPixelRatio": 2,
+		"adaptive": 1,
+		"minScale": 0.5
 	}
 }

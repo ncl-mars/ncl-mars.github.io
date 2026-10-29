@@ -4,6 +4,7 @@ import marchSource from './terrain.frag';
 import compositeSource from './composite.frag';
 import { hotSwap, type Program } from '../../gl/programs';
 import { createHalfFloatTexture, loadDataTexture } from '../../gl/textures';
+import { createNoiseTexture3D } from '../../gl/noise';
 import { createColorDepthTarget, deleteColorDepthTarget, type ColorDepthTarget } from '../../gl/targets';
 import { loadHeightfield } from '../../terrain/heightfield';
 import { Ground } from '../../terrain/ground';
@@ -65,6 +66,8 @@ export class Terrain implements Drawable {
 	private vao: WebGLVertexArrayObject | null = null;
 	private heightTexture: WebGLTexture | null = null;
 	private mapsTexture: WebGLTexture | null = null;
+	/** For the mist banks (/fog). */
+	private noiseTexture: WebGLTexture | null = null;
 	private cache: ColorDepthTarget | null = null;
 	private cachedRevision = -1;
 	private cachedShaders = -1;
@@ -118,6 +121,7 @@ export class Terrain implements Drawable {
 		this.marchProgram = renderer.program(vertex, marchFragment);
 		this.compositeProgram = renderer.program(vertex, compositeFragment);
 		this.vao = gl.createVertexArray();
+		this.noiseTexture = renderer.resource('noise:3d', (gl) => createNoiseTexture3D(gl));
 		this.dirty = true;
 
 		const generation = ++this.generation;
@@ -174,6 +178,7 @@ export class Terrain implements Drawable {
 		this.cache = null;
 		this.heightTexture = null; // textures stay in the renderer's per-context cache
 		this.mapsTexture = null;
+		this.noiseTexture = null;
 		this.fade = 0;
 	}
 
@@ -252,6 +257,7 @@ export class Terrain implements Drawable {
 		u.uFogEnd = fog.end;
 		u.uSunColor = fog.sunColor;
 		u.uBankScale = mist.bankScale;
+		u.uNoise = this.noiseTexture;
 		u.uWindSpeed = wind.speed;
 		u.uTime = this.time;
 		this.drawFullscreen(gl, this.compositeProgram!, u);

@@ -2,7 +2,6 @@ import { setUniforms } from 'twgl.js';
 import vertexSource from './dust.vert';
 import fragmentSource from './dust.frag';
 import { hotSwap, type Program } from '../../gl/programs';
-import { createNoiseTexture3D } from '../../gl/noise';
 import type { SurveyCamera } from '../../gl/camera';
 import type { Renderer } from '../../gl/renderer';
 import type { DrawContext, Drawable } from '../../gl/types';
@@ -39,7 +38,6 @@ export interface DustSettings {
 export class Dust implements Drawable {
 	private program: Program | null = null;
 	private vao: WebGLVertexArrayObject | null = null;
-	private noise: WebGLTexture | null = null;
 	private maxPointSize = 64;
 	private readonly centre = new Float32Array(2);
 	private readonly box = new Float32Array(4);
@@ -59,7 +57,6 @@ export class Dust implements Drawable {
 	init(gl: WebGL2RenderingContext, renderer: Renderer) {
 		this.program = renderer.program(vertex, fragment);
 		this.vao = gl.createVertexArray(); // empty: the vertex shader works from gl_VertexID
-		this.noise = renderer.resource('noise:3d', (gl) => createNoiseTexture3D(gl));
 		const range = gl.getParameter(gl.ALIASED_POINT_SIZE_RANGE) as Float32Array;
 		this.maxPointSize = range[1];
 	}
@@ -91,7 +88,6 @@ export class Dust implements Drawable {
 		u.uCamPos = camera.eye;
 		u.uDustColor = s.color;
 		u.uFocal = ctx.rect.height * 0.5 * camera.projection[5]; // projection[5] = 1 / tan(fov / 2)
-		u.uNoise = this.noise;
 
 		const info = this.program!.info;
 		gl.useProgram(info.program);
@@ -113,7 +109,6 @@ export class Dust implements Drawable {
 	dispose(gl: WebGL2RenderingContext) {
 		gl.deleteVertexArray(this.vao);
 		this.vao = null;
-		this.noise = null; // stays in the renderer's per-context cache
 	}
 }
 

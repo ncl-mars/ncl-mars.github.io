@@ -163,7 +163,7 @@
 				<div>ctx #{stats.contextId} · {stats.running ? 'running' : 'idle'}</div>
 				<div>{stats.running ? stats.fps.toFixed(0) : '–'} fps · {stats.frameMs.toFixed(2)} ms cpu</div>
 				<div>views {stats.visibleViews}/{stats.views} · programs {stats.programs} · compiles {stats.compiles}</div>
-				<div>{stats.width}×{stats.height} @{stats.pixelRatio.toFixed(2)}</div>
+				<div>{stats.width}×{stats.height} @{stats.pixelRatio.toFixed(2)} · q {stats.quality.toFixed(2)}</div>
 				{#each lines as line, i (i)}
 					<div class="readout">{line}</div>
 				{/each}

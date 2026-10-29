@@ -11,7 +11,7 @@
 
 	let { children } = $props();
 
-	const renderer = new Renderer({ maxPixelRatio: tuning.renderer.maxPixelRatio });
+	const renderer = new Renderer({ maxPixelRatio: tuning.renderer.maxPixelRatio, quality: tuning.renderer });
 	setRenderer(renderer);
 
 	// The page background is the fog colour, so the endless terrain has no visible edge (and loading

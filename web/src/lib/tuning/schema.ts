@@ -159,6 +159,7 @@ export const schema: Group[] = [
 			{ key: 'ink', label: 'Ink', kind: 'color', hint: 'Lines and text.' },
 			{ key: 'opacity', label: 'Opacity', min: 0, max: 1, step: 0.01 },
 			{ key: 'scale', label: 'Scale (rem)', min: 0.5, max: 2.5, step: 0.01, hint: 'Text size. Rise, spacing and the anchor ring are multiples of it (em), so this sizes the whole legend.' },
+			{ key: 'smallScale', label: 'Phone scale', min: 0.3, max: 1, step: 0.01, hint: 'Under 700 px wide (phones), the scale is multiplied by this.' },
 			{ key: 'stroke', label: 'Line width (px)', min: 0.5, max: 3, step: 0.25, hint: 'Not scaled: stays a hairline.' },
 			{ key: 'anchorSize', label: 'Anchor ring (em)', min: 0, max: 0.8, step: 0.01, hint: 'Radius of the ring on the point. 0: none.' },
 			{ key: 'rise', label: 'Rise (em)', min: 0, max: 12, step: 0.1, hint: 'How far above its point a label sits.' },
@@ -191,6 +192,10 @@ export const schema: Group[] = [
 	{
 		key: 'renderer',
 		label: 'Renderer',
-		params: [{ key: 'maxPixelRatio', label: 'Max pixel ratio', min: 0.5, max: 3, step: 0.25 }]
+		params: [
+			{ key: 'maxPixelRatio', label: 'Max pixel ratio', min: 0.5, max: 3, step: 0.25 },
+			{ key: 'adaptive', label: 'Adaptive resolution', kind: 'int', min: 0, max: 1, step: 1, hint: '1: the pixel ratio drops a step when frames run long, and climbs back once they keep up (shown as q in the stats).' },
+			{ key: 'minScale', label: 'Lowest scale', min: 0.25, max: 1, step: 0.05, hint: 'Floor of the adaptive resolution, as a fraction of the pixel ratio.' }
+		]
 	}
 ];

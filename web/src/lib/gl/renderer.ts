@@ -5,6 +5,8 @@ import type { DrawContext, Drawable, Frame } from './types';
 export interface RendererOptions {
 	/** Upper bound for devicePixelRatio: the canvas never renders more pixels than this. */
 	maxPixelRatio?: number;
+	/** Dynamic resolution, read live (tuning.renderer): `adaptive` ≥ 0.5 turns it on; `minScale` is the floor. */
+	quality?: { adaptive: number; minScale: number };
 }
 
 /** Numbers for the perf HUD. Read a few times per second with `readStats()`, never reactive. */
@@ -20,6 +22,8 @@ export interface RendererStats {
 	width: number;
 	height: number;
 	pixelRatio: number;
+	/** Dynamic resolution scale on the pixel ratio (1: full). */
+	quality: number;
 }
 
 interface View {
@@ -45,6 +49,8 @@ let nextContextId = 1;
  * - Layout is never read inside the frame loop. Element rects are cached in document space from
  *   ResizeObserver / resize / font callbacks, and the scroll offset from scroll events. Each frame is arithmetic.
  * - The loop runs only while a view is on screen and the tab is visible.
+ * - Dynamic resolution: when frames run long, the pixel ratio drops a step, and climbs back once frames
+ *   keep up (see `adaptQuality`). Phones hold their frame rate, desktops keep full resolution.
  * - Safe to construct during prerender: nothing touches the DOM before `mount`. Views added before `mount`
  *   are initialised once the canvas exists.
  */
@@ -52,6 +58,14 @@ export class Renderer {
 	gl: WebGL2RenderingContext | null = null;
 
 	private maxPixelRatio: number;
+	private readonly qualitySettings: { adaptive: number; minScale: number } | null;
+	/** Dynamic resolution: scale on the pixel ratio, and its bookkeeping (see `adaptQuality`). */
+	private quality = 1;
+	private qualityWindow = { time: 0, frames: 0, min: Infinity };
+	private previousWindowMin = Infinity;
+	private onTime = 0;
+	private upgradeDelay = 4;
+	private lastQualityStep: { time: number; up: boolean } = { time: 0, up: false };
 	private canvas: HTMLCanvasElement | null = null;
 	private programs: ProgramCache | null = null;
 	private resources = new Map<string, unknown>();
@@ -86,7 +100,8 @@ export class Renderer {
 		compiles: 0,
 		width: 0,
 		height: 0,
-		pixelRatio: 1
+		pixelRatio: 1,
+		quality: 1
 	};
 
 	private frameListeners = new Set<(frame: Frame) => void>();
@@ -96,6 +111,7 @@ export class Renderer {
 
 	constructor(options: RendererOptions = {}) {
 		this.maxPixelRatio = options.maxPixelRatio ?? 2;
+		this.qualitySettings = options.quality ?? null;
 	}
 
 	/** Attach to the canvas and start observing. Returns false when WebGL2 is unavailable. */
@@ -223,7 +239,7 @@ export class Renderer {
 		const box = canvas.getBoundingClientRect();
 		this.cssWidth = box.width;
 		this.cssHeight = box.height;
-		this.pixelRatio = Math.min(window.devicePixelRatio || 1, this.maxPixelRatio);
+		this.pixelRatio = Math.min(window.devicePixelRatio || 1, this.maxPixelRatio) * this.quality;
 		const width = Math.max(1, Math.round(box.width * this.pixelRatio));
 		const height = Math.max(1, Math.round(box.height * this.pixelRatio));
 		if (canvas.width !== width || canvas.height !== height) {
@@ -251,6 +267,7 @@ export class Renderer {
 		stats.width = this.canvas?.width ?? 0;
 		stats.height = this.canvas?.height ?? 0;
 		stats.pixelRatio = this.pixelRatio;
+		stats.quality = this.quality;
 		stats.running = this.raf !== 0;
 		return { ...stats };
 	}
@@ -390,6 +407,8 @@ export class Renderer {
 		const start = performance.now();
 		const delta = (now - this.lastTime) / 1000;
 		this.lastTime = now;
+		// Before rendering: a resolution change resizes the canvas, which clears it
+		this.adaptQuality(delta, now);
 
 		const frame = this.frame;
 		frame.time = (now - this.startTime) / 1000;
@@ -408,6 +427,58 @@ export class Renderer {
 		if (delta > 0) stats.fps += (1 / delta - stats.fps) * 0.1;
 		stats.frameMs += (performance.now() - start - stats.frameMs) * 0.1;
 	};
+
+	/**
+	 * Dynamic resolution. Every half second, the average frame time is compared with the display's refresh
+	 * interval (the shortest recent frame, and never slower than 60 Hz): more than 15% over it, the pixel
+	 * ratio drops a step (×0.85, down to `minScale`); after `upgradeDelay` seconds on time, it climbs a step
+	 * back. A step up that has to be undone soon after doubles that delay (up to a minute), so it doesn't
+	 * see-saw. Frames over 100 ms (tab switch, hitch) don't count; a change gets a second to settle (the
+	 * resize itself re-marches the terrain).
+	 */
+	private adaptQuality(delta: number, now: number) {
+		const settings = this.qualitySettings;
+		if (!settings || settings.adaptive < 0.5) {
+			if (this.quality !== 1) this.setQuality(1, now);
+			return;
+		}
+		if (delta <= 0 || delta > 0.1) return;
+		const sample = this.qualityWindow;
+		sample.time += delta;
+		sample.frames++;
+		sample.min = Math.min(sample.min, delta);
+		if (sample.time < 0.5) return;
+
+		const average = sample.time / sample.frames;
+		const target = Math.min(1 / 60, sample.min, this.previousWindowMin);
+		const duration = sample.time;
+		this.previousWindowMin = sample.min;
+		sample.time = sample.frames = 0;
+		sample.min = Infinity;
+
+		const minScale = Math.min(1, Math.max(0.25, settings.minScale));
+		const sinceStep = (now - this.lastQualityStep.time) / 1000;
+		if (average > target * 1.15) {
+			this.onTime = 0;
+			if (sinceStep < 1 || this.quality <= minScale) return;
+			if (this.lastQualityStep.up && sinceStep < 4) this.upgradeDelay = Math.min(60, this.upgradeDelay * 2);
+			this.setQuality(Math.max(minScale, this.quality * 0.85), now);
+		} else if (average < target * 1.05) {
+			this.onTime += duration;
+			if (this.quality < 1 && this.onTime >= this.upgradeDelay) {
+				this.onTime = 0;
+				this.setQuality(Math.min(1, this.quality / 0.85), now);
+			}
+		} else {
+			this.onTime = 0;
+		}
+	}
+
+	private setQuality(quality: number, now: number) {
+		this.lastQualityStep = { time: now, up: quality > this.quality };
+		this.quality = quality;
+		this.measure();
+	}
 
 	private clear() {
 		const gl = this.gl!;

@@ -2,10 +2,10 @@
 
 Living work plan. Tick boxes as we go, add notes inline, and log decisions at the bottom. Details live in the other docs; this file is the order of work.
 
-**Status (2026-10-29):** M0–M3c merged into `develop` (POI navigation, project card). On `feature/m8-dust`: the dust (M8).
+**Status (2026-10-29):** M0–M3c merged into `develop` (POI navigation, project card), dust (M8) committed. On `feature/perf-mobile`: phone performance (30 fps at first), part of M9.
 
 **Next:**
-- Claude: after your check of the dust, legend labels that don't overlap; then M4 (deploy, needs Q1).
+- Claude: after your phone check, what the numbers say (dust count, march); then legend labels that don't overlap; then M4 (deploy, needs Q1).
 - You, whenever:
   - tune the camera in the panel → Save defaults → commit `defaults.json`;
   - perf gate: `npm run dev -- --host`, phone fps + model (answers Q4);
@@ -227,7 +227,11 @@ Dropped (2026-10-29): simpler, faster without.
 
 - [ ] No-WebGL2 fallback: DOM grid of project links over a static image
 - [ ] Full context-loss recovery (rebuild programs, textures, buffers)
-- [ ] Phone perf pass: DPR cap, render scale, march steps
+- [ ] Phone perf pass (`feature/perf-mobile`, phone at 30 fps before):
+  - [x] Mist banks from the 3D noise texture instead of hashed value noise (every pixel and every dust speck, every frame)
+  - [x] Dynamic resolution in the renderer (pixel ratio steps down when frames run long, back up when they keep up; Renderer group: adaptive, lowest scale; "q" in the stats)
+  - [x] Legend smaller on phones (Phone scale, under 700 px wide)
+  - [ ] Your phone check (fps standing still and turning, q reached, model: answers Q4); then dust count, march steps or render scale for phones if needed
 - [ ] `prefers-reduced-motion`, keyboard/focus, meta/OG tags, page titles
 - [ ] Lighthouse pass (LCP with a full-screen canvas, CLS)
 
@@ -235,6 +239,7 @@ Dropped (2026-10-29): simpler, faster without.
 
 ## Decision log
 
+- **2026-10-29**: Phone performance: dynamic resolution instead of per-device settings (the pixel ratio follows the frame time, judged against the display refresh), and the mist banks moved to the noise texture. Measure on the phone before touching the dust count or the march.
 - **2026-10-29**: Dust as stateless particles (position from id + time, computed in the vertex shader) instead of a transform-feedback simulation: no buffers, nothing to rebuild on context loss, any count change is free. Specks drift with the wind and turbulence and skip along the ground in hops; real collisions and bursts would need the stateful version, not needed for ambient dust.
 - **2026-10-29**: After the first try of the overlay: no ordered path through the POIs any more. Home is the hub; labels and a menu fly to any POI, Escape or the current label goes home as you left it. The wheel zooms again, toward the pivot (home's point or the POI's), and drag turns. The project opens from a Data button on the arrived POI's label, not by itself, as a card over the live scene (light isolation by default). POI views are relative to a start view tuned in the panel, so retuning its heading carries every POI.
 - **2026-10-29**: Project view: it opens at the end of the camera flight, with no button, however the POI was reached (label, scroll, keys). Real prerendered URLs (`/projects/<slug>/`); the scene lives in a `(site)` layout shared with `/`, so it never reloads. Isolation by CSS `backdrop-filter` over the scene and the labels, tuned live; blur in GL only if the weak device struggles. Content: title, a few lines of presentation, credits, then images and short videos (5–60 s, Instagram-like), self-hosted MP4 played muted while visible.

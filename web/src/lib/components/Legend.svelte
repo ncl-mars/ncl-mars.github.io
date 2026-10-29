@@ -42,13 +42,6 @@
 	const titles = $state<HTMLElement[]>([]);
 	const metas = $state<HTMLElement[]>([]);
 
-	function applyStyle() {
-		const s = tuning.legend;
-		root.style.setProperty('--ink', `rgb(${s.ink.map((v) => Math.round(v * 255)).join(' ')})`);
-		root.style.setProperty('--legend-size', `${s.scale}rem`);
-		root.style.setProperty('--stroke', `${s.stroke}px`);
-	}
-
 	onMount(() => {
 		const elements: LegendElements[] = items.map((_, i) => ({
 			group: groups[i],
@@ -59,6 +52,14 @@
 			meta: metas[i]
 		}));
 		const legend = new Legend(root, items, elements, camera, ground, tuning.legend, tuning.fog, tuning.mist);
+		// The text size comes from the legend (smaller on phones), so its lines and the CSS agree
+		const applyStyle = () => {
+			const s = tuning.legend;
+			root.style.setProperty('--ink', `rgb(${s.ink.map((v) => Math.round(v * 255)).join(' ')})`);
+			root.style.setProperty('--legend-size', `${legend.textScale()}rem`);
+			root.style.setProperty('--stroke', `${s.stroke}px`);
+		};
+		legend.onScaleChange = applyStyle;
 		applyStyle();
 		const stopFrames = renderer.onFrame(legend.update);
 		const stopTuning = onTuningChange((group) => group === 'legend' && applyStyle());

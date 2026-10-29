@@ -8,6 +8,7 @@
 // - mist banks: wind-scrolled noise modulating the mist, so it drifts.
 // The fog colour brightens toward the sun.
 // The CPU mirrors the distance fog and the mist (not the banks) in terrain/atmosphere.ts, to fade the labels.
+// Needs the 3D noise texture bound as uNoise (gl/noise.ts, renderer.resource('noise:3d', …)).
 
 uniform vec3 uFogColor;   // fog and horizon (also the page background)
 uniform vec3 uSkyColor;   // sky overhead
@@ -18,6 +19,7 @@ uniform vec3 uSunColor;
 uniform vec2 uSunGlow;    // x: strength, y: tightness (power)
 uniform vec4 uMist;       // x: density at the base, y: base height (world), z: falloff height, w: bank strength
 uniform float uBankScale; // size of the mist banks, world units
+uniform highp sampler3D uNoise; // gl/noise.ts: 4 tileable gradient noises, sample with p / 8
 
 vec3 fogColorToward(vec3 rd) {
 	return uFogColor + uSunColor * (uSunGlow.x * pow(max(dot(rd, uSunDir), 0.0), uSunGlow.y));
@@ -28,11 +30,15 @@ vec3 skyColor(vec3 rd) {
 }
 
 // Two layers drifting at different speeds, so the banks change shape as they move. ~[0, 1]
+// From the noise texture (two channels of a 2D slice): runs for every pixel and every dust speck, every
+// frame, so one fetch per layer instead of hashing lattice corners. Level 0: also called from vertex
+// shaders and inside branches, and the banks are far larger than a pixel.
 float mistBanks(vec2 xz) {
 	vec2 scroll = windScroll();
-	float a = valueNoise((xz - scroll) / uBankScale);
-	float b = valueNoise((xz - scroll * 1.7) / (uBankScale * 0.45) + 13.7);
-	return a * 0.65 + b * 0.35;
+	float a = textureLod(uNoise, vec3((xz - scroll) / uBankScale, 0.25) / 8.0, 0.0).r;
+	float b = textureLod(uNoise, vec3((xz - scroll * 1.7) / (uBankScale * 0.45), 0.6) / 8.0, 0.0).g;
+	// Gradient noise stays closer to its mean than value noise: stretched to a similar contrast
+	return clamp((a * 0.65 + b * 0.35 - 0.5) * 1.8 + 0.5, 0.0, 1.0);
 }
 
 // Optical depth of the height mist from ro along rd over t: ∫ density · exp(−(y − base) / falloff) ds,

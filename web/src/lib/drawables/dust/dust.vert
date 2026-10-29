@@ -24,7 +24,7 @@ uniform vec2 uHop;        // x: share of specks hopping along the ground, y: hop
 uniform vec4 uLook;       // x: size (world units), y: opacity, z: backlight, w: largest point (px)
 uniform vec3 uDustColor;
 uniform float uFocal;     // px per world unit at unit depth: viewport height / (2 tan(fov / 2))
-uniform sampler3D uNoise; // gl/noise.ts: 4 tileable gradient noises, sample with p / 8
+// uNoise (the 3D noise texture) is declared by /fog
 
 out vec4 vColor;          // premultiplied
 

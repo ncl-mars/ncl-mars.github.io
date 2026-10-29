@@ -15,11 +15,13 @@ export interface LegendItem {
 
 /**
  * Read live (tuning.legend). See schema.ts. `scale` is the text size in rem; rise, spacing and anchorSize are
- * in em of it, so it sizes the whole legend. `stroke` stays in CSS px (a hairline at any scale).
+ * in em of it, so it sizes the whole legend; on narrow screens it is multiplied by `smallScale`. `stroke`
+ * stays in CSS px (a hairline at any scale).
  */
 export interface LegendSettings {
 	layout: number;
 	scale: number;
+	smallScale: number;
 	opacity: number;
 	stroke: number;
 	anchorSize: number;
@@ -51,6 +53,8 @@ const EDGE = 16;
 const MIN_RUN = 1.5;
 /** Samples along the anchor → eye segment for the terrain occlusion test. */
 const OCCLUSION_SAMPLES = 24;
+/** Where `smallScale` applies (phones). */
+const NARROW = '(max-width: 700px)';
 
 class Mark {
 	readonly world: Vec3 = [0, Number.NaN, 0];
@@ -109,7 +113,11 @@ class Mark {
 export class Legend {
 	/** Labels currently on screen (dev readout). */
 	shown = 0;
+	/** Called when the screen crosses the narrow breakpoint: the text size (`textScale`) changed. */
+	onScaleChange: (() => void) | null = null;
 
+	private readonly narrowQuery: MediaQueryList;
+	private narrow: boolean;
 	private readonly marks: Mark[];
 	private readonly byElement = new Map<Element, Mark>();
 	private readonly observer: ResizeObserver;
@@ -134,6 +142,9 @@ export class Legend {
 		private readonly mist: MistSettings & { height: number }
 	) {
 		this.reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+		this.narrowQuery = matchMedia(NARROW);
+		this.narrow = this.narrowQuery.matches;
+		this.narrowQuery.addEventListener('change', this.onNarrowChange);
 		this.readRootFontSize();
 		this.marks = items.map((item, i) => {
 			const mark = new Mark(item, elements[i]);
@@ -169,7 +180,19 @@ export class Legend {
 
 	dispose() {
 		this.observer.disconnect();
+		this.narrowQuery.removeEventListener('change', this.onNarrowChange);
 	}
+
+	/** Text size in rem: `scale`, times `smallScale` on narrow screens. Rise, spacing, anchor ring are in em of it. */
+	textScale(): number {
+		const s = this.settings;
+		return s.scale * (this.narrow ? s.smallScale : 1);
+	}
+
+	private onNarrowChange = (event: MediaQueryListEvent) => {
+		this.narrow = event.matches;
+		this.onScaleChange?.();
+	};
 
 	private readRootFontSize() {
 		this.rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
@@ -229,7 +252,7 @@ export class Legend {
 			if (mark.t > 0) this.shown++;
 		}
 
-		const em = s.scale * this.rootFontSize;
+		const em = this.textScale() * this.rootFontSize;
 		const tan = Math.tan(Math.min(Math.max(s.angle, 5), 89.9) * DEG);
 		if (layout === 1) this.layoutColumns(frame.dt, em);
 		else this.layoutCallouts(em, tan);
