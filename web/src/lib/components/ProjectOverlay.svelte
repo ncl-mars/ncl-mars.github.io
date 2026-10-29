@@ -1,6 +1,6 @@
 <script lang="ts">
 	// A project as a card over the scene, which stays alive behind it (wind, mist). A CSS backdrop-filter
-	// can blur, desaturate and wash everything behind (scene, labels, compass); the card scrolls on its own,
+	// can blur, desaturate and wash everything behind (scene, labels); the card scrolls on its own,
 	// never the window (the views' cached rects stay valid). Escape, the × or a click on the scene closes;
 	// images open in the lightbox; videos play muted and looping while visible (not with reduced motion),
 	// with controls to unmute. The look comes from tuning.overlay, live; the prerendered page has the defaults.

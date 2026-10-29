@@ -203,7 +203,7 @@ export class Renderer {
 
 	/**
 	 * Called after each rendered frame, in the same animation frame, for DOM overlays that follow the scene
-	 * (compass, labels): write styles directly, never Svelte state. Only runs while the loop runs.
+	 * (labels): write styles directly, never Svelte state. Only runs while the loop runs.
 	 * Returns the unsubscribe function.
 	 */
 	onFrame(listener: (frame: Frame) => void): () => void {
