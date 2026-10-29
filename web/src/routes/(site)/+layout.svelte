@@ -30,7 +30,7 @@
 	// The dig site, shared by `/` and `/projects/<slug>/`: this layout stays mounted between them, so the
 	// scene never reloads. One full-viewport element with two views, drawn in the order they are attached:
 	// the terrain (raymarched ground + atmosphere, writing depth), then the dust over it.
-	// Home is the overview; clicking a label (or a menu entry) flies to that POI, clicking the current POI's
+	// Home is the overview, where no POI is current; clicking a label (or a menu entry) flies to that POI, clicking the current POI's
 	// label goes back home, as you left it. Around the current POI, dragging turns and the wheel zooms.
 	// Once the camera has arrived at a POI with a project, its label shows a Data button: it opens the
 	// project's card over the scene, at /projects/<slug>/. The URL is the truth: back closes the card, and a
@@ -42,7 +42,7 @@
 	import { page } from '$app/state';
 	import { getRenderer } from '$lib/gl/context';
 	import { surveyControls } from '$lib/gl/controls';
-	import { tourControls } from '$lib/navigation/tour';
+	import { HOME, tourControls } from '$lib/navigation/tour';
 	import { actions, onTuningChange, readouts, setTuning } from '$lib/tuning';
 	import Legend from '$lib/components/Legend.svelte';
 	import ProjectOverlay from '$lib/components/ProjectOverlay.svelte';
@@ -140,11 +140,11 @@
 			const heading = (((-camera.yaw * deg) % 360) + 360) % 360; // compass: 0 north, 90 east
 			return `pitch ${(camera.pitch * deg).toFixed(1)}° · heading ${heading.toFixed(0)}° · distance ${camera.distance.toFixed(0)}`;
 		});
-		readouts.set('tour', () =>
-			dev.freeCamera
-				? 'free camera'
-				: `poi ${tour.current + 1}/${pois.length} · ${pois[tour.current].title}${tour.flying ? ' · flying' : ''}`
-		);
+		readouts.set('tour', () => {
+			if (dev.freeCamera) return 'free camera';
+			const place = tour.current === HOME ? 'home' : `poi ${tour.current + 1}/${pois.length} · ${pois[tour.current].title}`;
+			return `${place}${tour.flying ? ' · flying' : ''}`;
+		});
 
 		if (import.meta.env.DEV) {
 			actions.set('Free camera', () => {
@@ -266,7 +266,7 @@
 
 <header class="masthead" inert={!!project} bind:this={masthead}>
 	<p class="name">Portfolio</p>
-	<!-- Straight to any POI; the first is home. On phones the list folds behind a Sites button -->
+	<!-- Straight to any POI. On phones the list folds behind a Sites button -->
 	<nav aria-label="Points of interest">
 		<button
 			type="button"

@@ -1,17 +1,21 @@
 import type { Attachment } from 'svelte/attachments';
 import { wrapAngle, type CameraPose, type FlightSettings, type GroundHeights, type SurveyCamera } from '$lib/gl/camera';
 import { TurnTracker } from '$lib/gl/controls';
-import { poiView, type Poi, type StartView } from '$lib/content/pois';
+import { homeView, poiView, type Poi, type StartView } from '$lib/content/pois';
+
+/** `Tour.current` at home: the overview, where no POI is current. */
+export const HOME = -1;
 
 /**
- * Moving between POIs. The first POI is home, framed by the start view; the others are framed relative to
- * it (content/pois.ts). `go(i)` flies the camera to any POI from wherever it is. Leaving home remembers how
- * you left it (your zoom and turn) and coming back returns there; going home from home goes back to the
- * start view. Before the ground has loaded, or with reduced motion, it jumps instead.
+ * Moving between home and the POIs. Home is the overview, framed by the start view; the POIs are framed
+ * relative to it (content/pois.ts). `go(i)` flies the camera to any POI, or home (`HOME`), from wherever it
+ * is. Leaving home remembers how you left it (your zoom and turn) and coming back returns there; going home
+ * from home goes back to the start view. Before the ground has loaded, or with reduced motion, it jumps.
  * Lives at module level with the camera, so the current POI survives navigation.
  */
 export class Tour {
-	current = 0;
+	/** The POI the camera is at or flying to, or `HOME`. */
+	current = HOME;
 	/** Called when the current POI changes (the page mirrors it in UI state). */
 	onChange: ((index: number) => void) | null = null;
 	/** Called when the camera gets there: end of the flight, or right away after a jump. */
@@ -28,26 +32,26 @@ export class Tour {
 		/** Read live (tuning.start). */
 		private readonly start: StartView
 	) {
-		camera.jumpTo(this.viewOf(0));
+		camera.jumpTo(this.viewOf(HOME));
 	}
 
 	get flying(): boolean {
 		return this.camera.flying;
 	}
 
-	/** The framed view of POI `index`, from the start view. */
+	/** The framed view of POI `index`, or of home (the start view). */
 	viewOf(index: number): CameraPose {
-		return poiView(this.pois[index], this.start);
+		return index === HOME ? homeView(this.start) : poiView(this.pois[index], this.start);
 	}
 
-	/** `instant`: jump instead of flying (a page opened on a project's URL). */
+	/** `index`: a POI, or `HOME`. `instant`: jump instead of flying (a page opened on a project's URL). */
 	go(index: number, instant = false) {
-		index = Math.max(0, Math.min(this.pois.length - 1, index));
+		index = Math.max(HOME, Math.min(this.pois.length - 1, index));
 		let view = this.viewOf(index);
-		if (index === 0) {
-			if (this.current !== 0 && this.homePose) view = this.homePose;
+		if (index === HOME) {
+			if (this.current !== HOME && this.homePose) view = this.homePose;
 			else this.homePose = null;
-		} else if (this.current === 0 && !this.camera.flying) {
+		} else if (this.current === HOME && !this.camera.flying) {
 			this.homePose = this.camera.pose();
 		}
 		const changed = index !== this.current;
@@ -65,12 +69,12 @@ export class Tour {
 
 	/** Back to the overview, as you left it. */
 	home() {
-		if (this.current !== 0) this.go(0);
+		if (this.current !== HOME) this.go(HOME);
 	}
 
-	/** A label clicked: fly to its POI; the current POI's label goes home (home's own: the start view). */
+	/** A label clicked: fly to its POI; the current POI's label goes home. */
 	select(index: number) {
-		this.go(index === this.current ? 0 : index);
+		this.go(index === this.current ? HOME : index);
 	}
 
 	/** The start view was edited (dev panel): show the current POI's new framing at once. */
@@ -113,11 +117,12 @@ export interface TourControlsOptions {
 /**
  * The visitor's input around the current POI, attached to the view element:
  * `<div tabindex="0" {@attach tourControls(tour)}>`. The camera stays on its pivot (the POI's point, or
- * home's): input only turns it and zooms toward it. Moving between POIs is by the labels and the menu.
+ * the start view's at home): input only turns it and zooms toward it. Moving between POIs is by the labels
+ * and the menu.
  * - Drag (any mouse button, one finger): turns, with some inertia on release.
  * - Wheel, trackpad pinch: smooth zoom. Two fingers: pinch zooms, twist turns.
- * - Keyboard (when focused): ← → / Q E turn, ↑ ↓ / + − / Page Up Down zoom, Escape goes home, Home goes
- *   home's start view.
+ * - Keyboard (when focused): ← → / Q E turn, ↑ ↓ / + − / Page Up Down zoom, Escape goes home (as you left
+ *   it), Home goes to the start view.
  * Input waits while a flight is under way (the flight owns the camera).
  */
 export function tourControls(tour: Tour, options: TourControlsOptions = {}): Attachment<HTMLElement> {
@@ -216,7 +221,7 @@ export function tourControls(tour: Tour, options: TourControlsOptions = {}): Att
 			event.preventDefault();
 			if (event.repeat) return;
 			if (event.code === 'Escape') tour.home();
-			else tour.go(0);
+			else tour.go(HOME);
 		};
 
 		const onKeyUp = (event: KeyboardEvent) => {

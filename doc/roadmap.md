@@ -256,6 +256,7 @@ Dropped (2026-10-29): simpler, faster without.
 
 ## Decision log
 
+- **2026-10-29**: The first POI is a POI like the others (a project page too), not home. Home is the overview framed by the start view, where no POI is current: every label rearranges alike there. Escape, the current POI's label and the Home key go back to it. The POI was "Dig site" at the origin, confusing with the scene's own name: renamed Test pit (`test-pit`) and moved to the hollow north-east of the plateau.
 - **2026-10-29**: Q6: the rough march in motion becomes automatic. Desktops march sharp while moving; a device whose moving frames run under ~52 fps switches to rough by itself, remembered for its next visits. It goes before dynamic resolution: the renderer asks the drawables to get cheaper (`degrade()`) before lowering the pixel ratio, so a slow phone loses sharpness in motion only, not resolution everywhere.
 - **2026-10-29**: God rays as light shafts in the mist (the ridges' shadow volumes), not a screen-space blur toward the sun: the camera looks down and the sun is low, so it is almost never on screen. The sun and the ground being fixed, the shadow volumes come from a shadow ceiling rendered once, and the shafts are computed in the march and cached with the ground: no per-frame cost when still. They match the baked shadows (same sun, same ground).
 - **2026-10-29**: The site stays local for now; deploy (M4) when you decide.

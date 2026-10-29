@@ -1,10 +1,9 @@
 import type { CameraPose } from '$lib/gl/camera';
-import { tuning } from '$lib/tuning';
 
 /**
- * The points of interest. The first one is home: the overview the site opens on, framed by the start view
- * (tuning.start, set in the dev panel), its point being the start view's pivot. The others are framed
- * relative to the start view, so retuning it (its heading, say) carries every POI with it.
+ * The points of interest, one per project, all alike. Home is not one of them: it is the overview the site
+ * opens on, framed by the start view (tuning.start, set in the dev panel). The POIs are framed relative to
+ * it, so retuning it (its heading, say) carries every POI with it.
  * Frame a view with the dev panel's free camera, then "Copy pose" and paste it as `view`.
  */
 export interface Poi {
@@ -26,7 +25,7 @@ export interface PoiView {
 	turn: number;
 }
 
-/** The start view (tuning.start): where home looks (x, z), from how far, and the compass heading. */
+/** The start view (tuning.start): where home, the overview, looks (x, z), from how far, and the heading. */
 export interface StartView {
 	x: number;
 	z: number;
@@ -40,16 +39,14 @@ export function poiView(poi: Poi, start: StartView): CameraPose {
 	return { target: [x, z], distance: start.distance * poi.view.zoom, heading: start.heading + poi.view.turn };
 }
 
+/** The camera pose for home, the overview: the start view itself (read live). */
+export function homeView(start: StartView): CameraPose {
+	return { target: [start.x, start.z], distance: start.distance, heading: start.heading };
+}
+
 // Placeholders on the placeholder terrain (the plateau is around the origin)
 export const pois: Poi[] = [
-	{
-		id: 'dig-site',
-		title: 'Dig site',
-		get at(): [number, number] {
-			return [tuning.start.x, tuning.start.z];
-		},
-		view: { zoom: 1, turn: 0 }
-	},
+	{ id: 'test-pit', title: 'Test pit', at: [130, -230], view: { zoom: 0.4, turn: 0 } },
 	{ id: 'trench-a', title: 'Trench A', at: [-70, 40], view: { zoom: 0.37, turn: 0 } },
 	{ id: 'spoil-heap', title: 'Spoil heap', at: [90, -60], view: { zoom: 0.4, turn: 0 } },
 	{ id: 'north-ridge', title: 'North ridge', at: [-260, -220], view: { zoom: 0.53, turn: 0 } }

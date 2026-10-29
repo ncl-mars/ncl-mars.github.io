@@ -37,7 +37,7 @@ export const schema: Group[] = [
 		key: 'start',
 		label: 'Start view',
 		params: [
-			{ key: 'x', label: 'Pivot x', min: -500, max: 500, step: 1, hint: 'Where home looks (world x), and where the Dig site label stands. The camera turns and zooms around it.' },
+			{ key: 'x', label: 'Pivot x', min: -500, max: 500, step: 1, hint: 'Where home, the overview, looks (world x). The camera turns and zooms around it there.' },
 			{ key: 'z', label: 'Pivot z', min: -500, max: 500, step: 1, hint: 'World z (north is −z).' },
 			{ key: 'distance', label: 'Distance', min: 20, max: 2000, step: 1, hint: 'POI distances are multiples of it. Kept within the camera’s min / max distance.' },
 			{ key: 'heading', label: 'Heading (°)', min: 0, max: 360, step: 1, hint: 'Compass direction the camera looks (0 north, 90 east). POI headings turn with it.' }
