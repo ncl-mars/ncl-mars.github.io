@@ -1,13 +1,14 @@
 import type { Attachment } from 'svelte/attachments';
-import type { FlightSettings, GroundHeights, SurveyCamera } from '$lib/gl/camera';
+import { wrapAngle, type CameraPose, type FlightSettings, type GroundHeights, type SurveyCamera } from '$lib/gl/camera';
 import { TurnTracker } from '$lib/gl/controls';
-import type { Poi } from '$lib/content/pois';
+import { poiView, type Poi, type StartView } from '$lib/content/pois';
 
 /**
- * Moving between POIs: `go(i)` flies the camera to any POI from wherever it is (going to the current one
- * flies back to its framing); `next` / `previous` step through them in order. Before the ground has
- * loaded, or with reduced motion, it jumps instead. Lives at module level with the camera, so the current
- * POI survives navigation.
+ * Moving between POIs. The first POI is home, framed by the start view; the others are framed relative to
+ * it (content/pois.ts). `go(i)` flies the camera to any POI from wherever it is. Leaving home remembers how
+ * you left it (your zoom and turn) and coming back returns there; going home from home goes back to the
+ * start view. Before the ground has loaded, or with reduced motion, it jumps instead.
+ * Lives at module level with the camera, so the current POI survives navigation.
  */
 export class Tour {
 	current = 0;
@@ -15,6 +16,7 @@ export class Tour {
 	onChange: ((index: number) => void) | null = null;
 	/** Called when the camera gets there: end of the flight, or right away after a jump. */
 	onArrive: ((index: number) => void) | null = null;
+	private homePose: CameraPose | null = null;
 	private readonly reducedMotion =
 		typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -22,152 +24,162 @@ export class Tour {
 		readonly camera: SurveyCamera,
 		readonly pois: Poi[],
 		private readonly ground: () => GroundHeights | null,
-		private readonly settings: FlightSettings
+		private readonly settings: FlightSettings,
+		/** Read live (tuning.start). */
+		private readonly start: StartView
 	) {
-		camera.jumpTo(pois[0].view);
+		camera.jumpTo(this.viewOf(0));
 	}
 
 	get flying(): boolean {
 		return this.camera.flying;
 	}
 
+	/** The framed view of POI `index`, from the start view. */
+	viewOf(index: number): CameraPose {
+		return poiView(this.pois[index], this.start);
+	}
+
 	/** `instant`: jump instead of flying (a page opened on a project's URL). */
 	go(index: number, instant = false) {
 		index = Math.max(0, Math.min(this.pois.length - 1, index));
+		let view = this.viewOf(index);
+		if (index === 0) {
+			if (this.current !== 0 && this.homePose) view = this.homePose;
+			else this.homePose = null;
+		} else if (this.current === 0 && !this.camera.flying) {
+			this.homePose = this.camera.pose();
+		}
 		const changed = index !== this.current;
 		this.current = index;
 		if (changed) this.onChange?.(index);
 		const arrive = () => this.onArrive?.(index);
 		const ground = this.ground();
 		if (ground && !instant && !this.reducedMotion) {
-			this.camera.flyTo(this.pois[index].view, ground, this.settings, arrive);
+			this.camera.flyTo(view, ground, this.settings, arrive);
 		} else {
-			this.camera.jumpTo(this.pois[index].view);
+			this.camera.jumpTo(view);
 			arrive();
 		}
 	}
 
-	/** A label clicked: fly to its POI; clicking the current one again goes back to the overview (the first POI). */
+	/** Back to the overview, as you left it. */
+	home() {
+		if (this.current !== 0) this.go(0);
+	}
+
+	/** A label clicked: fly to its POI; the current POI's label goes home (home's own: the start view). */
 	select(index: number) {
 		this.go(index === this.current ? 0 : index);
 	}
 
-	next() {
-		if (this.current < this.pois.length - 1) this.go(this.current + 1);
-	}
-
-	previous() {
-		if (this.current > 0) this.go(this.current - 1);
+	/** The start view was edited (dev panel): show the current POI's new framing at once. */
+	reframe() {
+		this.homePose = null;
+		if (!this.camera.flying) this.camera.jumpTo(this.viewOf(this.current));
 	}
 }
 
-/** Wheel events closer than this (ms) belong to the same gesture (trackpad momentum included). */
-const GESTURE_GAP = 200;
-/** Wheel distance (px) for one step: one mouse notch, or a short trackpad swipe. */
-const WHEEL_STEP = 40;
-/** Touch swipe distance (px) for one step. */
-const SWIPE_STEP = 40;
-/** Touch movement (px) before a drag picks its axis: across turns the view, along steps. */
-const AXIS_LOCK = 10;
-/** Turning keys by physical position (event.code): Q / E, A / E on AZERTY. +1 turns the heading left. */
-const TURN_KEYS: Record<string, number> = { KeyQ: 1, KeyE: -1 };
+/** Held keys, by physical position (event.code): turn (+1 turns the heading left) and zoom (−1 in). */
+const HELD_KEYS: Record<string, ['rotate' | 'zoom', number]> = {
+	ArrowLeft: ['rotate', 1],
+	ArrowRight: ['rotate', -1],
+	KeyQ: ['rotate', 1],
+	KeyE: ['rotate', -1],
+	ArrowUp: ['zoom', -1],
+	ArrowDown: ['zoom', 1],
+	PageUp: ['zoom', -1],
+	PageDown: ['zoom', 1],
+	NumpadAdd: ['zoom', -1],
+	NumpadSubtract: ['zoom', 1]
+};
+/** Zoom keys by character: '-' is on the 6 key on AZERTY, '+' needs Shift on most layouts. */
+const HELD_CHARS: Record<string, ['rotate' | 'zoom', number]> = {
+	'+': ['zoom', -1],
+	'=': ['zoom', -1],
+	'-': ['zoom', 1],
+	_: ['zoom', 1]
+};
 
 const DEG = Math.PI / 180;
 
 export interface TourControlsOptions {
-	/** Checked on every input: false ignores it (dev: the free camera has the input). */
+	/** Checked on every input: false ignores it (a project is open; dev: the free camera has the input). */
 	enabled?: () => boolean;
-	/** Read live (the dev panel edits it): degrees of turn per pixel dragged. */
-	settings?: { rotateSpeed: number };
+	/** Read live (the dev panel edits them): degrees of turn per pixel dragged, wheel zoom per pixel. */
+	settings?: { rotateSpeed: number; wheelSpeed: number };
 }
 
 /**
- * Input for the tour, attached to the view element: `<div tabindex="0" {@attach tourControls(tour)}>`.
- * - Wheel / trackpad: one step per gesture (down = next), so momentum never skips POIs. A new gesture
- *   during a flight re-targets it.
- * - Mouse drag (any button): turns the view around the current POI, with some inertia on release.
- * - Touch: a drag across turns, a swipe up = next, down = previous (the first pixels pick the axis).
- * - Keyboard (when focused): → ↓ Page Down Space = next, ← ↑ Page Up = previous, Home / End; Q / E turn.
- * Turning waits while a flight is under way (the flight owns the heading). Clicking a label (Legend)
- * calls `tour.select(i)` itself.
+ * The visitor's input around the current POI, attached to the view element:
+ * `<div tabindex="0" {@attach tourControls(tour)}>`. The camera stays on its pivot (the POI's point, or
+ * home's): input only turns it and zooms toward it. Moving between POIs is by the labels and the menu.
+ * - Drag (any mouse button, one finger): turns, with some inertia on release.
+ * - Wheel, trackpad pinch: smooth zoom. Two fingers: pinch zooms, twist turns.
+ * - Keyboard (when focused): ← → / Q E turn, ↑ ↓ / + − / Page Up Down zoom, Escape goes home, Home goes
+ *   home's start view.
+ * Input waits while a flight is under way (the flight owns the camera).
  */
 export function tourControls(tour: Tour, options: TourControlsOptions = {}): Attachment<HTMLElement> {
 	return (el) => {
 		const enabled = () => options.enabled?.() ?? true;
 		const camera = tour.camera;
 		const turn = new TurnTracker(camera);
-		let lastWheel = -Infinity;
-		let wheelSum = 0;
-		let stepped = false;
-		// x, y: where the drag started; while turning, x is the last position
-		let drag: { id: number; x: number; y: number; mode: 'pending' | 'turn' | 'swipe' } | null = null;
-		const turnKeys = new Set<string>();
+		const pointers = new Map<number, { x: number; y: number }>();
+		const held = new Map<string, ['rotate' | 'zoom', number]>(); // by event.code, so keyup releases what keydown pressed
 
-		const onWheel = (event: WheelEvent) => {
-			if (!enabled()) return;
-			event.preventDefault();
-			if (event.timeStamp - lastWheel > GESTURE_GAP) {
-				wheelSum = 0;
-				stepped = false;
-			}
-			lastWheel = event.timeStamp;
-			if (stepped) return;
-			const scale = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 400 : 1;
-			wheelSum += event.deltaY * scale;
-			if (Math.abs(wheelSum) < WHEEL_STEP) return;
-			stepped = true;
-			if (wheelSum > 0) tour.next();
-			else tour.previous();
+		const pinch = () => {
+			const [a, b] = [...pointers.values()];
+			return { distance: Math.hypot(a.x - b.x, a.y - b.y), angle: Math.atan2(b.y - a.y, b.x - a.x) };
 		};
 
 		const onPointerDown = (event: PointerEvent) => {
 			// A press on a label is its click: capturing the pointer would steal it
-			if (!enabled() || drag || (event.target as Element).closest('button, a')) return;
-			const mouse = event.pointerType === 'mouse';
-			if (mouse && event.button !== 0 && event.button !== 2) return;
+			if (!enabled() || (event.target as Element).closest('button, a')) return;
+			if (event.pointerType === 'mouse' && event.button !== 0 && event.button !== 2) return;
+			if (pointers.size >= 2) return;
 			el.setPointerCapture(event.pointerId);
-			drag = { id: event.pointerId, x: event.clientX, y: event.clientY, mode: mouse ? 'turn' : 'pending' };
+			pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
 			turn.clear();
-			if (!camera.flying) camera.stop(); // a grab stops a spin, not a flight
-			if (mouse) el.classList.add('rotating');
+			if (!camera.flying) camera.stop(); // a grab stops a spin or a glide, not a flight
+			el.classList.add('rotating');
 		};
 
 		const onPointerMove = (event: PointerEvent) => {
-			if (drag?.id !== event.pointerId) return;
-			if (drag.mode === 'pending') {
-				const dx = event.clientX - drag.x;
-				const dy = event.clientY - drag.y;
-				if (Math.max(Math.abs(dx), Math.abs(dy)) < AXIS_LOCK) return;
-				drag.mode = Math.abs(dx) > Math.abs(dy) ? 'turn' : 'swipe';
-				drag.x = event.clientX;
+			const pointer = pointers.get(event.pointerId);
+			if (!pointer) return;
+			if (pointers.size === 1) {
+				if (!camera.flying) {
+					// Dragging right turns the heading right (clockwise seen from above), as in the free controls
+					camera.rotate(-(event.clientX - pointer.x) * (options.settings?.rotateSpeed ?? 0.3) * DEG);
+					turn.record(event.timeStamp);
+				}
+				pointer.x = event.clientX;
+				pointer.y = event.clientY;
 				return;
 			}
-			if (drag.mode !== 'turn') return;
-			if (!camera.flying) {
-				// Dragging right turns the heading right (clockwise seen from above), as in the free controls
-				camera.rotate(-(event.clientX - drag.x) * (options.settings?.rotateSpeed ?? 0.3) * DEG);
-				turn.record(event.timeStamp);
-			}
-			drag.x = event.clientX;
+			const before = pinch();
+			pointer.x = event.clientX;
+			pointer.y = event.clientY;
+			const after = pinch();
+			if (camera.flying) return;
+			if (after.distance > 0) camera.setDistance((camera.distance * before.distance) / after.distance);
+			camera.rotate(wrapAngle(after.angle - before.angle));
+			turn.record(event.timeStamp);
 		};
 
 		const onPointerUp = (event: PointerEvent) => {
-			if (drag?.id !== event.pointerId) return;
-			const { mode, y } = drag;
-			drag = null;
-			el.classList.remove('rotating');
-			if (mode === 'turn') {
-				if (!camera.flying) turn.release(event.timeStamp);
-			} else if (mode === 'swipe') {
-				const dy = event.clientY - y;
-				if (dy <= -SWIPE_STEP) tour.next();
-				else if (dy >= SWIPE_STEP) tour.previous();
+			if (!pointers.delete(event.pointerId)) return;
+			if (pointers.size) {
+				turn.clear(); // end of a pinch: the remaining finger turns from here
+				return;
 			}
+			el.classList.remove('rotating');
+			if (!camera.flying) turn.release(event.timeStamp);
 		};
 
 		const onPointerCancel = (event: PointerEvent) => {
-			if (drag?.id !== event.pointerId) return;
-			drag = null;
+			if (!pointers.delete(event.pointerId) || pointers.size) return;
 			el.classList.remove('rotating');
 			turn.clear();
 		};
@@ -176,73 +188,63 @@ export function tourControls(tour: Tour, options: TourControlsOptions = {}): Att
 			if (enabled()) event.preventDefault(); // right-drag turns
 		};
 
-		const updateTurnKeys = () => {
-			let rotate = 0;
-			for (const code of turnKeys) rotate += TURN_KEYS[code];
-			camera.keys.rotate = rotate;
+		const onWheel = (event: WheelEvent) => {
+			if (!enabled()) return;
+			event.preventDefault(); // also stops ctrl+wheel (trackpad pinch) from zooming the page
+			if (camera.flying) return;
+			const scale = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 400 : 1;
+			const speed = options.settings?.wheelSpeed ?? 0.002;
+			camera.zoomTo(camera.goalDistance * Math.exp(event.deltaY * scale * speed)); // toward the pivot
+		};
+
+		const updateHeld = () => {
+			const keys = camera.keys;
+			keys.rotate = keys.zoom = 0;
+			for (const [axis, value] of held.values()) keys[axis] = Math.max(-1, Math.min(1, keys[axis] + value));
 		};
 
 		const onKeyDown = (event: KeyboardEvent) => {
 			if (!enabled() || event.ctrlKey || event.metaKey || event.altKey) return;
-			if (event.code in TURN_KEYS) {
-				event.preventDefault();
-				turnKeys.add(event.code);
-				updateTurnKeys();
+			const binding = HELD_KEYS[event.code] ?? HELD_CHARS[event.key];
+			if (binding) {
+				event.preventDefault(); // arrows / page keys would scroll
+				held.set(event.code, binding);
+				updateHeld();
 				return;
 			}
-			// Space on a focused label is its click
-			if (event.code === 'Space' && (event.target as HTMLElement).closest('button, a')) return;
-			let action: (() => void) | null = null;
-			switch (event.code) {
-				case 'ArrowRight':
-				case 'ArrowDown':
-				case 'PageDown':
-				case 'Space':
-					action = () => tour.next();
-					break;
-				case 'ArrowLeft':
-				case 'ArrowUp':
-				case 'PageUp':
-					action = () => tour.previous();
-					break;
-				case 'Home':
-					action = () => tour.go(0);
-					break;
-				case 'End':
-					action = () => tour.go(tour.pois.length - 1);
-					break;
-			}
-			if (!action) return;
-			event.preventDefault(); // these keys would scroll
-			if (!event.repeat) action();
+			if (event.code !== 'Escape' && event.code !== 'Home') return;
+			event.preventDefault();
+			if (event.repeat) return;
+			if (event.code === 'Escape') tour.home();
+			else tour.go(0);
 		};
 
 		const onKeyUp = (event: KeyboardEvent) => {
-			if (turnKeys.delete(event.code)) updateTurnKeys();
+			if (held.delete(event.code)) updateHeld();
 		};
 
 		const onBlur = () => {
-			if (!turnKeys.size) return;
-			turnKeys.clear();
-			updateTurnKeys();
+			if (!held.size) return;
+			held.clear();
+			updateHeld();
 		};
 
-		el.addEventListener('wheel', onWheel, { passive: false });
 		el.addEventListener('pointerdown', onPointerDown);
 		el.addEventListener('pointermove', onPointerMove);
 		el.addEventListener('pointerup', onPointerUp);
 		el.addEventListener('pointercancel', onPointerCancel);
 		el.addEventListener('contextmenu', onContextMenu);
+		el.addEventListener('wheel', onWheel, { passive: false });
 		el.addEventListener('keydown', onKeyDown);
 		el.addEventListener('keyup', onKeyUp);
 		el.addEventListener('blur', onBlur);
 		return () => {
-			el.removeEventListener('wheel', onWheel);
 			el.removeEventListener('pointerdown', onPointerDown);
 			el.removeEventListener('pointermove', onPointerMove);
 			el.removeEventListener('pointerup', onPointerUp);
 			el.removeEventListener('pointercancel', onPointerCancel);
 			el.removeEventListener('contextmenu', onContextMenu);
+			el.removeEventListener('wheel', onWheel);
 			el.removeEventListener('keydown', onKeyDown);
 			el.removeEventListener('keyup', onKeyUp);
 			el.removeEventListener('blur', onBlur);

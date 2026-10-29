@@ -16,8 +16,6 @@ export interface CameraSettings {
 	tiltCurve: number;
 	/** Vertical field of view. */
 	fov: number;
-	/** Start distance (only read at construction). */
-	distance: number;
 	minDistance: number;
 	maxDistance: number;
 }
@@ -132,7 +130,7 @@ export class SurveyCamera {
 		private readonly settings: CameraSettings,
 		private readonly motion: CameraMotionSettings
 	) {
-		this.distance = this.goalDistance = this.clampDistance(settings.distance);
+		this.distance = this.goalDistance = settings.maxDistance; // until the first jumpTo
 		this.refresh();
 	}
 

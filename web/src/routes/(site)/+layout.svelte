@@ -6,18 +6,16 @@
 	import { pois } from '$lib/content/pois';
 	import { projectFor } from '$lib/content/projects';
 	import { Tour } from '$lib/navigation/tour';
-	import type { LegendItem } from '$lib/legend/legend';
 
 	// Module level: the camera, the tour (which POI you're at) and the terrain survive navigating away and
 	// back. They read their settings live from `tuning`, which the dev panel edits.
 	const camera = new SurveyCamera(tuning.camera, tuning.controls);
 	const terrain = new Terrain(camera, terrainAssets, tuning);
-	const tour = new Tour(camera, pois, () => terrain.ground, tuning.flight);
-	const legendItems: LegendItem[] = pois.map((poi) => ({ title: poi.title, at: poi.at }));
+	const tour = new Tour(camera, pois, () => terrain.ground, tuning.flight, tuning.start);
 	/** Dev only: free camera input (pan, zoom, rotate) to frame POI views. */
 	const dev = { freeCamera: false };
 
-	/** The project's place, for the overlay's first line: E x · N −z, as in the legend. */
+	/** The project's place, for the card's first line: E x · N −z, as in the legend. */
 	function placeOf(poiId: string): string | undefined {
 		const poi = pois.find((p) => p.id === poiId);
 		if (!poi) return undefined;
@@ -28,12 +26,12 @@
 
 <script lang="ts">
 	// The dig site, shared by `/` and `/projects/<slug>/`: this layout stays mounted between them, so the
-	// scene never reloads. One full-viewport view drawn by the terrain raymarcher. The camera moves between
-	// POIs: scroll, swipe or arrow keys step through them, clicking a label flies to it (clicking it again
-	// goes back to the overview), dragging turns the view around the current one.
-	// Arriving at a POI with a project opens it: the URL becomes /projects/<slug>/ and the overlay shows.
-	// The URL is the truth: back closes the overlay, and a project's URL (link, back, forward) brings the
-	// camera to its POI.
+	// scene never reloads. One full-viewport view drawn by the terrain raymarcher.
+	// Home is the overview; clicking a label (or a menu entry) flies to that POI, clicking the current POI's
+	// label goes back home, as you left it. Around the current POI, dragging turns and the wheel zooms.
+	// Once the camera has arrived at a POI with a project, its label shows a Data button: it opens the
+	// project's card over the scene, at /projects/<slug>/. The URL is the truth: back closes the card, and a
+	// project's URL (link, back, forward) brings the camera to its POI.
 	// Perf tuning from the URL: ?steps=48 (march iteration cap), ?dpr=1 (pixel-ratio cap).
 	import { onMount, untrack } from 'svelte';
 	import { goto } from '$app/navigation';
@@ -42,7 +40,7 @@
 	import { getRenderer } from '$lib/gl/context';
 	import { surveyControls } from '$lib/gl/controls';
 	import { tourControls } from '$lib/navigation/tour';
-	import { actions, onTuningChange, readouts } from '$lib/tuning';
+	import { actions, onTuningChange, readouts, setTuning } from '$lib/tuning';
 	import Legend from '$lib/components/Legend.svelte';
 	import ProjectOverlay from '$lib/components/ProjectOverlay.svelte';
 
@@ -53,6 +51,9 @@
 	let site: HTMLElement;
 	let needle: SVGGElement;
 	let current = $state(tour.current);
+	/** The POI the camera has arrived at (−1 during a flight): its label shows the Data button. */
+	let arrived = $state(-1);
+	const dataAt = $derived(arrived !== -1 && projectFor(pois[arrived].id) ? arrived : -1);
 	const project = $derived(page.data.project);
 	let mounted = false;
 
@@ -60,7 +61,7 @@
 		goto(resolve(`/projects/${slug}/`), { state: { fromScene: true }, noScroll: true, keepFocus: true });
 	}
 
-	/** Back to the dig site's URL: a history step back if the overlay was opened from the scene. */
+	/** Back to the dig site's URL: a history step back if the card was opened from the scene. */
 	function closeProject() {
 		if (page.state.fromScene) history.back();
 		else goto(resolve('/'), { replaceState: true, noScroll: true, keepFocus: true });
@@ -76,7 +77,7 @@
 		});
 	});
 
-	// The overlay closed: the keyboard goes back to the scene
+	// The card closed: the keyboard goes back to the scene
 	let hadProject = false;
 	$effect(() => {
 		const open = !!project;
@@ -88,12 +89,14 @@
 		mounted = true;
 		// Keyboard controls work right away, without a focus ring nobody asked for
 		if (!project) site.focus({ preventScroll: true, focusVisible: false } as FocusOptions);
-		current = tour.current; // a project's URL may have moved it already
-		tour.onChange = (index) => (current = index);
-		tour.onArrive = (index) => {
-			const arrived = projectFor(pois[index].id);
-			if (arrived && arrived.slug !== page.data.project?.slug) openProject(arrived.slug);
+		// A project's URL may have moved the tour already
+		current = tour.current;
+		arrived = tour.flying ? -1 : tour.current;
+		tour.onChange = (index) => {
+			current = index;
+			arrived = -1;
 		};
+		tour.onArrive = (index) => (arrived = index);
 
 		// Compass needle follows the heading: written straight to the DOM after each frame, only on change
 		let shownYaw = NaN;
@@ -103,9 +106,11 @@
 			needle.setAttribute('transform', `rotate(${(camera.yaw * 180) / Math.PI} 16 16)`);
 		});
 
-		// Panel edits to the ground itself (not the atmosphere) need a re-march of the terrain cache
 		const stopTuning = onTuningChange((group) => {
+			// Panel edits to the ground itself (not the atmosphere) need a re-march of the terrain cache
 			if (group === 'march' || group === 'shading' || group === 'farField' || group === 'fog') terrain.invalidate();
+			// A new start view moves home and every POI view: show the current one's new framing
+			if (group === 'start' && !dev.freeCamera) tour.reframe();
 		});
 		readouts.set('terrain', () => `terrain ${terrain.marchedLastFrame ? 'marching' : 'cached'} · ${terrain.marches} marches`);
 
@@ -129,10 +134,21 @@
 				return dev.freeCamera ? 'free camera: drag, wheel, right-drag, keys' : 'back to the POIs';
 			});
 			actions.set('Copy pose', async () => {
+				// Relative to the start view, as POI views are (content/pois.ts)
 				const { target, distance, heading } = camera.pose();
-				const view = `view: { target: [${target[0].toFixed(1)}, ${target[1].toFixed(1)}], distance: ${distance.toFixed(0)}, heading: ${heading.toFixed(0)} }`;
+				const start = tuning.start;
+				const turn = ((((heading - start.heading) % 360) + 540) % 360) - 180;
+				const view = `view: { target: [${target[0].toFixed(1)}, ${target[1].toFixed(1)}], zoom: ${(distance / start.distance).toFixed(2)}, turn: ${turn.toFixed(0)} }`;
 				await navigator.clipboard.writeText(view);
 				return `copied ${view}`;
+			});
+			actions.set('Use view as start', () => {
+				const { target, distance, heading } = camera.pose();
+				setTuning('start', 'x', Math.round(target[0]));
+				setTuning('start', 'z', Math.round(target[1]));
+				setTuning('start', 'distance', Math.round(distance));
+				setTuning('start', 'heading', Math.round(heading));
+				return 'start view set: Save defaults to keep it';
 			});
 		}
 
@@ -153,6 +169,7 @@
 			readouts.delete('tour');
 			actions.delete('Free camera');
 			actions.delete('Copy pose');
+			actions.delete('Use view as start');
 			if (previous !== null) renderer.setMaxPixelRatio(previous);
 		};
 	});
@@ -163,7 +180,7 @@
 <div
 	class="site"
 	role="application"
-	aria-label="Dig site. Scroll, swipe or use the arrow keys to go from one point of interest to the next, or select a label to fly to it. Drag, or Q and E, to turn the view."
+	aria-label="Dig site. Select a label or a menu entry to fly there; at a point of interest, Data opens its project. Drag or the left and right arrows turn the view, the wheel, a pinch or the up and down arrows zoom, Escape goes back home."
 	tabindex="0"
 	inert={!!project}
 	bind:this={site}
@@ -175,7 +192,15 @@
 		enabled: () => dev.freeCamera && !project
 	})}
 >
-	<Legend items={legendItems} {camera} ground={() => terrain.ground} {current} onselect={(i) => tour.select(i)} />
+	<Legend
+		items={pois}
+		{camera}
+		ground={() => terrain.ground}
+		{current}
+		{dataAt}
+		onselect={(i) => tour.select(i)}
+		ondata={(i) => openProject(pois[i].id)}
+	/>
 </div>
 
 <!-- The heading, for orientation (a display: turn by dragging the view) -->
@@ -189,8 +214,25 @@
 	</svg>
 </div>
 
-<header class="overlay" inert={!!project}>
+<header class="masthead" inert={!!project}>
 	<p class="name">Portfolio</p>
+	<!-- Straight to any POI; the first is home -->
+	<nav aria-label="Points of interest">
+		<ol>
+			{#each pois as poi, i (poi.id)}
+				<li>
+					<button
+						type="button"
+						class:current={i === current}
+						aria-current={i === current ? 'location' : undefined}
+						onclick={() => tour.go(i)}
+					>
+						<span class="number">{String(i + 1).padStart(2, '0')}</span>{poi.title}
+					</button>
+				</li>
+			{/each}
+		</ol>
+	</nav>
 	<a href="/lab/views/">lab: views</a>
 </header>
 
@@ -263,7 +305,7 @@
 		fill: rgb(255 255 255 / 0.75);
 	}
 
-	.overlay {
+	.masthead {
 		position: fixed;
 		top: 0;
 		left: 0;
@@ -272,14 +314,57 @@
 		pointer-events: none;
 	}
 
-	.overlay .name {
-		margin: 0 0 0.25rem;
+	.masthead .name {
+		margin: 0 0 0.75rem;
 		font-size: 1.1rem;
 		font-weight: 600;
 		letter-spacing: 0.02em;
 	}
 
-	.overlay a {
+	.masthead ol {
+		margin: 0 0 0.9rem;
+		padding: 0;
+		list-style: none;
+	}
+
+	.masthead li button {
+		display: flex;
+		gap: 0.6em;
+		padding: 0.15rem 0;
+		border: 0;
+		background: none;
+		color: inherit;
+		font: inherit;
+		font-size: 0.85rem;
+		opacity: 0.7;
+		cursor: pointer;
+		pointer-events: auto;
+		text-shadow: 0 0 0.6em var(--bg);
+	}
+
+	.masthead li button:hover,
+	.masthead li button:focus-visible,
+	.masthead li button.current {
+		opacity: 1;
+	}
+
+	.masthead li button.current {
+		font-weight: 600;
+	}
+
+	.masthead li button:focus-visible {
+		outline: 1px solid currentColor;
+		outline-offset: 2px;
+	}
+
+	.number {
+		font-family: var(--font-mono);
+		font-size: 0.9em;
+		font-variant-numeric: tabular-nums;
+		opacity: 0.7;
+	}
+
+	.masthead a {
 		font-size: 0.85rem;
 		pointer-events: auto;
 	}

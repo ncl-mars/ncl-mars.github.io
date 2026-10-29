@@ -1,9 +1,9 @@
 <script lang="ts">
-	// A project over the scene. Everything behind it (scene, labels, compass) is blurred, desaturated and
-	// washed by a CSS backdrop-filter; the panel scrolls on its own, never the window (the views' cached
-	// rects stay valid). Escape, the × or a click on the scene closes; images open in the lightbox; videos
-	// play muted and looping while visible (not with reduced motion), with controls to unmute.
-	// The look comes from tuning.overlay, live; the prerendered page has the defaults.
+	// A project as a card over the scene, which stays alive behind it (wind, mist). A CSS backdrop-filter
+	// can blur, desaturate and wash everything behind (scene, labels, compass); the card scrolls on its own,
+	// never the window (the views' cached rects stay valid). Escape, the × or a click on the scene closes;
+	// images open in the lightbox; videos play muted and looping while visible (not with reduced motion),
+	// with controls to unmute. The look comes from tuning.overlay, live; the prerendered page has the defaults.
 	import { fade, fly } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 	import type { Attachment } from 'svelte/attachments';
@@ -28,9 +28,16 @@
 			`--panel-width: ${o.width}rem`
 		].join('; ');
 	});
+	/** 0 left, 1 centred, 2 right. */
+	const align = $derived.by(() => {
+		void tuningRevision;
+		return Math.round(tuning.overlay.align);
+	});
 	const fadeIn = () => tuning.overlay.fadeTime * 1000;
 	const fadeOut = () => fadeIn() / 1.5;
-	const slide = reducedMotion ? 0 : 40;
+	// In from its side, or up from below when centred
+	const slideX = () => (reducedMotion || align === 1 ? 0 : align === 0 ? -40 : 40);
+	const slideY = () => (reducedMotion || align !== 1 ? 0 : 24);
 
 	const images = $derived(
 		project.media.flatMap((item) => (item.kind === 'image' ? [{ picture: item.picture, caption: item.alt }] : []))
@@ -76,7 +83,15 @@
 	});
 </script>
 
-<div class="overlay" {style} role="dialog" aria-modal="true" aria-labelledby="project-title">
+<div
+	class="overlay"
+	class:left={align === 0}
+	class:centre={align === 1}
+	{style}
+	role="dialog"
+	aria-modal="true"
+	aria-labelledby="project-title"
+>
 	<button
 		class="scene"
 		type="button"
@@ -91,8 +106,8 @@
 		class="panel"
 		tabindex="-1"
 		bind:this={panel}
-		in:fly={{ x: slide, duration: fadeIn(), easing: cubicOut }}
-		out:fly={{ x: slide, duration: fadeOut(), easing: cubicOut }}
+		in:fly={{ x: slideX(), y: slideY(), duration: fadeIn(), easing: cubicOut }}
+		out:fly={{ x: slideX(), y: slideY(), duration: fadeOut(), easing: cubicOut }}
 	>
 		<button class="close" type="button" aria-label="Close the project" onclick={onclose}>×</button>
 		<header>
@@ -162,20 +177,35 @@
 		cursor: pointer;
 	}
 
+	/* The card: centred or on one side, as tall as its content, scrolling past the view's height */
 	.panel {
 		position: absolute;
-		top: 0;
-		right: 0;
-		bottom: 0;
+		top: 1.5rem;
+		right: 1.5rem;
 		box-sizing: border-box;
-		width: min(var(--panel-width), 100%);
-		padding: 2.75rem 2.5rem 4rem;
+		width: min(var(--panel-width), 100% - 3rem);
+		max-height: calc(100% - 3rem);
+		padding: 2.25rem 2.25rem 2.5rem;
 		overflow-y: auto;
 		overscroll-behavior: contain;
+		border: 1px solid rgb(0 0 0 / 0.14);
 		background: var(--panel);
+		box-shadow: 0 1.25rem 3.5rem rgb(0 0 0 / 0.18);
 		color: var(--fg);
 		scrollbar-width: thin;
 		scrollbar-color: rgb(0 0 0 / 0.25) transparent;
+	}
+
+	.left .panel {
+		right: auto;
+		left: 1.5rem;
+	}
+
+	/* Centred both ways (no transform: the transitions use it) */
+	.centre .panel {
+		inset: 1.5rem;
+		height: fit-content;
+		margin: auto;
 	}
 
 	.panel:focus {
@@ -289,10 +319,15 @@
 		background: rgb(0 0 0 / 0.08);
 	}
 
+	/* Phones: the full width, centred, whatever the position */
 	@media (max-width: 700px) {
-		.panel {
-			width: 100%;
-			padding: 2.5rem 1.25rem 3rem;
+		.overlay .panel {
+			inset: 0.75rem;
+			width: auto;
+			height: fit-content;
+			max-height: calc(100% - 1.5rem);
+			margin: auto;
+			padding: 2rem 1.25rem 2.5rem;
 		}
 
 		.close {

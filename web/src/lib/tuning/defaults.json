@@ -4,9 +4,14 @@
 		"pitchFar": 49.5,
 		"tiltCurve": 3.05,
 		"fov": 90,
-		"distance": 225,
 		"minDistance": 92,
 		"maxDistance": 480
+	},
+	"start": {
+		"x": 0,
+		"z": 0,
+		"distance": 300,
+		"heading": 246
 	},
 	"controls": {
 		"wheelSpeed": 0.002,
@@ -81,15 +86,16 @@
 		"stagger": 0.2
 	},
 	"overlay": {
-		"blur": 10,
-		"saturation": 0.25,
-		"brightness": 0.9,
+		"blur": 0,
+		"saturation": 0.8,
+		"brightness": 0.95,
 		"tint": [0.08, 0.09, 0.11],
-		"tintOpacity": 0.15,
+		"tintOpacity": 0.06,
 		"panelColor": [0.94, 0.95, 0.96],
-		"panelOpacity": 0.85,
-		"width": 34,
-		"fadeTime": 0.5
+		"panelOpacity": 0.88,
+		"align": 1,
+		"width": 46,
+		"fadeTime": 0.4
 	},
 	"renderer": {
 		"maxPixelRatio": 2

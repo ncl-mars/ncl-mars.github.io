@@ -29,21 +29,30 @@ export const schema: Group[] = [
 			{ key: 'pitchFar', label: 'Pitch far (°)', min: 2, max: 89, step: 0.5, hint: 'Pitch at the farthest zoom.' },
 			{ key: 'tiltCurve', label: 'Tilt curve', min: 0.2, max: 5, step: 0.05, hint: 'Above 1: tilts up earlier while zooming in. Below 1: later.' },
 			{ key: 'fov', label: 'FOV (°)', min: 10, max: 120, step: 1 },
-			{ key: 'minDistance', label: 'Min distance', min: 5, max: 400, step: 1 },
-			{ key: 'maxDistance', label: 'Max distance', min: 100, max: 2000, step: 10 },
-			{ key: 'distance', label: 'Start distance', min: 5, max: 2000, step: 5, hint: 'Applies on reload.' }
+			{ key: 'minDistance', label: 'Min distance', min: 5, max: 400, step: 1, hint: 'Closest zoom, everywhere (POI distances included).' },
+			{ key: 'maxDistance', label: 'Max distance', min: 100, max: 2000, step: 10 }
+		]
+	},
+	{
+		key: 'start',
+		label: 'Start view',
+		params: [
+			{ key: 'x', label: 'Pivot x', min: -500, max: 500, step: 1, hint: 'Where home looks (world x), and where the Dig site label stands. The camera turns and zooms around it.' },
+			{ key: 'z', label: 'Pivot z', min: -500, max: 500, step: 1, hint: 'World z (north is −z).' },
+			{ key: 'distance', label: 'Distance', min: 20, max: 2000, step: 1, hint: 'POI distances are multiples of it. Kept within the camera’s min / max distance.' },
+			{ key: 'heading', label: 'Heading (°)', min: 0, max: 360, step: 1, hint: 'Compass direction the camera looks (0 north, 90 east). POI headings turn with it.' }
 		]
 	},
 	{
 		key: 'controls',
 		label: 'Controls',
 		params: [
-			{ key: 'wheelSpeed', label: 'Wheel speed', min: 0.0002, max: 0.008, step: 0.0001 },
-			{ key: 'zoomSmoothing', label: 'Zoom smoothing', min: 1, max: 30, step: 0.5, hint: 'Lower glides longer.' },
-			{ key: 'inertiaDecay', label: 'Inertia decay', min: 0.5, max: 20, step: 0.1, hint: 'Higher stops sooner.' },
-			{ key: 'keyboardSpeed', label: 'Keyboard speed', min: 0.1, max: 4, step: 0.05 },
-			{ key: 'rotateSpeed', label: 'Rotate (°/px)', min: 0.05, max: 1.5, step: 0.01, hint: 'Turn per pixel dragged: any drag at a POI, right-drag / Alt+drag in the free camera.' },
-			{ key: 'keyboardRotateSpeed', label: 'Key rotate (°/s)', min: 10, max: 360, step: 5, hint: 'Q / E rotation speed.' }
+			{ key: 'wheelSpeed', label: 'Zoom speed (wheel)', min: 0.0002, max: 0.008, step: 0.0001 },
+			{ key: 'zoomSmoothing', label: 'Zoom smoothing', min: 1, max: 30, step: 0.5, hint: 'Wheel and key zoom, key turns. Lower glides longer.' },
+			{ key: 'inertiaDecay', label: 'Turn inertia decay', min: 0.5, max: 20, step: 0.1, hint: 'After a drag. Higher stops sooner.' },
+			{ key: 'rotateSpeed', label: 'Turn (°/px)', min: 0.05, max: 1.5, step: 0.01, hint: 'Per pixel dragged: any drag (right-drag / Alt+drag in the free camera).' },
+			{ key: 'keyboardRotateSpeed', label: 'Key turn (°/s)', min: 10, max: 360, step: 5, hint: '← / → and Q / E.' },
+			{ key: 'keyboardSpeed', label: 'Pan keys (free camera)', min: 0.1, max: 4, step: 0.05, hint: 'Dev only: WASD / arrows in the free camera.' }
 		]
 	},
 	{
@@ -146,14 +155,15 @@ export const schema: Group[] = [
 		key: 'overlay',
 		label: 'Project overlay',
 		params: [
-			{ key: 'blur', label: 'Scene blur (px)', min: 0, max: 40, step: 0.5, hint: 'Blur of everything behind the project (scene, labels).' },
+			{ key: 'blur', label: 'Scene blur (px)', min: 0, max: 40, step: 0.5, hint: 'Blur of everything behind the card (scene, labels). The scene stays animated.' },
 			{ key: 'saturation', label: 'Scene saturation', min: 0, max: 1.5, step: 0.01, hint: '0: gray. 1: unchanged.' },
 			{ key: 'brightness', label: 'Scene brightness', min: 0.2, max: 1.5, step: 0.01, hint: '1: unchanged.' },
 			{ key: 'tint', label: 'Scene tint', kind: 'color', hint: 'A wash over the scene, at Tint opacity.' },
 			{ key: 'tintOpacity', label: 'Tint opacity', min: 0, max: 1, step: 0.01 },
-			{ key: 'panelColor', label: 'Panel colour', kind: 'color' },
-			{ key: 'panelOpacity', label: 'Panel opacity', min: 0, max: 1, step: 0.01, hint: 'Below 1 the blurred scene shows through.' },
-			{ key: 'width', label: 'Panel width (rem)', min: 20, max: 70, step: 0.5, hint: 'On wide screens. Phones get the full screen.' },
+			{ key: 'panelColor', label: 'Card colour', kind: 'color' },
+			{ key: 'panelOpacity', label: 'Card opacity', min: 0, max: 1, step: 0.01, hint: 'Below 1 the scene shows through.' },
+			{ key: 'align', label: 'Position', kind: 'int', min: 0, max: 2, step: 1, hint: '0: left. 1: centred. 2: right. In dev the panel may cover it: P hides the panel.' },
+			{ key: 'width', label: 'Card width (rem)', min: 20, max: 70, step: 0.5, hint: 'On wide screens. Phones get the full width.' },
 			{ key: 'fadeTime', label: 'Fade time (s)', min: 0, max: 2, step: 0.05, hint: 'Opening; closing is 1.5× faster.' }
 		]
 	},

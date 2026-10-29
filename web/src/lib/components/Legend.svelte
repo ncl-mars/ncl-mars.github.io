@@ -2,8 +2,10 @@
 	// Legend lines over a GL view: put it inside the view element (it fills it). The layout and animation
 	// live in lib/legend/legend.ts, which writes the DOM directly after each rendered frame; this component
 	// only renders the elements and keeps the style values (ink, text size, stroke) in step with the panel.
-	// With `onselect`, labels are buttons (keyboard and screen readers included); `current` marks one.
+	// With `onselect`, titles are buttons (keyboard and screen readers included); `current` marks one.
+	// With `ondata`, the label at `dataAt` gets a Data button under its coordinates.
 	import { onMount } from 'svelte';
+	import { fade } from 'svelte/transition';
 	import { getRenderer } from '$lib/gl/context';
 	import { Legend, type LegendElements, type LegendItem } from '$lib/legend/legend';
 	import { onTuningChange, readouts, tuning } from '$lib/tuning';
@@ -15,13 +17,17 @@
 		camera,
 		ground,
 		current = -1,
-		onselect
+		dataAt = -1,
+		onselect,
+		ondata
 	}: {
 		items: LegendItem[];
 		camera: SurveyCamera;
 		ground: () => Ground | null;
 		current?: number;
+		dataAt?: number;
 		onselect?: (index: number) => void;
+		ondata?: (index: number) => void;
 	} = $props();
 
 	const renderer = getRenderer();
@@ -74,30 +80,32 @@
 		{/each}
 	</svg>
 	{#each items as item, i (item)}
-		{#if onselect}
-			<button
-				type="button"
-				class="label interactive"
-				class:current={i === current}
-				aria-current={i === current ? 'location' : undefined}
-				bind:this={labels[i]}
-				style="visibility: hidden"
-				onclick={() => onselect(i)}
-			>
-				{@render text(item, i)}
-			</button>
-		{:else}
-			<div class="label" class:current={i === current} bind:this={labels[i]} style="visibility: hidden">
-				{@render text(item, i)}
+		<div class="label" class:current={i === current} bind:this={labels[i]} style="visibility: hidden">
+			{#if onselect}
+				<button
+					type="button"
+					class="title interactive"
+					aria-current={i === current ? 'location' : undefined}
+					bind:this={titles[i]}
+					onclick={() => onselect(i)}
+				>
+					{item.title}
+				</button>
+			{:else}
+				<span class="title" bind:this={titles[i]}>{item.title}</span>
+			{/if}
+			<!-- Under the shelf: the coordinates, then the Data button -->
+			<div class="below">
+				<span class="meta" bind:this={metas[i]}>{item.meta ?? ''}</span>
+				{#if ondata && i === dataAt}
+					<button type="button" class="data interactive" onclick={() => ondata(i)} transition:fade={{ duration: 250 }}>
+						Data
+					</button>
+				{/if}
 			</div>
-		{/if}
+		</div>
 	{/each}
 </div>
-
-{#snippet text(item: LegendItem, i: number)}
-	<span class="title" bind:this={titles[i]}>{item.title}</span>
-	<span class="meta" bind:this={metas[i]}>{item.meta ?? ''}</span>
-{/snippet}
 
 <style>
 	.legend {
@@ -129,7 +137,7 @@
 		stroke-linejoin: miter;
 	}
 
-	/* Zero-size, placed at the start of the shelf: the title stands on the line, the meta hangs under it */
+	/* Zero-size, placed at the start of the shelf: the title stands on the line, the rest hangs under it */
 	.label {
 		position: absolute;
 		top: 0;
@@ -152,13 +160,13 @@
 		outline: none;
 	}
 
-	.interactive:focus-visible .title {
+	.interactive:focus-visible {
 		outline: 1px solid currentColor;
 		outline-offset: 0.25em;
 	}
 
-	.interactive:hover .meta {
-		opacity: var(--text);
+	.title.interactive:hover ~ .below .meta {
+		opacity: 1;
 	}
 
 	.current .title {
@@ -166,7 +174,7 @@
 	}
 
 	.title,
-	.meta {
+	.below {
 		position: absolute;
 		left: 0;
 		white-space: nowrap;
@@ -176,10 +184,14 @@
 
 	/* data-side is written by legend.ts */
 	.label:global([data-side='left']) .title,
-	.label:global([data-side='left']) .meta {
+	.label:global([data-side='left']) .below {
 		left: auto;
 		right: 0;
 		text-align: right;
+	}
+
+	.label:global([data-side='left']) .below {
+		align-items: flex-end;
 	}
 
 	.title {
@@ -192,15 +204,42 @@
 		transform: translateY(calc((1 - var(--text)) * 0.35em));
 	}
 
-	.meta {
+	.below {
 		top: var(--stroke);
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 0.6em;
 		padding-top: 0.5em;
+		transform: translateY(calc((var(--text) - 1) * 0.35em));
+	}
+
+	.meta {
 		font-family: var(--font-mono);
 		font-size: 0.9em;
 		font-variant-numeric: tabular-nums;
 		letter-spacing: 0.04em;
 		line-height: 1.2;
-		opacity: calc(var(--text) * 0.8);
-		transform: translateY(calc((var(--text) - 1) * 0.35em));
+		opacity: 0.8;
+	}
+
+	.data {
+		padding: 0.3em 0.75em 0.25em;
+		border: var(--stroke) solid currentColor;
+		font-family: var(--font-mono);
+		font-size: 0.78em;
+		letter-spacing: 0.18em;
+		text-transform: uppercase;
+		line-height: 1.2;
+		text-shadow: none;
+		transition:
+			background-color 0.15s,
+			color 0.15s;
+	}
+
+	.data:hover,
+	.data:focus-visible {
+		background: var(--ink, var(--fg));
+		color: var(--bg);
 	}
 </style>
