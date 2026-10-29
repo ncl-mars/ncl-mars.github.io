@@ -20,7 +20,7 @@ Living work plan. Tick boxes as we go, add notes inline, and log decisions at th
 | # | Question | Needed by | Answer |
 |---|----------|-----------|--------|
 | Q1 | Pages URL: `<user>.github.io` repo, custom domain, or project repo (needs `paths.base`)? | M4 | |
-| Q4 | Reference weak device (phone/GPU) for the performance gate, and max pixel ratio | M2a | |
+| Q4 | Reference weak device (phone/GPU) for the performance gate, and max pixel ratio | M2a | Your old, cheap phone (90 Hz screen): the weakest device to support. Target 60 fps |
 
 Q2, Q3, Q5 were about splats, dropped on 2026-10-29.
 
@@ -231,7 +231,8 @@ Dropped (2026-10-29): simpler, faster without.
   - [x] Mist banks from the 3D noise texture instead of hashed value noise (every pixel and every dust speck, every frame)
   - [x] Dynamic resolution in the renderer (pixel ratio steps down when frames run long, back up when they keep up; Renderer group: adaptive, lowest scale; "q" in the stats)
   - [x] Legend smaller on phones (Phone scale, under 700 px wide)
-  - [ ] Your phone check (fps standing still and turning, q reached, model: answers Q4); then dust count, march steps or render scale for phones if needed
+  - [x] First check: 90 fps still, down to 30 moving (the march). Adaptive resolution now aims at 60 fps, not the display's 90 / 120 Hz; the march runs at lower resolution while the camera moves (March: motion scale 0.5), then sharp once it has been still 0.15 s
+  - [ ] Second phone check (fps moving, q reached); then march steps or dust count for phones if needed
 - [ ] `prefers-reduced-motion`, keyboard/focus, meta/OG tags, page titles
 - [ ] Lighthouse pass (LCP with a full-screen canvas, CLS)
 
@@ -239,6 +240,7 @@ Dropped (2026-10-29): simpler, faster without.
 
 ## Decision log
 
+- **2026-10-29**: Q4: the reference device is your old, cheap phone (90 Hz screen), the weakest one to support; the target is 60 fps. The march runs rough while the camera moves and sharp once it settles.
 - **2026-10-29**: Phone performance: dynamic resolution instead of per-device settings (the pixel ratio follows the frame time, judged against the display refresh), and the mist banks moved to the noise texture. Measure on the phone before touching the dust count or the march.
 - **2026-10-29**: Dust as stateless particles (position from id + time, computed in the vertex shader) instead of a transform-feedback simulation: no buffers, nothing to rebuild on context loss, any count change is free. Specks drift with the wind and turbulence and skip along the ground in hops; real collisions and bursts would need the stateful version, not needed for ambient dust.
 - **2026-10-29**: After the first try of the overlay: no ordered path through the POIs any more. Home is the hub; labels and a menu fly to any POI, Escape or the current label goes home as you left it. The wheel zooms again, toward the pivot (home's point or the POI's), and drag turns. The project opens from a Data button on the arrived POI's label, not by itself, as a card over the live scene (light isolation by default). POI views are relative to a start view tuned in the panel, so retuning its heading carries every POI.

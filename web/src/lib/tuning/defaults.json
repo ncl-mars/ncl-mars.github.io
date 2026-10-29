@@ -33,7 +33,8 @@
 		"precision": 0.0015,
 		"steps": 128,
 		"refineSteps": 6,
-		"renderScale": 1
+		"renderScale": 1,
+		"motionScale": 0.5
 	},
 	"shading": {
 		"tint": [0.8, 0.81, 0.83],

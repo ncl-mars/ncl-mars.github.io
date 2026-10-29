@@ -19,10 +19,12 @@ let marchFragment = marchSource;
 let compositeFragment = compositeSource;
 /** Bumped by shader hot reload, so a still camera's cache gets re-marched with the new shader. */
 let shaderGeneration = 0;
+/** Seconds the camera must stay still before the sharp march replaces the rough one. */
+const SETTLE_TIME = 0.15;
 
 /** Read live every frame (the dev panel edits them). See schema.ts for what each value does. */
 export interface TerrainSettings {
-	march: { stepScale: number; precision: number; steps: number; refineSteps: number; renderScale: number };
+	march: { stepScale: number; precision: number; steps: number; refineSteps: number; renderScale: number; motionScale: number };
 	shading: { tint: number[]; shadowLight: number; aoStrength: number; cavityStrength: number; exposure: number };
 	fog: {
 		color: number[];
@@ -42,7 +44,9 @@ export interface TerrainSettings {
  * The dig site's ground and its atmosphere, in two passes:
  * 1. March (terrain.frag): the heightmap blended into the endless far field, raymarched and shaded into a
  *    cache (colour + depth), only when the camera moves (`camera.revision`), the view resizes or a terrain
- *    setting changes (`invalidate()`). Its resolution is `march.renderScale`.
+ *    setting changes (`invalidate()`). Its resolution is `march.renderScale`; while the camera moves it
+ *    marches a rough cache instead (× `march.motionScale`, the march being the costly part of a moving
+ *    frame), and once the camera has been still a moment, the sharp one.
  * 2. Composite (composite.frag), every frame: the cache under the live atmosphere (fog, height mist,
  *    wind-driven banks, sun glow), with the cached depth written back for later passes.
  * Also drives the camera (`camera.update`) with the CPU `Ground`. Draws nothing until the heightmap and
@@ -68,7 +72,12 @@ export class Terrain implements Drawable {
 	private mapsTexture: WebGLTexture | null = null;
 	/** For the mist banks (/fog). */
 	private noiseTexture: WebGLTexture | null = null;
-	private cache: ColorDepthTarget | null = null;
+	/** The terrain cache at `renderScale`, and at `renderScale × motionScale` for a moving camera. */
+	private sharp: ColorDepthTarget | null = null;
+	private rough: ColorDepthTarget | null = null;
+	/** The cache the composite reads: the last one marched. */
+	private shown: ColorDepthTarget | null = null;
+	private stillTime = 0;
 	private cachedRevision = -1;
 	private cachedShaders = -1;
 	private dirty = true;
@@ -155,31 +164,60 @@ export class Terrain implements Drawable {
 		if (!this.heightTexture || !this.mapsTexture || !ground) return;
 		this.camera.setAspect(ctx.rect.width / ctx.rect.height);
 
-		const scale = Math.min(1, Math.max(0.25, this.settings.march.renderScale));
-		const width = Math.max(1, Math.round(ctx.rect.width * scale));
-		const height = Math.max(1, Math.round(ctx.rect.height * scale));
-		if (!this.cache || this.cache.width !== width || this.cache.height !== height) {
-			if (this.cache) deleteColorDepthTarget(gl, this.cache);
-			this.cache = createColorDepthTarget(gl, width, height);
-			this.dirty = true;
-		}
+		const march = this.settings.march;
+		const scale = Math.min(1, Math.max(0.25, march.renderScale));
+		const motion = Math.min(1, Math.max(0.1, march.motionScale));
+		this.sharp = this.fit(gl, this.sharp, ctx, scale);
+		this.rough = motion < 1 ? this.fit(gl, this.rough, ctx, scale * motion) : this.release(gl, this.rough);
 
-		this.marchedLastFrame =
-			this.dirty || this.camera.revision !== this.cachedRevision || shaderGeneration !== this.cachedShaders;
-		if (this.marchedLastFrame) this.march(gl, ctx, ground, this.cache);
-		this.composite(gl, ctx, ground, this.cache);
+		// Moving: march the rough cache. Still: the sharp one, once the camera has settled (a slow drag has
+		// frames without movement, which shouldn't each pay for a sharp march), or when a setting changed.
+		const moved = this.camera.revision !== this.cachedRevision;
+		this.stillTime = moved ? 0 : this.stillTime + ctx.frame.dt;
+		let target: ColorDepthTarget | null = null;
+		if (moved) target = this.rough ?? this.sharp;
+		else if (this.dirty || shaderGeneration !== this.cachedShaders || !this.shown) target = this.sharp;
+		else if (this.shown !== this.sharp && this.stillTime >= SETTLE_TIME) target = this.sharp;
+		this.marchedLastFrame = target !== null;
+		if (target) {
+			this.march(gl, ctx, ground, target);
+			this.shown = target;
+		}
+		this.composite(gl, ctx, ground, this.shown!);
+	}
+
+	/** Dev readout: the rough cache is on screen (the camera is moving, or hasn't settled yet). */
+	get roughShown(): boolean {
+		return this.shown !== null && this.shown === this.rough;
 	}
 
 	dispose(gl: WebGL2RenderingContext) {
 		this.generation++; // ignore loads still in flight
 		gl.deleteVertexArray(this.vao);
 		this.vao = null;
-		if (this.cache) deleteColorDepthTarget(gl, this.cache);
-		this.cache = null;
+		this.sharp = this.release(gl, this.sharp);
+		this.rough = this.release(gl, this.rough);
 		this.heightTexture = null; // textures stay in the renderer's per-context cache
 		this.mapsTexture = null;
 		this.noiseTexture = null;
 		this.fade = 0;
+	}
+
+	/** `target` if it has the view's size at `scale`, else a new one (the old one deleted): re-marched before use. */
+	private fit(gl: WebGL2RenderingContext, target: ColorDepthTarget | null, ctx: DrawContext, scale: number) {
+		const width = Math.max(1, Math.round(ctx.rect.width * scale));
+		const height = Math.max(1, Math.round(ctx.rect.height * scale));
+		if (target && target.width === width && target.height === height) return target;
+		this.release(gl, target);
+		this.dirty = true;
+		return createColorDepthTarget(gl, width, height);
+	}
+
+	private release(gl: WebGL2RenderingContext, target: ColorDepthTarget | null): null {
+		if (!target) return null;
+		deleteColorDepthTarget(gl, target);
+		if (this.shown === target) this.shown = null;
+		return null;
 	}
 
 	/** Raymarch the ground into the cache, then restore the renderer's target, viewport and scissor. */

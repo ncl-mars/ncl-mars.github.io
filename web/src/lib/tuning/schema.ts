@@ -74,7 +74,8 @@ export const schema: Group[] = [
 			{ key: 'precision', label: 'Precision', min: 0.0001, max: 0.01, step: 0.0001, hint: 'Minimum step and hit tolerance, relative to distance.' },
 			{ key: 'steps', label: 'Max steps', kind: 'int', min: 8, max: 512, step: 1 },
 			{ key: 'refineSteps', label: 'Refine steps', kind: 'int', min: 0, max: 16, step: 1 },
-			{ key: 'renderScale', label: 'Render scale', min: 0.25, max: 1, step: 0.05, hint: 'Resolution of the terrain cache (the raymarch). Lower is cheaper; the mist stays full resolution.' }
+			{ key: 'renderScale', label: 'Render scale', min: 0.25, max: 1, step: 0.05, hint: 'Resolution of the terrain cache (the raymarch). Lower is cheaper; the mist stays full resolution.' },
+			{ key: 'motionScale', label: 'Motion scale', min: 0.1, max: 1, step: 0.05, hint: 'While the camera moves, the march runs at this fraction of the render scale; a sharp march follows once it stops. 1: always sharp.' }
 		]
 	},
 	{

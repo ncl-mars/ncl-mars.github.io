@@ -61,8 +61,7 @@ export class Renderer {
 	private readonly qualitySettings: { adaptive: number; minScale: number } | null;
 	/** Dynamic resolution: scale on the pixel ratio, and its bookkeeping (see `adaptQuality`). */
 	private quality = 1;
-	private qualityWindow = { time: 0, frames: 0, min: Infinity };
-	private previousWindowMin = Infinity;
+	private qualityWindow = { time: 0, frames: 0 };
 	private onTime = 0;
 	private upgradeDelay = 4;
 	private lastQualityStep: { time: number; up: boolean } = { time: 0, up: false };
@@ -429,12 +428,12 @@ export class Renderer {
 	};
 
 	/**
-	 * Dynamic resolution. Every half second, the average frame time is compared with the display's refresh
-	 * interval (the shortest recent frame, and never slower than 60 Hz): more than 15% over it, the pixel
-	 * ratio drops a step (×0.85, down to `minScale`); after `upgradeDelay` seconds on time, it climbs a step
-	 * back. A step up that has to be undone soon after doubles that delay (up to a minute), so it doesn't
-	 * see-saw. Frames over 100 ms (tab switch, hitch) don't count; a change gets a second to settle (the
-	 * resize itself re-marches the terrain).
+	 * Dynamic resolution. Every half second, the average frame time is compared with 60 fps, whatever the
+	 * display's refresh (resolution matters more than going past 60 on a 90 or 120 Hz screen): under 52 fps,
+	 * the pixel ratio drops a step (×0.85, down to `minScale`); after `upgradeDelay` seconds at 57 fps or
+	 * more, it climbs a step back. A step up that has to be undone soon after doubles that delay (up to a
+	 * minute), so it doesn't see-saw. Frames over 100 ms (tab switch, hitch) don't count; a change gets a
+	 * second to settle (the resize itself re-marches the terrain).
 	 */
 	private adaptQuality(delta: number, now: number) {
 		const settings = this.qualitySettings;
@@ -446,15 +445,12 @@ export class Renderer {
 		const sample = this.qualityWindow;
 		sample.time += delta;
 		sample.frames++;
-		sample.min = Math.min(sample.min, delta);
 		if (sample.time < 0.5) return;
 
 		const average = sample.time / sample.frames;
-		const target = Math.min(1 / 60, sample.min, this.previousWindowMin);
+		const target = 1 / 60;
 		const duration = sample.time;
-		this.previousWindowMin = sample.min;
 		sample.time = sample.frames = 0;
-		sample.min = Infinity;
 
 		const minScale = Math.min(1, Math.max(0.25, settings.minScale));
 		const sinceStep = (now - this.lastQualityStep.time) / 1000;

@@ -115,7 +115,11 @@
 			// A new start view moves home and every POI view: show the current one's new framing
 			if (group === 'start' && !dev.freeCamera) tour.reframe();
 		});
-		readouts.set('terrain', () => `terrain ${terrain.marchedLastFrame ? 'marching' : 'cached'} · ${terrain.marches} marches`);
+		readouts.set(
+			'terrain',
+			() =>
+				`terrain ${terrain.marchedLastFrame ? 'marching' : 'cached'}${terrain.roughShown ? ' · rough' : ''} · ${terrain.marches} marches`
+		);
 
 		readouts.set('camera', () => {
 			const deg = 180 / Math.PI;
