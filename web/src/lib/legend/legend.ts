@@ -32,6 +32,7 @@ export interface LegendSettings {
 	follow: number;
 	lift: number;
 	fogCutoff: number;
+	mistFloor: number;
 	drawTime: number;
 	stagger: number;
 }
@@ -55,6 +56,21 @@ const MIN_RUN = 1.5;
 const OCCLUSION_SAMPLES = 24;
 /** Where `smallScale` applies (phones). */
 const NARROW = '(max-width: 700px)';
+/**
+ * A label's box around its shelf line, in em (Legend.svelte's CSS): the title above, the coordinates
+ * below, and the Data button under them on the current POI's label; and the gap kept between two labels.
+ */
+const BOX_ABOVE = 1.75;
+const BOX_BELOW = 1.6;
+const BOX_DATA = 2.3;
+const BOX_GAP = 0.35;
+
+interface Box {
+	left: number;
+	right: number;
+	top: number;
+	bottom: number;
+}
 
 class Mark {
 	readonly world: Vec3 = [0, Number.NaN, 0];
@@ -66,6 +82,10 @@ class Mark {
 	labelY = 0;
 	/** Relaxed label height (column layout), before smoothing. */
 	target = 0;
+	/** Extra rise out of other labels' way (callout layout), eased, CSS px. */
+	lift = 0;
+	/** From the camera to the anchor, world units: nearer labels keep their place. */
+	distance = 0;
 	/** 1: label to the right of its anchor, −1: to the left, 0: not placed yet. */
 	side: -1 | 0 | 1 = 0;
 	placed = false;
@@ -92,7 +112,8 @@ class Mark {
 
 	constructor(
 		readonly item: LegendItem,
-		readonly el: LegendElements
+		readonly el: LegendElements,
+		readonly index: number
 	) {}
 }
 
@@ -103,16 +124,20 @@ class Mark {
  * read in the frame loop: sizes come from a ResizeObserver.
  *
  * - Layout 0 (callout): the label sits beside its point, a diagonal then the shelf; it flips side to stay in
- *   the view.
+ *   the view. Labels are placed nearest first (the current POI's before all): one that would overlap a
+ *   label already placed rises above it, eased, its diagonal getting longer.
  * - Layout 1 (columns): labels stand in a column on each side, sorted by height and kept apart; only their
  *   height follows the anchor, smoothed, so the text stays calm while the camera moves.
  *
- * Labels hide when their point leaves the view, goes behind the terrain, or fades into the mist (the same
- * fog as the scene); the line draws itself from the anchor to the end of the shelf, then the text fades in.
+ * Labels hide when their point leaves the view or goes behind the terrain, and fade with the mist (the same
+ * fog as the scene), down to `mistFloor`; the line draws itself from the anchor to the end of the shelf,
+ * then the text fades in.
  */
 export class Legend {
 	/** Labels currently on screen (dev readout). */
 	shown = 0;
+	/** The current POI's label (−1: none): placed first, with room for its Data button. */
+	current = -1;
 	/** Called when the screen crosses the narrow breakpoint: the text size (`textScale`) changed. */
 	onScaleChange: (() => void) | null = null;
 
@@ -124,6 +149,8 @@ export class Legend {
 	private readonly reducedMotion: boolean;
 	private readonly left: Mark[] = [];
 	private readonly right: Mark[] = [];
+	private readonly order: Mark[] = [];
+	private readonly boxes: Box[] = [];
 	private width = 0;
 	private height = 0;
 	/** CSS px per rem, read outside the frame loop (constructor, resize). */
@@ -147,7 +174,7 @@ export class Legend {
 		this.narrowQuery.addEventListener('change', this.onNarrowChange);
 		this.readRootFontSize();
 		this.marks = items.map((item, i) => {
-			const mark = new Mark(item, elements[i]);
+			const mark = new Mark(item, elements[i], i);
 			// Staggered first reveal
 			if (settings.drawTime > 0 && !this.reducedMotion) mark.t = (-i * settings.stagger) / settings.drawTime;
 			this.byElement.set(mark.el.title, mark);
@@ -243,8 +270,11 @@ export class Legend {
 			const onScreen =
 				inFront && mark.x > EDGE && mark.x < width - EDGE && mark.y > EDGE && mark.y < height - EDGE;
 			if (cameraMoved || moved) mark.occluded = onScreen && occluded(ground, p, eye);
+			mark.distance = Math.hypot(p[0] - eye[0], p[1] - eye[1], p[2] - eye[2]);
+			// Fades with the mist, never under the floor: a label stays readable in a thick bank
 			const cutoff = Math.max(0.05, s.fogCutoff);
-			mark.clear = 1 - smoothstep(cutoff * 0.5, cutoff, fogAmount(eye, p, this.fog, this.mist, mistBase));
+			const cover = smoothstep(cutoff * 0.5, cutoff, fogAmount(eye, p, this.fog, this.mist, mistBase));
+			mark.clear = Math.max(Math.min(1, Math.max(0, s.mistFloor)), 1 - cover);
 			mark.visible = onScreen && !mark.occluded && mark.clear > 0.02;
 
 			if (mark.visible) mark.t = Math.min(1, mark.t + step);
@@ -255,22 +285,58 @@ export class Legend {
 		const em = this.textScale() * this.rootFontSize;
 		const tan = Math.tan(Math.min(Math.max(s.angle, 5), 89.9) * DEG);
 		if (layout === 1) this.layoutColumns(frame.dt, em);
-		else this.layoutCallouts(em, tan);
+		else this.layoutCallouts(frame.dt, em, tan);
 		for (const mark of this.marks) this.draw(mark, tan, em);
 	};
 
-	/** Each label beside its anchor: up the diagonal, then the shelf, on the side where it fits. */
-	private layoutCallouts(em: number, tan: number) {
-		const rise = this.settings.rise * em;
+	/**
+	 * Each label beside its anchor: up the diagonal, then the shelf, on the side where it fits. Nearest first
+	 * (the current POI's before all); a label overlapping one already placed rises above it. Boxes use the
+	 * target heights, so the order is settled every frame; the lift itself is eased (`follow`).
+	 */
+	private layoutCallouts(dt: number, em: number, tan: number) {
+		const s = this.settings;
+		const rise = s.rise * em;
 		const run = rise / tan;
-		for (const mark of this.marks) {
-			if (mark.t <= 0) continue;
+		const gap = BOX_GAP * em;
+		const k = 1 - Math.exp(-dt * s.follow);
+
+		const order = this.order;
+		order.length = 0;
+		for (const mark of this.marks) if (mark.t > 0) order.push(mark);
+		const current = this.current;
+		order.sort((a, b) => Number(b.index === current) - Number(a.index === current) || a.distance - b.distance);
+
+		const boxes = this.boxes;
+		boxes.length = 0;
+		for (const mark of order) {
 			const fitsRight = mark.x + run + mark.width + EDGE <= this.width;
 			const fitsLeft = mark.x - run - mark.width - EDGE >= 0;
 			if (mark.side === 0) mark.side = fitsRight || !fitsLeft ? 1 : -1;
 			else if (mark.side === 1 ? !fitsRight && fitsLeft : !fitsLeft && fitsRight) mark.side = mark.side === 1 ? -1 : 1;
 			mark.labelX = mark.x + mark.side * run;
-			mark.labelY = mark.y - rise;
+
+			const left = mark.side === 1 ? mark.labelX : mark.labelX - mark.width;
+			const right = left + mark.width;
+			const above = BOX_ABOVE * em;
+			const below = (BOX_BELOW + (mark.index === current ? BOX_DATA : 0)) * em;
+			// Up above every placed label it would overlap, until it overlaps none (it only rises: this ends)
+			let y = mark.y - rise;
+			for (let pass = 0; pass <= boxes.length; pass++) {
+				let moved = false;
+				for (const box of boxes) {
+					if (right + gap <= box.left || left - gap >= box.right) continue;
+					if (y - above >= box.bottom + gap || y + below + gap <= box.top) continue;
+					y = box.top - gap - below;
+					moved = true;
+				}
+				if (!moved) break;
+			}
+			boxes.push({ left, right, top: y - above, bottom: y + below });
+
+			const target = mark.y - rise - y;
+			mark.lift = mark.placed ? mark.lift + (target - mark.lift) * k : target;
+			mark.labelY = mark.y - rise - mark.lift;
 		}
 	}
 

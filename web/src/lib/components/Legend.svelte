@@ -41,6 +41,7 @@
 	const labels = $state<HTMLElement[]>([]);
 	const titles = $state<HTMLElement[]>([]);
 	const metas = $state<HTMLElement[]>([]);
+	let legend: Legend | null = null;
 
 	onMount(() => {
 		const elements: LegendElements[] = items.map((_, i) => ({
@@ -51,25 +52,34 @@
 			title: titles[i],
 			meta: metas[i]
 		}));
-		const legend = new Legend(root, items, elements, camera, ground, tuning.legend, tuning.fog, tuning.mist);
+		const instance = new Legend(root, items, elements, camera, ground, tuning.legend, tuning.fog, tuning.mist);
+		instance.current = current;
+		legend = instance;
 		// The text size comes from the legend (smaller on phones), so its lines and the CSS agree
 		const applyStyle = () => {
 			const s = tuning.legend;
 			root.style.setProperty('--ink', `rgb(${s.ink.map((v) => Math.round(v * 255)).join(' ')})`);
-			root.style.setProperty('--legend-size', `${legend.textScale()}rem`);
+			root.style.setProperty('--legend-size', `${instance.textScale()}rem`);
 			root.style.setProperty('--stroke', `${s.stroke}px`);
 		};
-		legend.onScaleChange = applyStyle;
+		instance.onScaleChange = applyStyle;
 		applyStyle();
-		const stopFrames = renderer.onFrame(legend.update);
+		const stopFrames = renderer.onFrame(instance.update);
 		const stopTuning = onTuningChange((group) => group === 'legend' && applyStyle());
-		readouts.set('legend', () => `legend ${legend.shown}/${items.length} shown`);
+		readouts.set('legend', () => `legend ${instance.shown}/${items.length} shown`);
 		return () => {
 			stopFrames();
 			stopTuning();
 			readouts.delete('legend');
-			legend.dispose();
+			instance.dispose();
+			legend = null;
 		};
+	});
+
+	// The current POI's label is placed first (after onMount, which creates the legend)
+	$effect(() => {
+		const index = current;
+		if (legend) legend.current = index;
 	});
 </script>
 
