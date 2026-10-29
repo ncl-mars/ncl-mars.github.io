@@ -21,6 +21,7 @@ Living work plan. Tick boxes as we go, add notes inline, and log decisions at th
 |---|----------|-----------|--------|
 | Q1 | Pages URL: `<user>.github.io` repo, custom domain, or project repo (needs `paths.base`)? | M4 | |
 | Q4 | Reference weak device (phone/GPU) for the performance gate, and max pixel ratio | M2a | Your old, cheap phone (90 Hz screen): the weakest device to support. Target 60 fps |
+| Q6 | Rough march while moving (March: motion scale 0.5) applies on every device. On desktop the softness shows in motion, but it isn't disturbing. Keep it, or make it automatic: march sharp while moving, and fall back to rough only on a device whose moving frames drop under ~52 fps (desktop stays sharp, the phone switches by itself)? | M9 | Kept as is for now (2026-10-29) |
 
 Q2, Q3, Q5 were about splats, dropped on 2026-10-29.
 
@@ -233,6 +234,7 @@ Dropped (2026-10-29): simpler, faster without.
   - [x] Legend smaller on phones (Phone scale, under 700 px wide)
   - [x] First check: 90 fps still, down to 30 moving (the march). Adaptive resolution now aims at 60 fps, not the display's 90 / 120 Hz; the march runs at lower resolution while the camera moves (March: motion scale 0.5), then sharp once it has been still 0.15 s
   - [ ] Second phone check (fps moving, q reached); then march steps or dust count for phones if needed
+  - [ ] Decide Q6: rough march in motion on every device (now), or automatic (only where moving frames run long)
 - [ ] `prefers-reduced-motion`, keyboard/focus, meta/OG tags, page titles
 - [ ] Lighthouse pass (LCP with a full-screen canvas, CLS)
 
