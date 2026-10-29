@@ -244,6 +244,7 @@ Dropped (2026-10-29): simpler, faster without.
   - [x] Mist banks from the 3D noise texture instead of hashed value noise (every pixel and every dust speck, every frame)
   - [x] Dynamic resolution in the renderer (pixel ratio steps down when frames run long, back up when they keep up; Renderer group: adaptive, lowest scale; "q" in the stats)
   - [x] Legend smaller on phones (Phone scale, under 700 px wide)
+  - [x] POI menu folded on phones (`feature/phone-menu`): a Sites button unfolds the list; an entry, a tap outside (which does nothing else) or Escape folds it
   - [x] First check: 90 fps still, down to 30 moving (the march). Adaptive resolution now aims at 60 fps, not the display's 90 / 120 Hz; the march runs at lower resolution while the camera moves (March: motion scale 0.5), then sharp once it has been still 0.15 s
   - [ ] Second phone check (fps moving, q reached); then march steps or dust count for phones if needed
   - [x] Q6: rough march in motion only where moving frames run long (`feature/adaptive-march`). When frames run under ~52 fps, the renderer asks the drawables to get cheaper first (`Drawable.degrade()`): the terrain switches to the rough march in motion if the slow frames were moving ones, once for all (remembered on the device in browser storage); only then does the resolution drop. Long frames in a row count (a slow device), a lone one is a hitch and doesn't; the first 2 s don't. March → Rough in motion: 0 never, 1 automatic, 2 always; the stats show "motion sharp / rough"

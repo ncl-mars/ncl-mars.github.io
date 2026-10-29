@@ -53,12 +53,25 @@
 
 	let site: HTMLElement;
 	let needle: SVGGElement;
+	let masthead: HTMLElement;
+	let toggle: HTMLButtonElement;
 	let current = $state(tour.current);
+	/** Phones: the POI menu is folded behind a Sites button, and unfolded by tapping it. */
+	let menuOpen = $state(false);
 	/** The POI the camera has arrived at (−1 during a flight): its label shows the Data button. */
 	let arrived = $state(-1);
 	const dataAt = $derived(arrived !== -1 && projectFor(pois[arrived].id) ? arrived : -1);
 	const project = $derived(page.data.project);
 	let mounted = false;
+
+	/** A menu entry: fly there, and fold the menu (phones) */
+	function choose(index: number) {
+		if (menuOpen) {
+			menuOpen = false;
+			toggle.focus();
+		}
+		tour.go(index);
+	}
 
 	function openProject(slug: string) {
 		goto(resolve(`/projects/${slug}/`), { state: { fromScene: true }, noScroll: true, keepFocus: true });
@@ -160,6 +173,31 @@
 			});
 		}
 
+		// Phones, menu unfolded: a tap outside it only folds it (the click that follows is swallowed, so a label
+		// under the finger doesn't fly), and Escape folds it before the scene sees the key (it would go home).
+		// Capture phase on the window: ahead of the scene's own listeners.
+		let swallowUntil = 0;
+		const onPointerDown = (event: PointerEvent) => {
+			if (!menuOpen || masthead.contains(event.target as Node)) return;
+			menuOpen = false;
+			swallowUntil = event.timeStamp + 1000;
+		};
+		const onClick = (event: MouseEvent) => {
+			if (event.timeStamp > swallowUntil) return;
+			swallowUntil = 0;
+			event.stopPropagation();
+			event.preventDefault();
+		};
+		const onKeyDown = (event: KeyboardEvent) => {
+			if (event.key !== 'Escape' || !menuOpen) return;
+			event.stopPropagation();
+			menuOpen = false;
+			toggle.focus();
+		};
+		window.addEventListener('pointerdown', onPointerDown, true);
+		window.addEventListener('click', onClick, true);
+		window.addEventListener('keydown', onKeyDown, true);
+
 		const params = new URLSearchParams(location.search);
 		const steps = Number(params.get('steps'));
 		if (steps > 0) tuning.march.steps = steps;
@@ -172,6 +210,9 @@
 			tour.onArrive = null;
 			stopCompass();
 			stopTuning();
+			window.removeEventListener('pointerdown', onPointerDown, true);
+			window.removeEventListener('click', onClick, true);
+			window.removeEventListener('keydown', onKeyDown, true);
 			readouts.delete('terrain');
 			readouts.delete('camera');
 			readouts.delete('tour');
@@ -223,18 +264,29 @@
 	</svg>
 </div>
 
-<header class="masthead" inert={!!project}>
+<header class="masthead" inert={!!project} bind:this={masthead}>
 	<p class="name">Portfolio</p>
-	<!-- Straight to any POI; the first is home -->
+	<!-- Straight to any POI; the first is home. On phones the list folds behind a Sites button -->
 	<nav aria-label="Points of interest">
-		<ol>
+		<button
+			type="button"
+			class="toggle"
+			aria-expanded={menuOpen}
+			aria-controls="poi-menu"
+			bind:this={toggle}
+			onclick={() => (menuOpen = !menuOpen)}
+		>
+			Sites
+			<svg class="chevron" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1 5 5 9 1" /></svg>
+		</button>
+		<ol id="poi-menu" class="menu" class:open={menuOpen}>
 			{#each pois as poi, i (poi.id)}
 				<li>
 					<button
 						type="button"
 						class:current={i === current}
 						aria-current={i === current ? 'location' : undefined}
-						onclick={() => tour.go(i)}
+						onclick={() => choose(i)}
 					>
 						<span class="number">{String(i + 1).padStart(2, '0')}</span>{poi.title}
 					</button>
@@ -242,7 +294,7 @@
 			{/each}
 		</ol>
 	</nav>
-	<a href="/lab/views/">lab: views</a>
+	<a class="menu" class:open={menuOpen} href="/lab/views/">lab: views</a>
 </header>
 
 <!-- Outside the site element, so its wheel and keys don't reach the tour -->
@@ -336,7 +388,8 @@
 		list-style: none;
 	}
 
-	.masthead li button {
+	.masthead li button,
+	.toggle {
 		display: flex;
 		gap: 0.7em;
 		padding: 0.25rem 0;
@@ -361,9 +414,71 @@
 		font-weight: 600;
 	}
 
-	.masthead li button:focus-visible {
+	.masthead li button:focus-visible,
+	.toggle:focus-visible {
 		outline: 1px solid currentColor;
 		outline-offset: 2px;
+	}
+
+	/* Desktop: the list is always there */
+	.toggle {
+		display: none;
+	}
+
+	/* Phones: folded behind the Sites button; tapping it unfolds the list (and the lab link) under it */
+	@media (max-width: 700px) {
+		.toggle {
+			display: flex;
+			align-items: center;
+			gap: 0.5em;
+			opacity: 1;
+		}
+
+		.chevron {
+			width: 0.65em;
+			height: 0.4em;
+			fill: none;
+			stroke: currentColor;
+			stroke-width: 1.5;
+			transition: transform 0.18s;
+		}
+
+		.toggle[aria-expanded='true'] .chevron {
+			transform: rotate(180deg);
+		}
+
+		.masthead ol {
+			margin-top: 0.4rem;
+		}
+
+		/* Hidden, not removed: visibility takes it out of taps, focus and screen readers, and still fades */
+		.menu {
+			visibility: hidden;
+			opacity: 0;
+			transform: translateY(-0.3rem);
+			transition:
+				opacity 0.18s,
+				transform 0.18s,
+				visibility 0s 0.18s;
+		}
+
+		.menu.open {
+			visibility: visible;
+			opacity: 1;
+			transform: none;
+			transition:
+				opacity 0.18s,
+				transform 0.18s,
+				visibility 0s;
+		}
+	}
+
+	@media (max-width: 700px) and (prefers-reduced-motion: reduce) {
+		.chevron,
+		.menu,
+		.menu.open {
+			transition: none;
+		}
 	}
 
 	.number {
