@@ -42,6 +42,7 @@ Notes live in `.claude/memory/`, **not** in the global `~/.claude/projects/.../m
 - Shader hot reload: each drawable module ends with `import.meta.hot.accept([...shader paths], …)` calling `hotSwap()`. Copy the block from `drawables/test/TestPattern.ts`, using relative paths.
 - Never read layout in the frame loop. Rects are cached in document space; visibility is arithmetic.
 - DOM overlays that follow the scene (compass, labels) update from `renderer.onFrame(cb)`, which runs after each rendered frame. Write `el.style` / attributes directly, only when the value changed, never through Svelte state.
+- Legend lines (`components/Legend.svelte` + `legend/legend.ts`): HTML labels tied to ground points by SVG hairlines. Put the component inside the view element (it fills it). Label sizes come from a ResizeObserver. Labels fade with the mist through `terrain/atmosphere.ts`, a CPU mirror of `fog.glsl` (distance fog + mist, no banks): change both together.
 - `/lab/views/` is the view-system test page.
 - HTML that must sit on a 3D quad in perspective: `gl/homography.ts` gives the CSS `matrix3d`, updated in `renderer.onFrame()`.
 - Meshes with vertex attributes use explicit `layout(location = 0)` so VAOs survive shader hot reload.

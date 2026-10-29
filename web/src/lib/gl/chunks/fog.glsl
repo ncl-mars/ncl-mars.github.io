@@ -7,6 +7,7 @@
 //   valleys and pits;
 // - mist banks: wind-scrolled noise modulating the mist, so it drifts.
 // The fog colour brightens toward the sun.
+// The CPU mirrors the distance fog and the mist (not the banks) in terrain/atmosphere.ts, to fade the labels.
 
 uniform vec3 uFogColor;   // fog and horizon (also the page background)
 uniform vec3 uSkyColor;   // sky overhead

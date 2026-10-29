@@ -56,6 +56,23 @@
 		"blend": 0.12,
 		"offset": 0
 	},
+	"legend": {
+		"layout": 0,
+		"ink": [0.1, 0.11, 0.13],
+		"opacity": 0.85,
+		"scale": 1,
+		"stroke": 1,
+		"anchorSize": 0.2,
+		"rise": 3.5,
+		"angle": 60,
+		"column": 0.22,
+		"spacing": 3.6,
+		"follow": 6,
+		"lift": 1.5,
+		"fogCutoff": 0.9,
+		"drawTime": 1.1,
+		"stagger": 0.2
+	},
 	"renderer": {
 		"maxPixelRatio": 2
 	}

@@ -28,7 +28,7 @@ export const schema: Group[] = [
 			{ key: 'pitchNear', label: 'Pitch near (°)', min: 2, max: 89, step: 0.5, hint: 'Pitch at the closest zoom. Lower tilts up toward the horizon.' },
 			{ key: 'pitchFar', label: 'Pitch far (°)', min: 2, max: 89, step: 0.5, hint: 'Pitch at the farthest zoom.' },
 			{ key: 'tiltCurve', label: 'Tilt curve', min: 0.2, max: 5, step: 0.05, hint: 'Above 1: tilts up earlier while zooming in. Below 1: later.' },
-			{ key: 'fov', label: 'FOV (°)', min: 10, max: 90, step: 1 },
+			{ key: 'fov', label: 'FOV (°)', min: 10, max: 120, step: 1 },
 			{ key: 'minDistance', label: 'Min distance', min: 5, max: 400, step: 1 },
 			{ key: 'maxDistance', label: 'Max distance', min: 100, max: 2000, step: 10 },
 			{ key: 'distance', label: 'Start distance', min: 5, max: 2000, step: 5, hint: 'Applies on reload.' }
@@ -108,6 +108,27 @@ export const schema: Group[] = [
 			{ key: 'scale', label: 'Feature size', min: 30, max: 2000, step: 10 },
 			{ key: 'blend', label: 'Blend band', min: 0.01, max: 0.5, step: 0.01, hint: 'Band along the heightmap edges where it fades into the far field (fraction of its size).' },
 			{ key: 'offset', label: 'Base offset', min: -60, max: 60, step: 0.5, hint: 'Added to the far field base (the mean height of the heightmap edges).' }
+		]
+	},
+	{
+		key: 'legend',
+		label: 'Legend lines',
+		params: [
+			{ key: 'layout', label: 'Layout', kind: 'int', min: 0, max: 1, step: 1, hint: '0: each label beside its point. 1: labels in a column on each side, only their height follows.' },
+			{ key: 'ink', label: 'Ink', kind: 'color', hint: 'Lines and text.' },
+			{ key: 'opacity', label: 'Opacity', min: 0, max: 1, step: 0.01 },
+			{ key: 'scale', label: 'Scale (rem)', min: 0.5, max: 2.5, step: 0.01, hint: 'Text size. Rise, spacing and the anchor ring are multiples of it (em), so this sizes the whole legend.' },
+			{ key: 'stroke', label: 'Line width (px)', min: 0.5, max: 3, step: 0.25, hint: 'Not scaled: stays a hairline.' },
+			{ key: 'anchorSize', label: 'Anchor ring (em)', min: 0, max: 0.8, step: 0.01, hint: 'Radius of the ring on the point. 0: none.' },
+			{ key: 'rise', label: 'Rise (em)', min: 0, max: 12, step: 0.1, hint: 'How far above its point a label sits.' },
+			{ key: 'angle', label: 'Diagonal (°)', min: 15, max: 90, step: 1, hint: 'Angle of the line leaving the point. 90: vertical.' },
+			{ key: 'column', label: 'Column inset', min: 0.05, max: 0.45, step: 0.01, hint: 'Layout 1: where the columns start, as a fraction of the width from each edge.' },
+			{ key: 'spacing', label: 'Spacing (em)', min: 1.5, max: 10, step: 0.1, hint: 'Layout 1: minimum distance between two labels of a column.' },
+			{ key: 'follow', label: 'Follow', min: 0.5, max: 30, step: 0.5, hint: 'Layout 1: how fast a label follows its point up and down. Lower is calmer.' },
+			{ key: 'lift', label: 'Anchor lift', min: 0, max: 20, step: 0.1, hint: 'Height of the point above the ground, world units.' },
+			{ key: 'fogCutoff', label: 'Fog cutoff', min: 0.1, max: 1, step: 0.01, hint: 'Mist cover (0 clear … 1 opaque) at which a label has faded out. It starts fading at half of it.' },
+			{ key: 'drawTime', label: 'Draw time (s)', min: 0, max: 4, step: 0.05, hint: 'Line drawing, then text fading in. Leaving is 1.5× faster.' },
+			{ key: 'stagger', label: 'Stagger (s)', min: 0, max: 1, step: 0.01, hint: 'Delay between labels on the first reveal.' }
 		]
 	},
 	{

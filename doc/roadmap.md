@@ -144,9 +144,10 @@ See [home-concept.md](home-concept.md) § Legend lines, § Click: the project vi
 ### M3a — Legend lines prototype (`feature/legend-lines`)
 
 - [x] Core viewer removed (code, `/lab/core`, placeholder assets, relief format and exporter, Core tuning group)
-- [ ] SVG overlay + HTML labels projected in `renderer.onFrame()`: anchor in 3D, stable label position, one elbow, draw-on motion, fog fade
-- [ ] 3–4 placeholder labels pinned on terrain points of the home page
-- [ ] Style values in the panel (stroke, elbow, colours, timing)
+- [x] SVG overlay + HTML labels projected in `renderer.onFrame()` (`components/Legend.svelte`, `legend/legend.ts`): one elbow, the line draws from the anchor to the end of the shelf, then the text fades in; hidden off-screen, behind the terrain (CPU occlusion test on camera changes) or deep in the mist (CPU fog mirror `terrain/atmosphere.ts`)
+- [x] Two layouts to compare: 0 callout (label beside its point, flips side to stay in view), 1 columns (labels in a column on each side, sorted and spaced, only their height follows, smoothed)
+- [x] 4 placeholder labels on the home page; the meta line shows the point's survey coordinates (E / N / ALT)
+- [x] Style values in the panel (Legend lines group: layout, ink, opacity, scale (text size; rise, spacing and anchor ring in em of it), line width, anchor ring, rise, diagonal angle, column inset, spacing, follow, lift, fog cutoff, draw time, stagger)
 - [ ] Browser check and look tuning (yours)
 
 ### M3b — Project view (to plan from your sketches)

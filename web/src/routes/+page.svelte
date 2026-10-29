@@ -3,11 +3,20 @@
 	import { Terrain } from '$lib/drawables/terrain/Terrain';
 	import { terrainAssets } from '$lib/terrain/assets';
 	import { tuning } from '$lib/tuning';
+	import type { LegendItem } from '$lib/legend/legend';
 
 	// Module level: the camera (and where you were on the site) survives navigating away and back.
 	// Both read their settings live from `tuning`, which the dev panel edits.
 	const camera = new SurveyCamera(tuning.camera, tuning.controls);
 	const terrain = new Terrain(camera, terrainAssets, tuning);
+
+	// Placeholder legend: points on the placeholder terrain (the plateau is around the origin)
+	const legendItems: LegendItem[] = [
+		{ title: 'Dig site', at: [0, 0] },
+		{ title: 'Trench A', at: [-70, 40] },
+		{ title: 'Spoil heap', at: [90, -60] },
+		{ title: 'North ridge', at: [-260, -220] }
+	];
 </script>
 
 <script lang="ts">
@@ -17,6 +26,7 @@
 	import { getRenderer } from '$lib/gl/context';
 	import { surveyControls } from '$lib/gl/controls';
 	import { onTuningChange, readouts } from '$lib/tuning';
+	import Legend from '$lib/components/Legend.svelte';
 
 	const renderer = getRenderer();
 
@@ -77,7 +87,9 @@
 	bind:this={site}
 	{@attach renderer.view(terrain)}
 	{@attach surveyControls(camera, { ground: () => terrain.ground, settings: tuning.controls })}
-></div>
+>
+	<Legend items={legendItems} {camera} ground={() => terrain.ground} />
+</div>
 
 <button class="compass" onclick={() => camera.resetNorth()} aria-label="Face north" title="Face north (N)">
 	<svg viewBox="0 0 32 32" aria-hidden="true">
@@ -96,6 +108,7 @@
 
 <style>
 	.site {
+		position: relative;
 		height: 100vh;
 		height: 100dvh;
 		touch-action: none;
