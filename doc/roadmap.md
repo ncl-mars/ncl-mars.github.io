@@ -244,7 +244,7 @@ Dropped (2026-10-29): simpler, faster without.
 - [x] `drawables/legend-shadows/`: one instanced box per segment, from it along the sun until below the ground, as thick as the line (px); the fragment measures the ray's exact path inside, stops it at the ground (cache depth), and darkens by the sunlight the air there would have scattered (mist and haze density, what reaches the eye, the terrain's shadow ceiling), at three points. Between the terrain and the dust; nothing drawn with no label shown
 - [x] Panel: Legend shadows group (strength, 0 = off; thickness in px; longest path counted)
 - [ ] Browser check and tuning (yours); phone fps with and without (strength 0)
-- [ ] Later, if wanted: the shadow line on the ground
+- [x] The shadow on the ground: where a ray meets the ground inside a box, a thin line, soft across, fading with the fog, none where a ridge already shades the ground (Ground shadow, 0.6)
 
 ---
 

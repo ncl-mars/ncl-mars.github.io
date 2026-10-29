@@ -69,9 +69,10 @@
 		"view": 0
 	},
 	"legendShadows": {
-		"strength": 1,
-		"thickness": 3,
-		"maxLength": 80
+		"strength": 7.9,
+		"thickness": 2.5,
+		"maxLength": 215,
+		"ground": 0.6
 	},
 	"wind": {
 		"direction": 60,
@@ -108,7 +109,7 @@
 		"smallScale": 0.7,
 		"stroke": 1,
 		"anchorSize": 0.2,
-		"rise": 3.5,
+		"rise": 9.9,
 		"angle": 60,
 		"column": 0.22,
 		"spacing": 3.6,

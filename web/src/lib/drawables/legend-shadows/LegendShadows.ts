@@ -16,6 +16,7 @@ export interface LegendShadowSettings {
 	strength: number;
 	thickness: number;
 	maxLength: number;
+	ground: number;
 }
 
 /** The unit box, 12 triangles: x along the segment, y along the shadow (0..1), z across (±1). */
@@ -44,7 +45,7 @@ export class LegendShadows implements Drawable {
 	private vao: WebGLVertexArrayObject | null = null;
 	private corners: WebGLBuffer | null = null;
 	private instances: WebGLBuffer | null = null;
-	private readonly sheet = new Float32Array(3);
+	private readonly sheet = new Float32Array(4);
 	private readonly viewport = new Float32Array(4);
 	private readonly uniforms: Record<string, unknown>;
 
@@ -90,7 +91,7 @@ export class LegendShadows implements Drawable {
 		const scene = this.terrain.sceneUniforms;
 		const s = this.settings;
 		const count = this.lines.count;
-		if (!scene.uHeightmap || !scene.uShadow || count === 0 || s.strength <= 0) return;
+		if (!scene.uHeightmap || !scene.uShadow || count === 0 || (s.strength <= 0 && s.ground <= 0)) return;
 
 		gl.bindBuffer(gl.ARRAY_BUFFER, this.instances);
 		gl.bufferSubData(gl.ARRAY_BUFFER, 0, this.lines.data, 0, count * LegendLines.STRIDE);
@@ -99,6 +100,7 @@ export class LegendShadows implements Drawable {
 		this.sheet[0] = s.strength;
 		this.sheet[1] = Math.max(0.1, s.thickness);
 		this.sheet[2] = Math.max(1, s.maxLength);
+		this.sheet[3] = Math.min(1, Math.max(0, s.ground));
 		const { rect } = ctx;
 		this.viewport.set([rect.x, rect.y, rect.width, rect.height]);
 		const u = this.uniforms;

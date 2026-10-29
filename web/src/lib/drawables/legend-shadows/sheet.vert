@@ -8,7 +8,7 @@ precision highp float;
 uniform mat4 uViewProj;
 uniform vec3 uSunDir;   // toward the sun (the bake's)
 uniform vec2 uSlab;     // height range of the whole ground
-uniform vec3 uSheet;    // x: strength, y: thickness (px of the line), z: longest path counted (world units)
+uniform vec4 uSheet;    // x: strength, y: thickness (px of the line), z: longest path counted, w: ground shadow
 
 layout(location = 0) in vec3 aCorner;   // unit box: x along the segment, y along the shadow (0..1), z across (±1)
 layout(location = 1) in vec3 aStart;    // per segment (world)
