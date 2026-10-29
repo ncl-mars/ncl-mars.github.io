@@ -315,27 +315,27 @@
 	}
 
 	.masthead .name {
-		margin: 0 0 0.75rem;
-		font-size: 1.1rem;
+		margin: 0 0 0.9rem;
+		font-size: 1.25rem;
 		font-weight: 600;
 		letter-spacing: 0.02em;
 	}
 
 	.masthead ol {
-		margin: 0 0 0.9rem;
+		margin: 0 0 1rem;
 		padding: 0;
 		list-style: none;
 	}
 
 	.masthead li button {
 		display: flex;
-		gap: 0.6em;
-		padding: 0.15rem 0;
+		gap: 0.7em;
+		padding: 0.25rem 0;
 		border: 0;
 		background: none;
 		color: inherit;
 		font: inherit;
-		font-size: 0.85rem;
+		font-size: 1.05rem;
 		opacity: 0.7;
 		cursor: pointer;
 		pointer-events: auto;

@@ -9,4 +9,4 @@ The user runs every git command and likes it: it lets them batch follow-up fixes
 
 **Why:** The user confirmed the workflow ("me doing the commit allows better commits") after a dev-panel commit that absorbed three follow-up tweaks.
 
-**How to apply:** No commits, no `Co-Authored-By` (see CLAUDE.md). Messages: a short summary line, then bullets grouped by what changed. Related: [[user-profile]].
+**How to apply:** No commits, no `Co-Authored-By` (see CLAUDE.md). Messages: a short summary line, a blank line, then bullets grouped by what changed. Plain ASCII only: no apostrophes (write "of the POI", not "POI's"), no curly quotes or dashes. On 2026-10-29 a message with apostrophes broke the commit twice while the user thought it had landed. After a commit, a read-only `git log --oneline -1` confirms it. Related: [[user-profile]].

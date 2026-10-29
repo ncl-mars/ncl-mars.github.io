@@ -1,6 +1,6 @@
 - [User profile](user-profile.md) — Houdini 22 expert; shipped Mont-Blanc (Svelte 5 + twgl); wants speed
 - [Scope: web shaders only](portfolio-scope-web-only.md) — don't cover Houdini or splat content creation unless asked
-- [Commit workflow](commit-workflow.md) — user commits; hand over one final PowerShell block, re-send if changes land after
+- [Commit workflow](commit-workflow.md) — user commits; hand over one final PowerShell block, re-send if changes land after; plain ASCII messages, no apostrophes
 - [Design: discovery](design-discovery.md) — non-obvious readability is intended; don't push "make it obvious" fixes
 - [Browser testing](browser-testing.md) — use the user's Brave, ask first; never probe for or install browsers
 - [Baked lighting](baked-lighting.md) — light and shadows stay baked; to change where the sun shows, aim the camera

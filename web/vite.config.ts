@@ -1,7 +1,7 @@
 import { sveltekit } from '@sveltejs/kit/vite';
 import { enhancedImages } from '@sveltejs/enhanced-img';
 import glsl from 'vite-plugin-glsl';
-import { defineConfig, type Plugin } from 'vite';
+import { defineConfig, normalizePath, type Plugin } from 'vite';
 import { readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { formatTuning, sameShape } from './src/lib/tuning/format.ts';
@@ -21,12 +21,22 @@ export default defineConfig({
 /**
  * Dev server only: the dev panel's "Save defaults" POSTs the tuning values here, and they are written to
  * src/lib/tuning/defaults.json, after checking they have the same groups, keys and types as the file.
+ * Also keeps the server render in step: tuning/index.ts accepts defaults.json updates (the browser updates
+ * the live values in place), but the server render has no HMR, so there nothing would ever reload it and
+ * its values would go stale (a new group read during the render then throws). On a change, it is
+ * invalidated on the server, with everything that imports it.
  */
 function tuningSave(): Plugin {
 	const file = fileURLToPath(new URL('./src/lib/tuning/defaults.json', import.meta.url));
+	const tuningModule = normalizePath(fileURLToPath(new URL('./src/lib/tuning/index.ts', import.meta.url)));
 	return {
 		name: 'tuning-save',
 		apply: 'serve',
+		hotUpdate({ file: changed }) {
+			if (this.environment.name !== 'ssr' || changed !== normalizePath(file)) return;
+			const graph = this.environment.moduleGraph;
+			for (const mod of graph.getModulesByFile(tuningModule) ?? []) graph.invalidateModule(mod);
+		},
 		configureServer(server) {
 			server.middlewares.use('/__tuning/save', (req, res) => {
 				if (req.method !== 'POST') {

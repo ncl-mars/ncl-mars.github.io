@@ -33,12 +33,14 @@
 	const renderer = getRenderer();
 
 	let root: HTMLElement;
-	const groups: SVGGElement[] = [];
-	const lines: SVGPolylineElement[] = [];
-	const dots: SVGCircleElement[] = [];
-	const labels: HTMLElement[] = [];
-	const titles: HTMLElement[] = [];
-	const metas: HTMLElement[] = [];
+	// $state only so `bind:this={…[i]}` binds to reactive properties (Svelte warns otherwise); the elements
+	// themselves stay plain (Svelte doesn't proxy DOM nodes) and are read once, on mount
+	const groups = $state<SVGGElement[]>([]);
+	const lines = $state<SVGPolylineElement[]>([]);
+	const dots = $state<SVGCircleElement[]>([]);
+	const labels = $state<HTMLElement[]>([]);
+	const titles = $state<HTMLElement[]>([]);
+	const metas = $state<HTMLElement[]>([]);
 
 	function applyStyle() {
 		const s = tuning.legend;

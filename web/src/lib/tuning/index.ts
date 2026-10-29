@@ -41,7 +41,8 @@ export const actions = new Map<string, () => string | void | Promise<string | vo
 
 // defaults.json changed (panel Save, or edited / checked out): no app reload. The new file becomes the
 // saved values, and the live values are updated in place (group objects keep their identity), with
-// listeners notified. This also keeps the dev server's prerender in step with the browser.
+// listeners notified. Browser only: the server render has no HMR, so vite.config.ts (tuningSave) reloads
+// this module there instead.
 if (import.meta.hot) {
 	import.meta.hot.accept('./defaults.json', (module) => {
 		if (!module) return;

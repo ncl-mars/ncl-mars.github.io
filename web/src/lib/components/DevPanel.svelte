@@ -42,11 +42,11 @@
 	let fontSize = $state(12);
 
 	/**
-	 * Panel size from the screen's resolution, not the window: about 1/111 of the screen height in CSS px
-	 * (≈13px on a 1440 px tall screen, the 11px minimum on 1200), so resizing the window doesn't change it.
-	 * Browser zoom still scales it like any page text. Everything else in the panel is in em.
+	 * Panel size from the screen's resolution, not the window: about 1/148 of the screen height in CSS px
+	 * (≈10.8px on a 1600 px tall screen, the 10px minimum below 1480), so resizing the window doesn't change
+	 * it. Browser zoom still scales it like any page text. Everything else in the panel is in em.
 	 */
-	const panelFontSize = () => Math.min(22, Math.max(11, Math.round((screen.height / 111) * 10) / 10));
+	const panelFontSize = () => Math.min(22, Math.max(10, Math.round((screen.height / 148) * 10) / 10));
 
 	$effect(() => {
 		const ui = JSON.stringify({ controlsOpen, collapsed });
