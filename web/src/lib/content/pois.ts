@@ -15,9 +15,10 @@ export interface Poi {
 	view: CameraPose;
 }
 
-// Placeholders on the placeholder terrain (the plateau is around the origin)
+// Placeholders on the placeholder terrain (the plateau is around the origin). The start view faces the
+// baked sun (maps.json sunDir: azimuth ≈ 246°, WSW); re-aim it after a bake with another sun.
 export const pois: Poi[] = [
-	{ id: 'site', title: 'Dig site', at: [0, 0], view: { target: [0, 0], distance: 300, heading: 0 } },
+	{ id: 'site', title: 'Dig site', at: [0, 0], view: { target: [0, 0], distance: 300, heading: 246 } },
 	{ id: 'trench-a', title: 'Trench A', at: [-70, 40], view: { target: [-70, 40], distance: 110, heading: 330 } },
 	{ id: 'spoil-heap', title: 'Spoil heap', at: [90, -60], view: { target: [90, -60], distance: 120, heading: 60 } },
 	{ id: 'north-ridge', title: 'North ridge', at: [-260, -220], view: { target: [-260, -220], distance: 160, heading: 300 } }
