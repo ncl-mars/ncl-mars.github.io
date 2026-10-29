@@ -1,5 +1,6 @@
 <script lang="ts">
-	// Dev-only panel: renderer stats, live read-outs (e.g. camera pitch) and live tuning of every value in
+	// Dev-only panel: renderer stats, live read-outs (e.g. camera pitch), buttons registered by pages
+	// (`actions`, e.g. Copy pose) and live tuning of every value in
 	// src/lib/tuning/defaults.json, laid out by schema.ts. Edits apply immediately: the code reads `tuning`
 	// every frame. "Save defaults" writes defaults.json through the dev server (vite.config.ts,
 	// /__tuning/save) without reloading the app; "Copy" puts the JSON on the clipboard; "Reset" goes back
@@ -8,7 +9,7 @@
 	// Toggle with P.
 	import type { Renderer, RendererStats } from '$lib/gl/renderer';
 	import { schema, type Param } from '$lib/tuning/schema';
-	import { onTuningChange, readouts, savedDefaults, setTuning, tuning, type TuningValue } from '$lib/tuning';
+	import { actions, onTuningChange, readouts, savedDefaults, setTuning, tuning, type TuningValue } from '$lib/tuning';
 	import { formatTuning } from '$lib/tuning/format';
 
 	type Values = Record<string, Record<string, TuningValue>>;
@@ -30,6 +31,8 @@
 
 	let stats = $state<RendererStats | null>(null);
 	let lines = $state<string[]>([]);
+	let actionNames = $state<string[]>([]);
+	let actionStatus = $state('');
 	let open = $state(true);
 	let controlsOpen = $state(storedUi.controlsOpen ?? true);
 	let collapsed = $state<Record<string, boolean>>(storedUi.collapsed ?? {});
@@ -64,6 +67,8 @@
 		const poll = () => {
 			stats = renderer.readStats();
 			lines = [...readouts.values()].map((read) => read());
+			const names = [...actions.keys()];
+			if (names.join('\n') !== actionNames.join('\n')) actionNames = names;
 			fontSize = panelFontSize(); // follows the window to another screen
 			if (savedDefaults() !== savedRef) {
 				savedRef = savedDefaults();
@@ -135,6 +140,14 @@
 		status = 'JSON copied';
 	}
 
+	async function runAction(name: string) {
+		try {
+			actionStatus = (await actions.get(name)?.()) ?? '';
+		} catch (error) {
+			actionStatus = `${name} failed: ${error instanceof Error ? error.message : error}`;
+		}
+	}
+
 	function resetAll() {
 		for (const group of schema) {
 			for (const param of group.params) set(group.key, param.key, $state.snapshot(saved[group.key][param.key]));
@@ -154,6 +167,17 @@
 				{#each lines as line, i (i)}
 					<div class="readout">{line}</div>
 				{/each}
+			</section>
+		{/if}
+
+		{#if actionNames.length}
+			<section class="actions">
+				<div class="buttons">
+					{#each actionNames as name (name)}
+						<button onclick={() => runAction(name)}>{name}</button>
+					{/each}
+				</div>
+				{#if actionStatus}<div class="status">{actionStatus}</div>{/if}
 			</section>
 		{/if}
 
@@ -349,6 +373,11 @@
 
 	footer {
 		padding-top: 0.55em;
+	}
+
+	.actions {
+		padding: 0.55em 0;
+		border-bottom: 1px solid rgb(255 255 255 / 0.1);
 	}
 
 	.buttons {

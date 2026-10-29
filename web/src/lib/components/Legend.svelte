@@ -2,6 +2,7 @@
 	// Legend lines over a GL view: put it inside the view element (it fills it). The layout and animation
 	// live in lib/legend/legend.ts, which writes the DOM directly after each rendered frame; this component
 	// only renders the elements and keeps the style values (ink, text size, stroke) in step with the panel.
+	// With `onselect`, labels are buttons (keyboard and screen readers included); `current` marks one.
 	import { onMount } from 'svelte';
 	import { getRenderer } from '$lib/gl/context';
 	import { Legend, type LegendElements, type LegendItem } from '$lib/legend/legend';
@@ -9,8 +10,19 @@
 	import type { SurveyCamera } from '$lib/gl/camera';
 	import type { Ground } from '$lib/terrain/ground';
 
-	let { items, camera, ground }: { items: LegendItem[]; camera: SurveyCamera; ground: () => Ground | null } =
-		$props();
+	let {
+		items,
+		camera,
+		ground,
+		current = -1,
+		onselect
+	}: {
+		items: LegendItem[];
+		camera: SurveyCamera;
+		ground: () => Ground | null;
+		current?: number;
+		onselect?: (index: number) => void;
+	} = $props();
 
 	const renderer = getRenderer();
 
@@ -62,12 +74,30 @@
 		{/each}
 	</svg>
 	{#each items as item, i (item)}
-		<div class="label" bind:this={labels[i]} style="visibility: hidden">
-			<span class="title" bind:this={titles[i]}>{item.title}</span>
-			<span class="meta" bind:this={metas[i]}>{item.meta ?? ''}</span>
-		</div>
+		{#if onselect}
+			<button
+				type="button"
+				class="label interactive"
+				class:current={i === current}
+				aria-current={i === current ? 'location' : undefined}
+				bind:this={labels[i]}
+				style="visibility: hidden"
+				onclick={() => onselect(i)}
+			>
+				{@render text(item, i)}
+			</button>
+		{:else}
+			<div class="label" class:current={i === current} bind:this={labels[i]} style="visibility: hidden">
+				{@render text(item, i)}
+			</div>
+		{/if}
 	{/each}
 </div>
+
+{#snippet text(item: LegendItem, i: number)}
+	<span class="title" bind:this={titles[i]}>{item.title}</span>
+	<span class="meta" bind:this={metas[i]}>{item.meta ?? ''}</span>
+{/snippet}
 
 <style>
 	.legend {
@@ -107,6 +137,34 @@
 		--text: 0;
 	}
 
+	.interactive {
+		padding: 0;
+		border: 0;
+		background: none;
+		color: inherit;
+		font: inherit;
+		text-align: inherit;
+		cursor: pointer;
+		pointer-events: auto;
+	}
+
+	.interactive:focus {
+		outline: none;
+	}
+
+	.interactive:focus-visible .title {
+		outline: 1px solid currentColor;
+		outline-offset: 0.25em;
+	}
+
+	.interactive:hover .meta {
+		opacity: var(--text);
+	}
+
+	.current .title {
+		font-weight: 700;
+	}
+
 	.title,
 	.meta {
 		position: absolute;
@@ -116,8 +174,9 @@
 		text-shadow: 0 0 0.6em var(--bg);
 	}
 
-	.label:global(.left) .title,
-	.label:global(.left) .meta {
+	/* data-side is written by legend.ts */
+	.label:global([data-side='left']) .title,
+	.label:global([data-side='left']) .meta {
 		left: auto;
 		right: 0;
 		text-align: right;

@@ -42,8 +42,19 @@ export const schema: Group[] = [
 			{ key: 'zoomSmoothing', label: 'Zoom smoothing', min: 1, max: 30, step: 0.5, hint: 'Lower glides longer.' },
 			{ key: 'inertiaDecay', label: 'Inertia decay', min: 0.5, max: 20, step: 0.1, hint: 'Higher stops sooner.' },
 			{ key: 'keyboardSpeed', label: 'Keyboard speed', min: 0.1, max: 4, step: 0.05 },
-			{ key: 'rotateSpeed', label: 'Rotate (°/px)', min: 0.05, max: 1.5, step: 0.01, hint: 'Right-drag / Alt+drag rotation per pixel.' },
+			{ key: 'rotateSpeed', label: 'Rotate (°/px)', min: 0.05, max: 1.5, step: 0.01, hint: 'Turn per pixel dragged: any drag at a POI, right-drag / Alt+drag in the free camera.' },
 			{ key: 'keyboardRotateSpeed', label: 'Key rotate (°/s)', min: 10, max: 360, step: 5, hint: 'Q / E rotation speed.' }
+		]
+	},
+	{
+		key: 'flight',
+		label: 'Flight',
+		params: [
+			{ key: 'curvature', label: 'Back-off', min: 0.3, max: 4, step: 0.05, hint: 'How much a flight zooms out on the way, relative to the distance travelled. √2 is the textbook value; a wide FOV needs more (hops look short in a wide view).' },
+			{ key: 'pace', label: 'Pace (s)', min: 0.2, max: 6, step: 0.05, hint: 'Seconds per view width travelled. Higher is slower.' },
+			{ key: 'minTime', label: 'Min time (s)', min: 0.2, max: 4, step: 0.05, hint: 'Shortest flight (short hops, turns).' },
+			{ key: 'maxTime', label: 'Max time (s)', min: 1, max: 12, step: 0.1, hint: 'Longest flight (far POIs).' },
+			{ key: 'ease', label: 'Ease', min: 1, max: 5, step: 0.05, hint: 'Ease in and out. The middle of a flight runs this many times its average speed: 1 is constant speed (abrupt start), 3 cubic.' }
 		]
 	},
 	{

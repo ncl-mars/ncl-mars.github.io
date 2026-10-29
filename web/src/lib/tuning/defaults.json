@@ -16,6 +16,13 @@
 		"rotateSpeed": 0.3,
 		"keyboardRotateSpeed": 90
 	},
+	"flight": {
+		"curvature": 2.5,
+		"pace": 2.8,
+		"minTime": 1.6,
+		"maxTime": 6,
+		"ease": 2.5
+	},
 	"march": {
 		"stepScale": 0.45,
 		"precision": 0.0015,

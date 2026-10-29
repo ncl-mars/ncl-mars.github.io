@@ -7,6 +7,8 @@ export interface SurveyControlsOptions {
 	ground?: () => { raycast(origin: Vec3, direction: Vec3): Vec3 | null } | null;
 	/** Read live (the dev panel edits them). */
 	settings?: { wheelSpeed: number; rotateSpeed: number };
+	/** Checked on every input: false ignores it (the site moves between POIs; free input is a dev tool). */
+	enabled?: () => boolean;
 }
 
 type Binding = ['x' | 'y' | 'zoom' | 'rotate', number] | 'north';
@@ -43,6 +45,32 @@ const KEY_CHARS: Record<string, Binding> = {
 
 const DEG = Math.PI / 180;
 
+/** Recent headings while turning (rotate-drag, twist), so a release that is still turning keeps turning. */
+export class TurnTracker {
+	private samples: { time: number; yaw: number }[] = [];
+
+	constructor(private readonly camera: SurveyCamera) {}
+
+	record(time: number) {
+		this.samples.push({ time, yaw: this.camera.yaw });
+		while (this.samples.length > 2 && time - this.samples[0].time > 100) this.samples.shift();
+	}
+
+	/** On release: keep turning (inertia), only if it was still turning. */
+	release(time: number) {
+		const first = this.samples[0];
+		const last = this.samples[this.samples.length - 1];
+		this.samples = [];
+		if (!first || first === last || time - last.time > 50) return;
+		const seconds = (last.time - first.time) / 1000;
+		if (seconds > 0) this.camera.flingYaw((last.yaw - first.yaw) / seconds);
+	}
+
+	clear() {
+		this.samples = [];
+	}
+}
+
 /**
  * Input for the survey camera, attached to the view element (the canvas ignores pointers):
  * `<div tabindex="0" {@attach surveyControls(camera, { ground, settings })}>`. Native Pointer Events.
@@ -64,7 +92,7 @@ export function surveyControls(camera: SurveyCamera, options: SurveyControlsOpti
 		let rotating: { id: number; x: number } | null = null;
 		// Recent target positions / headings while dragging or turning, to compute the release velocity
 		let samples: { time: number; x: number; z: number }[] = [];
-		let yawSamples: { time: number; yaw: number }[] = [];
+		const turn = new TurnTracker(camera);
 		let downAt = { x: 0, y: 0, time: 0 };
 		let lastTap = { x: 0, y: 0, time: -Infinity };
 		const pressed = new Map<string, Binding>(); // by event.code, so keyup releases what keydown pressed
@@ -113,21 +141,6 @@ export function surveyControls(camera: SurveyCamera, options: SurveyControlsOpti
 			camera.zoomTo(camera.goalDistance * factor, point ? { ndc: toNdc(x, y), point } : null);
 		};
 
-		const recordYaw = (time: number) => {
-			yawSamples.push({ time, yaw: camera.yaw });
-			while (yawSamples.length > 2 && time - yawSamples[0].time > 100) yawSamples.shift();
-		};
-
-		/** Keep turning after a rotate-drag or twist, only if it was still turning when released. */
-		const flingYaw = (time: number) => {
-			const first = yawSamples[0];
-			const last = yawSamples[yawSamples.length - 1];
-			yawSamples = [];
-			if (!first || first === last || time - last.time > 50) return;
-			const seconds = (last.time - first.time) / 1000;
-			if (seconds > 0) camera.flingYaw((last.yaw - first.yaw) / seconds);
-		};
-
 		const pinchState = () => {
 			const [a, b] = [...pointers.values()];
 			return {
@@ -138,14 +151,18 @@ export function surveyControls(camera: SurveyCamera, options: SurveyControlsOpti
 			};
 		};
 
+		const enabled = () => options.enabled?.() ?? true;
+
 		const onPointerDown = (event: PointerEvent) => {
+			// A press on a label is its click: capturing the pointer would steal it
+			if (!enabled() || (event.target as Element).closest('button, a')) return;
 			const mouse = event.pointerType === 'mouse';
 			const rotateDrag = mouse && (event.button === 2 || (event.button === 0 && event.altKey));
 			if (mouse && event.button !== 0 && !rotateDrag) return;
 			el.setPointerCapture(event.pointerId);
 			camera.stop();
 			samples = [];
-			yawSamples = [];
+			turn.clear();
 			if (rotateDrag) {
 				rotating = { id: event.pointerId, x: event.clientX };
 				el.classList.add('rotating');
@@ -169,7 +186,7 @@ export function surveyControls(camera: SurveyCamera, options: SurveyControlsOpti
 				const speed = (options.settings?.rotateSpeed ?? 0.3) * DEG;
 				camera.rotate(-(event.clientX - rotating.x) * speed);
 				rotating.x = event.clientX;
-				recordYaw(event.timeStamp);
+				turn.record(event.timeStamp);
 				return;
 			}
 			const pointer = pointers.get(event.pointerId);
@@ -190,7 +207,7 @@ export function surveyControls(camera: SurveyCamera, options: SurveyControlsOpti
 				if (after.distance > 0 && pinchDistance > 0) zoomAt(before.x, before.y, pinchDistance / after.distance);
 				pinchDistance = after.distance;
 				camera.rotate(wrapAngle(after.angle - before.angle));
-				recordYaw(event.timeStamp);
+				turn.record(event.timeStamp);
 				dragTo(after.x, after.y);
 			}
 		};
@@ -199,7 +216,7 @@ export function surveyControls(camera: SurveyCamera, options: SurveyControlsOpti
 			if (rotating?.id === event.pointerId) {
 				rotating = null;
 				el.classList.remove('rotating');
-				flingYaw(event.timeStamp);
+				turn.release(event.timeStamp);
 				return;
 			}
 			if (!pointers.has(event.pointerId)) return;
@@ -207,7 +224,7 @@ export function surveyControls(camera: SurveyCamera, options: SurveyControlsOpti
 			pointers.delete(event.pointerId);
 
 			if (pointers.size === 1) {
-				flingYaw(event.timeStamp); // end of a twist
+				turn.release(event.timeStamp); // end of a twist
 				const [rest] = pointers.values();
 				startGrab(rest.x, rest.y); // keep panning with the remaining finger
 				samples = [];
@@ -239,16 +256,21 @@ export function surveyControls(camera: SurveyCamera, options: SurveyControlsOpti
 			}
 		};
 
-		const onDoubleClick = (event: MouseEvent) => glideZoomAt(event.clientX, event.clientY, 0.5);
+		const onDoubleClick = (event: MouseEvent) => {
+			if (enabled()) glideZoomAt(event.clientX, event.clientY, 0.5);
+		};
 
 		const onWheel = (event: WheelEvent) => {
+			if (!enabled()) return;
 			event.preventDefault(); // also stops ctrl+wheel (trackpad pinch) from zooming the page
 			const scale = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 400 : 1;
 			const speed = options.settings?.wheelSpeed ?? 0.002;
 			glideZoomAt(event.clientX, event.clientY, Math.exp(event.deltaY * scale * speed));
 		};
 
-		const onContextMenu = (event: MouseEvent) => event.preventDefault(); // right-drag rotates
+		const onContextMenu = (event: MouseEvent) => {
+			if (enabled()) event.preventDefault(); // right-drag rotates
+		};
 
 		const updateKeys = () => {
 			const keys = camera.keys;
@@ -261,7 +283,7 @@ export function surveyControls(camera: SurveyCamera, options: SurveyControlsOpti
 		};
 
 		const onKeyDown = (event: KeyboardEvent) => {
-			if (event.ctrlKey || event.metaKey || event.altKey) return;
+			if (!enabled() || event.ctrlKey || event.metaKey || event.altKey) return;
 			const binding = KEY_CODES[event.code] ?? KEY_CHARS[event.key];
 			if (!binding) return;
 			event.preventDefault(); // arrows / page keys would scroll

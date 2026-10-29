@@ -355,7 +355,7 @@ export class Legend {
 		}
 		if (side !== mark.shownSide) {
 			mark.shownSide = side;
-			el.label.classList.toggle('left', side === -1);
+			el.label.dataset.side = side === -1 ? 'left' : 'right'; // not a class: Svelte owns the class list
 		}
 		const text = easeOut(range(mark.t, 0.6, 1)).toFixed(3);
 		if (text !== mark.text) {

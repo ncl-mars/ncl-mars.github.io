@@ -36,6 +36,9 @@ export function setTuning(group: string, key: string, value: TuningValue) {
 /** Live read-outs shown by the dev panel (e.g. the camera's current pitch), registered by pages. */
 export const readouts = new Map<string, () => string>();
 
+/** Dev panel buttons registered by pages (e.g. Copy pose), by label. The returned text shows as a status. */
+export const actions = new Map<string, () => string | void | Promise<string | void>>();
+
 // defaults.json changed (panel Save, or edited / checked out): no app reload. The new file becomes the
 // saved values, and the live values are updated in place (group objects keep their identity), with
 // listeners notified. This also keeps the dev server's prerender in step with the browser.

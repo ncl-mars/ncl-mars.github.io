@@ -2,10 +2,10 @@
 
 Living work plan. Tick boxes as we go, add notes inline, and log decisions at the bottom. Details live in the other docs; this file is the order of work.
 
-**Status (2026-10-29):** M0–M2b and the core viewer experiment merged into `develop`. The core and the splats are dropped. On `feature/legend-lines`: the core removed, then the legend lines prototype on the home page.
+**Status (2026-10-29):** M0–M2b, the core removal and the legend lines merged into `develop`. On `feature/poi-navigation`: the camera moves between POIs (planned flights, ordered steps), free camera in dev only.
 
 **Next:**
-- Claude: legend lines prototype (placeholder labels pinned on the terrain, style in the panel), then M2d (squares) / M3 (project view) once planned from your sketches.
+- Claude: after your check of the navigation, M3c (project layer over the scene with isolation, real routes), then M8 (dust).
 - You, whenever:
   - tune the camera in the panel → Save defaults → commit `defaults.json`;
   - perf gate: `npm run dev -- --host`, phone fps + model (answers Q4);
@@ -150,7 +150,20 @@ See [home-concept.md](home-concept.md) § Legend lines, § Click: the project vi
 - [x] Style values in the panel (Legend lines group: layout, ink, opacity, scale (text size; rise, spacing and anchor ring in em of it), line width, anchor ring, rise, diagonal angle, column inset, spacing, follow, lift, fog cutoff, draw time, stagger)
 - [ ] Browser check and look tuning (yours)
 
-### M3b — Project view (to plan from your sketches)
+### M3b — POI navigation (`feature/poi-navigation`)
+
+Free navigation is replaced by POIs: the camera flies to any POI, and scrolling steps through them in order.
+
+- [x] POIs in `lib/content/pois.ts` (id, title, label point, camera pose: target x/z, distance, heading), visiting order = list order; 4 placeholders
+- [x] `camera.flyTo(pose)`: van Wijk & Nuij smooth pan-and-zoom path (backs off with the distance travelled; pitch follows the zoom), heading the shortest way, eased; ground clearance planned once at the start (rest heights along the path capped by smooth parabolas, ends blended to the exact start and landing heights). `camera.jumpTo(pose)` for the first load and reduced motion
+- [x] `navigation/tour.ts`: `Tour` (current POI, `go` / `next` / `previous`, module-level so it survives navigation) + `tourControls`: one step per wheel gesture (momentum never skips a POI), vertical swipes, ← → ↑ ↓ Page Up/Down Space Home End
+- [x] Turning around the current POI kept for visitors: mouse drag (any button), touch drag across (the first pixels pick turn or swipe), Q / E, with inertia; waits during a flight
+- [x] Legend labels are buttons: click flies to that POI, clicking the current one again flies back to the overview (the first POI); the current one is marked (`aria-current`)
+- [x] Free camera (pan, zoom, rotate) only in dev, from the panel's new action buttons: "Free camera", "Copy pose" (copies `view: {…}` to paste into `pois.ts`); the compass is now a display
+- [x] Panel: Flight group (back-off, pace, min / max time, ease); readout "poi n/N · title · flying"
+- [ ] Browser check and flight tuning (yours)
+
+### M3c — Project view (to plan from your sketches)
 
 - [ ] Design: survey mode (datavis) or not, light or dark, top-down or oblique, what scrolling does
 - [ ] `projects.ts`: `{ slug, cell, title, text, images }`; `routes/projects/[slug]` prerendered with `entries()`; the camera move continues across the navigation
@@ -213,6 +226,7 @@ Dropped (2026-10-29): simpler, faster without.
 
 ## Decision log
 
+- **2026-10-29**: Navigation by POIs instead of free controls: the camera flies to any POI (procedural, planned flight), and scrolling / arrows / swipes step through them in a curated order; teleport only under reduced motion. Free pan / zoom / rotate stays as a dev tool to frame the POI poses (Copy pose); visitors keep turning the view around the current POI. The project view will be an HTML layer over the scene with isolation (desaturation, blur), opened from a POI; dust particles stay on the list (M8).
 - **2026-10-29**: The core sample is dropped (content inside a hard-to-read object didn't work), and so are the splat finds: simpler, faster, nicer. The 3D stays the misty landscape; information is elegant HTML text over it, tied to places in the scene by legend lines (anchor in 3D, stable label, one elbow). Project view still being planned: a survey mode in a digital datavis style is the leading direction. The canvas outliving navigation makes real prerendered project pages possible without shallow routing. Kept from the core: the lightbox carousel, the noise textures, the homography helper.
 - **2026-10-28**: Core decided: extracted upward from the ground; the dig site behind is isolated by desaturation + blur (a focus pull), not a wireframe or a translucent terrain. `.venv/` (Python) added to `.gitignore`.
 - **2026-10-28**: Core viewer reworked after review: a solid raymarched rock core; the cut face (low-frequency displaced) descends as you scroll; images appear as micro relief from their depth maps at their depth, plain rock between. The X-ray/translucency idea moves to the terrain; extraction upward recommended as the primary gesture, a translucent hover "lens" as an option (decide in M3c).
