@@ -21,6 +21,7 @@ export interface LegendShadowSettings {
 	thickness: number;
 	maxLength: number;
 	ground: number;
+	softness: number;
 	text: number;
 	textSoftness: number;
 	textAir: number;
@@ -159,13 +160,15 @@ export class LegendShadows implements Drawable {
 		const u = this.uniforms;
 		u.uViewProj = this.camera.viewProjection;
 		u.uMasks = this.masks;
+		u.uSoftness = Math.max(0, s.softness);
 
 		gl.enable(gl.DEPTH_TEST);
 		gl.depthFunc(gl.LESS);
 		gl.depthMask(false);
 		gl.enable(gl.BLEND);
-		// Darken the colour only: dst × (1 − alpha), the canvas alpha (the fade-in over the page) untouched
-		gl.blendFuncSeparate(gl.ZERO, gl.ONE_MINUS_SRC_ALPHA, gl.ZERO, gl.ONE);
+		// Darken the colour only, channel by channel: dst × (1 − src), the canvas alpha (the fade-in over the
+		// page) untouched
+		gl.blendFuncSeparate(gl.ZERO, gl.ONE_MINUS_SRC_COLOR, gl.ZERO, gl.ONE);
 		if (sheets > 0) {
 			this.drawBoxes(gl, this.sheetProgram!, this.sheetVao, this.sheetInstances, lines.data, LegendLines.STRIDE, SHEET_BOX, sheets);
 		}

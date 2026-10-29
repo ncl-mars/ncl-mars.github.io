@@ -247,6 +247,7 @@ Dropped (2026-10-29): simpler, faster without.
 - [x] The shadow on the ground: where a ray meets the ground inside a box, a thin line, soft across, fading with the fog, none where a ridge already shades the ground (Ground shadow, 0.6)
 - [x] The labels' text on the ground: the legend writes each shown label's text box in 3D and its text; the drawable draws the text into a mask atlas (2D canvas, same fonts, redrawn only when a label's text or style changes) and shades the ground where the sun ray from it crossed a letter, blurring with the distance (Text on the ground 0.6, Text softness). Holds up on the phone
 - [x] The labels' text in the god rays: along each ray's stretch in a label's box, jittered samples of the mask (blurred to the gap between them, so a ray sweeping across the letters averages them), weighted like the line sheets. Letter-shaped shafts looking toward the sun (Text in the god rays 2, 0 = not computed; Text samples 8)
+- [x] More natural: the lines' shadows blur with distance like under a real sun (Line softness 0.005, the sun's size: sharp and dark behind the line, wider and fainter further, in the air and on the ground); in the air, the shadows take away the sun's share of the haze colour by colour, so they turn cooler like the terrain's god rays instead of grey (ground: neutral, like the baked shadows)
 - [ ] Phone fps with Text in the god rays on and at 0
 
 ---
@@ -283,6 +284,7 @@ Dropped (2026-10-29): simpler, faster without.
 
 ## Decision log
 
+- **2026-10-29**: Legend shadows looked a little unnatural: penumbra (the sun's disc) and a cooler colour in the air fixed. Casting them from a fixed signboard per POI (so they'd stop swinging and scaling with the camera) was declined: the shadows keep following the labels.
 - **2026-10-29**: Legend shadows in the god rays with the legend unchanged (no 3D stakes, which would have changed its look): the lines are placed in 3D facing the camera at their point's depth, so their shadows follow what you see, and turn with you when you orbit. Drawn every frame as geometry over the terrain (the lines move with the labels), not in the cached march.
 - **2026-10-29**: No sites for now: about 10 POIs at most, so one list is enough, and content comes first. The phone menu folds behind a Projects button. The sites version stays in the history (commit 4c136d5), with the site-labels idea in Q7.
 - **2026-10-29**: Q7, sites: groups of POIs by discipline in the one landscape, one menu each. The site is written on each POI in Houdini as its heading reads (`s@site = "VFX"`), not listed anywhere else (a first version listed ids and headings in `portfolio.yaml`: duplicated, dropped). `portfolio.yaml` holds your name and the home description, so no name is written in the code. "Dig site" is gone as a name (it stays the scene's metaphor). A scene per site stays possible later: every POI already carries its site.

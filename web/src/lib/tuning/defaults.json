@@ -73,6 +73,7 @@
 		"thickness": 5,
 		"maxLength": 215,
 		"ground": 0.6,
+		"softness": 0.005,
 		"text": 0.6,
 		"textSoftness": 0.01,
 		"textAir": 10,

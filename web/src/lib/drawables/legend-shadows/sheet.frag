@@ -3,12 +3,16 @@ precision highp float;
 precision highp int; // /noise's hash needs 32-bit integers
 
 // Darkens the scene where a view ray crosses a legend segment's shadow (sheet.vert): the sunlight the air
-// in it would have scattered toward the eye is missing. The ray's path through the box is exact (the box
-// faces only say which pixels to look at); along it, the air's density (mist, haze), what reaches the eye
-// and whether the sun reaches it at all (the terrain's shadow ceiling) come at three points. Thin seen
-// face-on, a sheet only shows when looked along: a streak, strongest toward the sun.
-// Where the ray meets the ground inside the box, the ground is in the line's shadow too: a thin line on
-// it, soft across, fading with the fog like the ground, nothing where a ridge already shades it.
+// in it would have scattered toward the eye is missing. The sun is a disc, so the shadow of a thin line
+// blurs with distance: sharp and dark behind the line, wider and fainter further on (the same shadow,
+// spread). Along the ray's exact stretch in the box, four jittered samples weigh that shadow by the air's
+// density (mist, haze), what reaches the eye and whether the sun reaches it at all (the terrain's shadow
+// ceiling). Thin seen face-on, a sheet mostly shows when looked along: a streak, strongest toward the sun.
+// The light taken away is the sun's share of the haze, colour by colour, so shadowed air turns cooler, as
+// in the terrain's god rays.
+// Where the ray meets the ground inside the box, the ground is in the line's shadow too: a line on it,
+// blurring the same way, fading with the fog like the ground, nothing where a ridge already shades it;
+// neutral there, like the baked shadows.
 
 #include /common;
 #include /noise;
@@ -23,12 +27,16 @@ uniform sampler2D uShadow;      // the terrain's shadow ceiling (drawables/terra
 uniform vec4 uShadowBox;        // xy: its min corner (world xz), zw: 1 / size
 uniform vec2 uSlab;
 uniform vec4 uSheet;            // x: strength, y: thickness (px), z: longest path counted (world units), w: ground shadow
+uniform float uSoftness;        // penumbra: half width added per world unit from the line
 uniform float uFade;            // the terrain's fade in
 
 in vec3 vWorld;
 flat in vec3 vOrigin;
 flat in mat3 vToBox;
 flat in float vVisibility;
+flat in float vHalf;
+flat in float vWide;
+flat in float vReach;
 
 out vec4 outColor;
 
@@ -56,6 +64,15 @@ float airDensity(vec3 p, float banks) {
 	return uMist.x * exp(-(p.y - uMist.y) / uMist.z) * banks + uFogDensity;
 }
 
+// How much of the sun the line hides at box point b: its shadow (half width vHalf) blurred by the sun's
+// disc at b's distance from the line: a trapezoid across, no darker than the line covers of the disc
+float occlusion(vec3 b) {
+	float penumbra = b.y * vReach * uSoftness;
+	float inner = abs(vHalf - penumbra);
+	float outer = max(vHalf + penumbra, inner + 1e-4);
+	return min(1.0, vHalf / max(penumbra, 1e-6)) * (1.0 - smoothstep(inner, outer, abs(b.z) * vWide));
+}
+
 void main() {
 	vec3 rd = normalize(vWorld - uCamPos);
 	vec3 o = vToBox * (uCamPos - vOrigin);
@@ -78,33 +95,38 @@ void main() {
 		float tGround = length(p.xyz / p.w - uCamPos);
 		if (tGround < t1 && uSheet.w > 0.0) {
 			vec3 g = uCamPos + rd * tGround;
-			float across = abs((vToBox * (g - vOrigin)).z); // 0 in the middle of the line, 1 at its edges
 			float fog = max(1.0 - exp(-tGround * uFogDensity), smoothstep(uFogEnd * 0.55, uFogEnd, tGround));
 			float seen = (1.0 - fog) * exp(-mistDepth(uCamPos, rd, tGround));
-			ground = uSheet.w * smoothstep(1.0, 0.4, across) * sunVisibility(g + vec3(0.0, 1.5, 0.0)) * seen;
+			ground = uSheet.w * occlusion(o + d * tGround) * sunVisibility(g + vec3(0.0, 1.5, 0.0)) * seen;
 		}
 		t1 = min(t1, tGround);
 	}
 	float path = min(t1 - t0, uSheet.z);
-	if (path <= 0.0 && ground <= 0.0) discard;
 
-	// The light the air in the shadow would have scattered toward the eye, at three points along the path.
+	// The light the air in the shadow would have scattered toward the eye, sampled along the stretch.
 	// Seen face-on, a sheet is too thin to show: skipped (an upper estimate, densest banks)
-	float air = 0.0;
+	vec3 air = vec3(0.0);
 	float tm = t0 + path * 0.5;
-	if (uSheet.x * vVisibility * path * airDensity(uCamPos + rd * tm, 1.0 + uMist.w) >= 0.004) {
+	float darkest = min(1.0, vHalf / max((o.y + d.y * tm) * vReach * uSoftness, 1e-6));
+	if (path > 0.0 && uSheet.x * vVisibility * path * darkest * airDensity(uCamPos + rd * tm, 1.0 + uMist.w) >= 0.004) {
 		float banks = mix(1.0 - uMist.w, 1.0 + uMist.w, mistBanks(uCamPos.xz + rd.xz * tm));
+		float gap = path / 4.0;
+		float jitter = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
 		float missing = 0.0;
-		for (int i = 0; i < 3; i++) {
-			float t = t0 + path * (float(i) + 0.5) / 3.0;
+		for (int i = 0; i < 4; i++) {
+			float t = t0 + (float(i) + jitter) * gap;
+			float shadow = occlusion(o + d * t);
+			if (shadow < 0.001) continue;
 			vec3 p = uCamPos + rd * t;
 			float reach = exp(-uFogDensity * t - mistDepth(uCamPos, rd, t) * banks);
-			missing += airDensity(p, banks) * reach * sunVisibility(p) * path / 3.0;
+			missing += airDensity(p, banks) * reach * sunVisibility(p) * shadow * gap;
 		}
-		float sunlight = clamp(uShafts.x + sunGlow(rd), 0.0, 1.0);
-		air = clamp(uSheet.x * sunlight * (1.0 - exp(-missing)), 0.0, 1.0);
+		// The sun's share of the haze, colour by colour (fogColorToward: the fog's colour plus the sun's glow)
+		vec3 sunlit = uFogColor * uShafts.x + uSunColor * sunGlow(rd);
+		vec3 share = clamp(sunlit / max(fogColorToward(rd), vec3(1e-3)), 0.0, 1.0);
+		air = clamp(uSheet.x * (1.0 - exp(-missing)) * share, 0.0, 1.0);
 	}
-	float shade = (1.0 - (1.0 - air) * (1.0 - ground)) * vVisibility * uFade;
-	if (shade < 0.002) discard;
-	outColor = vec4(0.0, 0.0, 0.0, shade); // blended as dst × (1 − alpha)
+	vec3 shade = (1.0 - (1.0 - air) * (1.0 - ground)) * vVisibility * uFade;
+	if (max(shade.r, max(shade.g, shade.b)) < 0.002) discard;
+	outColor = vec4(shade, 0.0); // blended as dst × (1 − src), colour by colour
 }

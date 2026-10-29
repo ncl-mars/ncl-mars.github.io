@@ -2,13 +2,15 @@
 precision highp float;
 
 // One legend segment's shadow, as a box of air (instanced: one per segment, from LegendLines): from the
-// segment, along the sun away from it, until below the lowest ground; as thick as the line, in pixels at
-// its depth. The fragment shader measures how much of each view ray crosses it.
+// segment, along the sun away from it, until below the lowest ground; as thick as the line (in pixels at
+// its depth) plus the penumbra at its far end, which grows with the distance from the line. The fragment
+// shader measures how much of each view ray crosses the shadow inside it.
 
 uniform mat4 uViewProj;
 uniform vec3 uSunDir;   // toward the sun (the bake's)
 uniform vec2 uSlab;     // height range of the whole ground
 uniform vec4 uSheet;    // x: strength, y: thickness (px of the line), z: longest path counted, w: ground shadow
+uniform float uSoftness; // penumbra: its half width grows this much per world unit from the line
 
 layout(location = 0) in vec3 aCorner;   // unit box: x along the segment, y along the shadow (0..1), z across (±1)
 layout(location = 1) in vec3 aStart;    // per segment (world)
@@ -17,8 +19,11 @@ layout(location = 3) in vec2 aLine;     // x: size of a pixel at its depth (worl
 
 out vec3 vWorld;
 flat out vec3 vOrigin;
-flat out mat3 vToBox;  // world offset from vOrigin → box coordinates (x, y in 0..1, z in ±1)
+flat out mat3 vToBox;   // world offset from vOrigin → box coordinates (x, y in 0..1, z in ±1)
 flat out float vVisibility;
+flat out float vHalf;   // the line's half thickness (world units)
+flat out float vWide;   // the box's half width: the line's plus the penumbra at its far end
+flat out float vReach;  // the box's length along the sun (world units)
 
 void main() {
 	vec3 along = aEnd - aStart;
@@ -27,12 +32,17 @@ void main() {
 	vec3 across = cross(along, sun);
 	float len = length(across);
 	across = len > 1e-6 ? across / len : vec3(1.0, 0.0, 0.0);
-	mat3 frame = mat3(along, -sun * reach, across * (0.5 * uSheet.y * aLine.x));
+	float half0 = 0.5 * uSheet.y * aLine.x;
+	float wide = half0 + reach * uSoftness;
+	mat3 frame = mat3(along, -sun * reach, across * wide);
 	vec3 world = aStart + frame * aCorner;
 
 	vWorld = world;
 	vOrigin = aStart;
 	vToBox = inverse(frame);
 	vVisibility = aLine.y;
+	vHalf = half0;
+	vWide = wide;
+	vReach = reach;
 	gl_Position = uViewProj * vec4(world, 1.0);
 }

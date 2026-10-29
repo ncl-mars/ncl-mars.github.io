@@ -10,7 +10,9 @@ precision highp int; // /noise's hash needs 32-bit integers
 //   Looking toward the sun, a ray stays behind the same letter: letter-shaped shafts. Across the letters,
 //   the mask is read blurred to the gap between samples: a soft veil, not noise.
 // Both blur with the distance to the text (the penumbra) and add nothing where a ridge already shades the
-// air or the ground. Both faces of the box cover a pixel: only the one where the ray enters shades it.
+// air or the ground. In the air, the light taken away is the sun's share of the haze, colour by colour
+// (shadowed air turns cooler, as in the terrain's god rays); on the ground it's neutral, like the baked
+// shadows. Both faces of the box cover a pixel: only the one where the ray enters shades it.
 
 #include /common;
 #include /noise;
@@ -100,7 +102,7 @@ void main() {
 	}
 
 	// Air: the light the shadowed air would have scattered toward the eye, sampled along the stretch
-	float air = 0.0;
+	vec3 air = vec3(0.0);
 	int samples = int(uText.w);
 	if (uText.z > 0.0 && samples > 0 && t1 > t0) {
 		float path = t1 - t0;
@@ -122,11 +124,13 @@ void main() {
 			float reach = exp(-uFogDensity * t - mistDepth(uCamPos, rd, t) * banks);
 			missing += density * reach * sunVisibility(q) * m * gap;
 		}
-		float sunlight = clamp(uShafts.x + sunGlow(rd), 0.0, 1.0);
-		air = clamp(uText.z * sunlight * (1.0 - exp(-missing)), 0.0, 1.0);
+		// The sun's share of the haze, colour by colour (fogColorToward: the fog's colour plus the sun's glow)
+		vec3 sunlit = uFogColor * uShafts.x + uSunColor * sunGlow(rd);
+		vec3 share = clamp(sunlit / max(fogColorToward(rd), vec3(1e-3)), 0.0, 1.0);
+		air = clamp(uText.z * (1.0 - exp(-missing)) * share, 0.0, 1.0);
 	}
 
-	float shade = (1.0 - (1.0 - air) * (1.0 - ground)) * vVisibility * uFade;
-	if (shade < 0.002) discard;
-	outColor = vec4(0.0, 0.0, 0.0, shade); // blended as dst × (1 − alpha)
+	vec3 shade = (1.0 - (1.0 - air) * (1.0 - ground)) * vVisibility * uFade;
+	if (max(shade.r, max(shade.g, shade.b)) < 0.002) discard;
+	outColor = vec4(shade, 0.0); // blended as dst × (1 − src), colour by colour
 }
