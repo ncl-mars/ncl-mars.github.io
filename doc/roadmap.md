@@ -23,6 +23,8 @@ Living work plan. Tick boxes as we go, add notes inline, and log decisions at th
 | Q4 | Reference weak device (phone/GPU) for the performance gate, and max pixel ratio | M2a | Your old, cheap phone (90 Hz screen): the weakest device to support. Target 60 fps |
 | Q6 | Rough march while moving (March: motion scale 0.5) applies on every device. On desktop the softness shows in motion, but it isn't disturbing. Keep it, or make it automatic: march sharp while moving, and fall back to rough only on a device whose moving frames drop under ~52 fps (desktop stays sharp, the phone switches by itself)? | M9 | Automatic (2026-10-29, `feature/adaptive-march`): March → Rough in motion, 1 by default |
 
+| Q7 | More sites (topics: simulation, web 3D, archviz, video mapping…), each with its own POIs and a menu headed by its name, like Dig site. Is each site its own scene (its own terrain or world, its own URL), or a group of POIs in the one landscape? | Next site | |
+
 Q2, Q3, Q5 were about splats, dropped on 2026-10-29.
 
 Stack choices S1–S4 are tracked in [stack.md](stack.md#open-decisions).
@@ -244,7 +246,7 @@ Dropped (2026-10-29): simpler, faster without.
   - [x] Mist banks from the 3D noise texture instead of hashed value noise (every pixel and every dust speck, every frame)
   - [x] Dynamic resolution in the renderer (pixel ratio steps down when frames run long, back up when they keep up; Renderer group: adaptive, lowest scale; "q" in the stats)
   - [x] Legend smaller on phones (Phone scale, under 700 px wide)
-  - [x] POI menu folded on phones (`feature/phone-menu`): a Sites button unfolds the list; an entry, a tap outside (which does nothing else) or Escape folds it
+  - [x] POI menu folded on phones (`feature/phone-menu`): the site's name (Dig site) unfolds its list; an entry, a tap outside (which does nothing else) or Escape folds it
   - [x] First check: 90 fps still, down to 30 moving (the march). Adaptive resolution now aims at 60 fps, not the display's 90 / 120 Hz; the march runs at lower resolution while the camera moves (March: motion scale 0.5), then sharp once it has been still 0.15 s
   - [ ] Second phone check (fps moving, q reached); then march steps or dust count for phones if needed
   - [x] Q6: rough march in motion only where moving frames run long (`feature/adaptive-march`). When frames run under ~52 fps, the renderer asks the drawables to get cheaper first (`Drawable.degrade()`): the terrain switches to the rough march in motion if the slow frames were moving ones, once for all (remembered on the device in browser storage); only then does the resolution drop. Long frames in a row count (a slow device), a lone one is a hitch and doesn't; the first 2 s don't. March → Rough in motion: 0 never, 1 automatic, 2 always; the stats show "motion sharp / rough"
@@ -256,6 +258,7 @@ Dropped (2026-10-29): simpler, faster without.
 
 ## Decision log
 
+- **2026-10-29**: Sites: the POIs belong to a site (Dig site, `site` in `content/pois.ts`) whose name heads their menu (on phones, the button that unfolds it). More sites to come, by topic (Q7).
 - **2026-10-29**: The first POI is a POI like the others (a project page too), not home. Home is the overview framed by the start view, where no POI is current: every label rearranges alike there. Escape, the current POI's label and the Home key go back to it. The POI was "Dig site" at the origin, confusing with the scene's own name: renamed Test pit (`test-pit`) and moved to the hollow north-east of the plateau.
 - **2026-10-29**: Q6: the rough march in motion becomes automatic. Desktops march sharp while moving; a device whose moving frames run under ~52 fps switches to rough by itself, remembered for its next visits. It goes before dynamic resolution: the renderer asks the drawables to get cheaper (`degrade()`) before lowering the pixel ratio, so a slow phone loses sharpness in motion only, not resolution everywhere.
 - **2026-10-29**: God rays as light shafts in the mist (the ridges' shadow volumes), not a screen-space blur toward the sun: the camera looks down and the sun is low, so it is almost never on screen. The sun and the ground being fixed, the shadow volumes come from a shadow ceiling rendered once, and the shafts are computed in the march and cached with the ground: no per-frame cost when still. They match the baked shadows (same sun, same ground).

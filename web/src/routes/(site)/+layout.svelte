@@ -4,7 +4,7 @@
 	import { Dust } from '$lib/drawables/dust/Dust';
 	import { terrainAssets } from '$lib/terrain/assets';
 	import { tuning } from '$lib/tuning';
-	import { pois } from '$lib/content/pois';
+	import { pois, site as siteInfo } from '$lib/content/pois';
 	import { projectFor } from '$lib/content/projects';
 	import { Tour } from '$lib/navigation/tour';
 
@@ -56,7 +56,7 @@
 	let masthead: HTMLElement;
 	let toggle: HTMLButtonElement;
 	let current = $state(tour.current);
-	/** Phones: the POI menu is folded behind a Sites button, and unfolded by tapping it. */
+	/** Phones: the site's menu is folded behind its name, and unfolded by tapping it. */
 	let menuOpen = $state(false);
 	/** The POI the camera has arrived at (−1 during a flight): its label shows the Data button. */
 	let arrived = $state(-1);
@@ -266,8 +266,10 @@
 
 <header class="masthead" inert={!!project} bind:this={masthead}>
 	<p class="name">Portfolio</p>
-	<!-- Straight to any POI. On phones the list folds behind a Sites button -->
-	<nav aria-label="Points of interest">
+	<!-- The site's menu: its name, then its POIs, straight to any of them. On phones the list folds behind
+	     the site's name -->
+	<nav aria-label={siteInfo.title}>
+		<p class="site-title">{siteInfo.title}</p>
 		<button
 			type="button"
 			class="toggle"
@@ -276,7 +278,7 @@
 			bind:this={toggle}
 			onclick={() => (menuOpen = !menuOpen)}
 		>
-			Sites
+			{siteInfo.title}
 			<svg class="chevron" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1 5 5 9 1" /></svg>
 		</button>
 		<ol id="poi-menu" class="menu" class:open={menuOpen}>
@@ -389,6 +391,7 @@
 	}
 
 	.masthead li button,
+	.site-title,
 	.toggle {
 		display: flex;
 		gap: 0.7em;
@@ -414,23 +417,36 @@
 		font-weight: 600;
 	}
 
+	.site-title {
+		margin: 0;
+		font-weight: 600;
+		opacity: 1;
+		cursor: default;
+		pointer-events: none;
+	}
+
 	.masthead li button:focus-visible,
 	.toggle:focus-visible {
 		outline: 1px solid currentColor;
 		outline-offset: 2px;
 	}
 
-	/* Desktop: the list is always there */
+	/* Desktop: the site's name titles the menu, its list always there */
 	.toggle {
 		display: none;
 	}
 
-	/* Phones: folded behind the Sites button; tapping it unfolds the list (and the lab link) under it */
+	/* Phones: the site's name becomes a button; tapping it unfolds the list (and the lab link) under it */
 	@media (max-width: 700px) {
+		.site-title {
+			display: none;
+		}
+
 		.toggle {
 			display: flex;
 			align-items: center;
 			gap: 0.5em;
+			font-weight: 600;
 			opacity: 1;
 		}
 

@@ -44,6 +44,12 @@ export function homeView(start: StartView): CameraPose {
 	return { target: [start.x, start.z], distance: start.distance, heading: start.heading };
 }
 
+/**
+ * The site these POIs belong to: its name heads their menu. More sites are planned (topics: simulation,
+ * web 3D, archviz, video mapping…), each with its own POIs and menu.
+ */
+export const site = { title: 'Dig site' };
+
 // Placeholders on the placeholder terrain (the plateau is around the origin)
 export const pois: Poi[] = [
 	{ id: 'test-pit', title: 'Test pit', at: [130, -230], view: { zoom: 0.4, turn: 0 } },
