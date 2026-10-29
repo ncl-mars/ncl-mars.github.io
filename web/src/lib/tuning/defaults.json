@@ -94,7 +94,7 @@
 		"panelColor": [0.94, 0.95, 0.96],
 		"panelOpacity": 0.88,
 		"align": 1,
-		"width": 52,
+		"width": 58,
 		"fadeTime": 0.4
 	},
 	"renderer": {
