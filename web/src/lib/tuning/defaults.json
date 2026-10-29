@@ -69,12 +69,14 @@
 		"view": 0
 	},
 	"legendShadows": {
-		"strength": 7.9,
+		"strength": 3.1,
 		"thickness": 5,
 		"maxLength": 215,
 		"ground": 0.6,
 		"text": 0.6,
-		"textSoftness": 0.01
+		"textSoftness": 0.01,
+		"textAir": 10,
+		"textSamples": 16
 	},
 	"wind": {
 		"direction": 60,

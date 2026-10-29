@@ -23,6 +23,8 @@ export interface LegendShadowSettings {
 	ground: number;
 	text: number;
 	textSoftness: number;
+	textAir: number;
+	textSamples: number;
 }
 
 /** The text masks' atlas: one row per label, its text scaled to fit (R8, mipmapped for the penumbra). */
@@ -73,9 +75,9 @@ export class LegendShadows implements Drawable {
 	private drawn = new Int32Array(0);
 	private rows = 0;
 	private readonly rowScale = new Float32Array(64);
-	private readonly atlas = new Float32Array(2);
+	private readonly atlas = new Float32Array(3);
 	private readonly sheet = new Float32Array(4);
-	private readonly text = new Float32Array(2);
+	private readonly text = new Float32Array(4);
 	private readonly viewport = new Float32Array(4);
 	private readonly uniforms: Record<string, unknown>;
 
@@ -137,7 +139,7 @@ export class LegendShadows implements Drawable {
 		const s = this.settings;
 		const lines = this.lines;
 		const sheets = s.strength > 0 || s.ground > 0 ? lines.count : 0;
-		const labels = s.text > 0 ? Math.min(lines.labelCount, this.rows) : 0;
+		const labels = s.text > 0 || s.textAir > 0 ? Math.min(lines.labelCount, this.rows) : 0;
 		if (!scene.uHeightmap || !scene.uShadow || (sheets === 0 && labels === 0)) return;
 		if (labels > 0) this.updateMasks(gl);
 
@@ -147,8 +149,11 @@ export class LegendShadows implements Drawable {
 		this.sheet[3] = Math.min(1, Math.max(0, s.ground));
 		this.text[0] = Math.min(1, Math.max(0, s.text));
 		this.text[1] = Math.max(0, s.textSoftness);
+		this.text[2] = Math.max(0, s.textAir);
+		this.text[3] = Math.min(16, Math.max(1, Math.round(s.textSamples)));
 		this.atlas[0] = Math.max(1, this.rows);
 		this.atlas[1] = ATLAS_WIDTH;
+		this.atlas[2] = ROW_HEIGHT;
 		const { rect } = ctx;
 		this.viewport.set([rect.x, rect.y, rect.width, rect.height]);
 		const u = this.uniforms;
