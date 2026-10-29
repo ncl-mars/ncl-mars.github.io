@@ -43,7 +43,7 @@ export function poiView(poi: Poi, start: StartView): CameraPose {
 // Placeholders on the placeholder terrain (the plateau is around the origin)
 export const pois: Poi[] = [
 	{
-		id: 'site',
+		id: 'dig-site',
 		title: 'Dig site',
 		get at(): [number, number] {
 			return [tuning.start.x, tuning.start.z];
