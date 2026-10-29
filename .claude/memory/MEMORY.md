@@ -3,4 +3,5 @@
 - [Commit workflow](commit-workflow.md) — user commits; hand over one final PowerShell block, re-send if changes land after; plain ASCII messages, no apostrophes
 - [Design: discovery](design-discovery.md) — non-obvious readability is intended; don't push "make it obvious" fixes
 - [Browser testing](browser-testing.md) — use the user's Brave, ask first; never probe for or install browsers
+- [Deploy later](deploy-later.md) — site stays local; don't push M4 / GitHub until the user brings it up
 - [Baked lighting](baked-lighting.md) — light and shadows stay baked; to change where the sun shows, aim the camera

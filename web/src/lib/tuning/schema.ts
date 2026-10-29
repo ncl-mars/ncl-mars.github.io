@@ -114,6 +114,18 @@ export const schema: Group[] = [
 		]
 	},
 	{
+		key: 'shafts',
+		label: 'Light shafts',
+		params: [
+			{ key: 'samples', label: 'Samples', kind: 'int', min: 0, max: 64, step: 1, hint: 'Per view ray through the mist, in the march (cached: a still view pays nothing). More: smoother shafts, slower moving frames. 0: off.' },
+			{ key: 'softness', label: 'Edge softness', min: 0, max: 10, step: 0.1, hint: 'Shadow edges in the air, world units.' },
+			{ key: 'darkness', label: 'Shadow darkness', min: 0, max: 1, step: 0.01, hint: 'How much the air (mist and haze) darkens in the shadow of the ridges.' },
+			{ key: 'glow', label: 'Glow', min: 0, max: 2, step: 0.01, hint: 'Sunlit air brightening toward the sun, on top of the fog’s sun glow (which air in shadow loses).' },
+			{ key: 'power', label: 'Glow tightness', min: 1, max: 32, step: 0.5, hint: 'Lower: the glow spreads wider around the sun.' },
+			{ key: 'view', label: 'Show shadow volumes', kind: 'int', min: 0, max: 1, step: 1, hint: 'Dev: 1 replaces the scene with how lit each ray is, in grey (white: all lit, darker: through the shadow of the ground).' }
+		]
+	},
+	{
 		key: 'wind',
 		label: 'Wind',
 		params: [

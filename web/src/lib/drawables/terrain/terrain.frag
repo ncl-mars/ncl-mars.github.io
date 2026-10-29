@@ -3,7 +3,8 @@ precision highp float;
 precision highp int; // the noise hash needs 32-bit integers (fragment ints default to mediump)
 
 // Renders the ground into the terrain cache (colour + depth), only when the camera or a terrain setting
-// changes. No fog here: composite.frag adds the atmosphere every frame.
+// changes. No fog here: composite.frag adds the atmosphere every frame. The alpha holds the light shafts
+// (./shafts): the share of the mist on the way that the sun reaches.
 
 #include /common;
 #include /noise;
@@ -11,6 +12,7 @@ precision highp int; // the noise hash needs 32-bit integers (fragment ints defa
 #include ./surface;
 #include ./march;
 #include ./shade;
+#include ./shafts;
 
 uniform mat4 uInvViewProj;
 uniform mat4 uViewProj;
@@ -33,5 +35,5 @@ void main() {
 	} else {
 		gl_FragDepth = 1.0;
 	}
-	outColor = vec4(shadeSurface(s), 1.0);
+	outColor = vec4(shadeSurface(s), shaftLight(uCamPos, rd, s.hit ? s.t : uMaxDistance));
 }

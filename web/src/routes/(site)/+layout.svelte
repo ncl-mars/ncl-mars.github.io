@@ -110,8 +110,9 @@
 		});
 
 		const stopTuning = onTuningChange((group) => {
-			// Panel edits to the ground itself (not the atmosphere) need a re-march of the terrain cache
-			if (group === 'march' || group === 'shading' || group === 'farField' || group === 'fog') terrain.invalidate();
+			// Panel edits to what the march caches (the ground, the light shafts, which the mist weighs) need a re-march
+			const cached = ['march', 'shading', 'farField', 'fog', 'mist', 'shafts'];
+			if (cached.includes(group)) terrain.invalidate();
 			// A new start view moves home and every POI view: show the current one's new framing
 			if (group === 'start' && !dev.freeCamera) tour.reframe();
 		});

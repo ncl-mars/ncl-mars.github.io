@@ -2,10 +2,18 @@ import { setUniforms } from 'twgl.js';
 import vertexSource from '../../gl/fullscreen.vert';
 import marchSource from './terrain.frag';
 import compositeSource from './composite.frag';
+import shadowSource from './shadow.frag';
 import { hotSwap, type Program } from '../../gl/programs';
 import { createHalfFloatTexture, loadDataTexture } from '../../gl/textures';
 import { createNoiseTexture3D } from '../../gl/noise';
-import { createColorDepthTarget, deleteColorDepthTarget, type ColorDepthTarget } from '../../gl/targets';
+import {
+	createColorDepthTarget,
+	createColorTarget,
+	deleteColorDepthTarget,
+	deleteColorTarget,
+	type ColorDepthTarget,
+	type ColorTarget
+} from '../../gl/targets';
 import { loadHeightfield } from '../../terrain/heightfield';
 import { Ground } from '../../terrain/ground';
 import type { FarFieldSettings } from '../../terrain/farfield';
@@ -17,10 +25,14 @@ import type { DrawContext, Drawable, Frame } from '../../gl/types';
 let vertex = vertexSource;
 let marchFragment = marchSource;
 let compositeFragment = compositeSource;
+let shadowFragment = shadowSource;
 /** Bumped by shader hot reload, so a still camera's cache gets re-marched with the new shader. */
 let shaderGeneration = 0;
 /** Seconds the camera must stay still before the sharp march replaces the rough one. */
 const SETTLE_TIME = 0.15;
+/** Shadow ceiling (light shafts): texels per side, and the square it covers, in heightmap sizes, centred on it. */
+const SHADOW_SIZE = 512;
+const SHADOW_EXTENT = 2;
 
 /** Read live every frame (the dev panel edits them). See schema.ts for what each value does. */
 export interface TerrainSettings {
@@ -36,6 +48,7 @@ export interface TerrainSettings {
 		sunPower: number;
 	};
 	mist: { density: number; height: number; falloff: number; banks: number; bankScale: number };
+	shafts: { samples: number; softness: number; darkness: number; glow: number; power: number; view: number };
 	wind: { direction: number; speed: number };
 	farField: FarFieldSettings;
 }
@@ -46,9 +59,11 @@ export interface TerrainSettings {
  *    cache (colour + depth), only when the camera moves (`camera.revision`), the view resizes or a terrain
  *    setting changes (`invalidate()`). Its resolution is `march.renderScale`; while the camera moves it
  *    marches a rough cache instead (× `march.motionScale`, the march being the costly part of a moving
- *    frame), and once the camera has been still a moment, the sharp one.
+ *    frame), and once the camera has been still a moment, the sharp one. The cache's alpha holds the light
+ *    shafts: the share of the air on each ray (mist and haze) that the sun reaches, through the shadow
+ *    ceiling (shadow.frag, rendered once per ground: the sun and the ground are fixed).
  * 2. Composite (composite.frag), every frame: the cache under the live atmosphere (fog, height mist,
- *    wind-driven banks, sun glow), with the cached depth written back for later passes.
+ *    wind-driven banks, sun glow, light shafts), with the cached depth written back for later passes.
  * Also drives the camera (`camera.update`) with the CPU `Ground`. Draws nothing until the heightmap and
  * maps are loaded, then fades in. Textures are cached per GL context; the cache target is per instance.
  */
@@ -67,6 +82,7 @@ export class Terrain implements Drawable {
 
 	private marchProgram: Program | null = null;
 	private compositeProgram: Program | null = null;
+	private shadowProgram: Program | null = null;
 	private vao: WebGLVertexArrayObject | null = null;
 	private heightTexture: WebGLTexture | null = null;
 	private mapsTexture: WebGLTexture | null = null;
@@ -77,6 +93,9 @@ export class Terrain implements Drawable {
 	private rough: ColorDepthTarget | null = null;
 	/** The cache the composite reads: the last one marched. */
 	private shown: ColorDepthTarget | null = null;
+	/** The shadow ceiling (R8 over the slab), and the ground it was rendered for (far field, shaders). */
+	private shadow: ColorTarget | null = null;
+	private shadowKey = '';
 	private stillTime = 0;
 	private cachedRevision = -1;
 	private cachedShaders = -1;
@@ -91,8 +110,13 @@ export class Terrain implements Drawable {
 	private readonly sunGlowVector = new Float32Array(2);
 	private readonly mistVector = new Float32Array(4);
 	private readonly windVector = new Float32Array(2);
+	private readonly shadowBox = new Float32Array(4);
+	private readonly walkVector = new Float32Array(2);
+	private readonly shaftMarchVector = new Float32Array(4);
+	private readonly shaftsVector = new Float32Array(3);
 	private readonly marchUniforms: Record<string, unknown>;
 	private readonly compositeUniforms: Record<string, unknown>;
+	private readonly shadowUniforms: Record<string, unknown>;
 
 	constructor(
 		private readonly camera: SurveyCamera,
@@ -105,23 +129,40 @@ export class Terrain implements Drawable {
 		const marginZ = (max[2] - min[2]) * 0.1;
 		camera.setPanBounds(min[0] + marginX, min[2] + marginZ, max[0] - marginX, max[2] - marginZ);
 
+		// The shadow ceiling covers the heightmap and the far field around it (lit beyond, faded)
+		const size = SHADOW_EXTENT * Math.max(max[0] - min[0], max[2] - min[2]);
+		this.shadowBox.set([(min[0] + max[0] - size) / 2, (min[2] + max[2] - size) / 2, 1 / size, 1 / size]);
+
 		this.marchUniforms = {
 			uBoundsMin: min,
 			uBoundsMax: max,
 			uSunDir: assets.maps.sunDir,
 			uShading: this.shadingVector,
 			uFarField: this.farFieldVector,
-			uSlab: this.slabVector
+			uSlab: this.slabVector,
+			uShadowBox: this.shadowBox,
+			uShaftMarch: this.shaftMarchVector,
+			uMist: this.mistVector
 		};
 		this.compositeUniforms = {
 			uSunDir: assets.maps.sunDir,
 			uSunGlow: this.sunGlowVector,
 			uMist: this.mistVector,
+			uShafts: this.shaftsVector,
 			uWindDir: this.windVector
+		};
+		this.shadowUniforms = {
+			uBoundsMin: min,
+			uBoundsMax: max,
+			uSunDir: assets.maps.sunDir,
+			uFarField: this.farFieldVector,
+			uSlab: this.slabVector,
+			uShadowBox: this.shadowBox,
+			uWalk: this.walkVector
 		};
 	}
 
-	/** A setting that changes the ground itself (not the atmosphere) was edited: re-march next frame. */
+	/** A setting the march caches (the ground, the light shafts) was edited: re-march next frame. */
 	invalidate() {
 		this.dirty = true;
 	}
@@ -129,8 +170,11 @@ export class Terrain implements Drawable {
 	init(gl: WebGL2RenderingContext, renderer: Renderer) {
 		this.marchProgram = renderer.program(vertex, marchFragment);
 		this.compositeProgram = renderer.program(vertex, compositeFragment);
+		this.shadowProgram = renderer.program(vertex, shadowFragment);
 		this.vao = gl.createVertexArray();
 		this.noiseTexture = renderer.resource('noise:3d', (gl) => createNoiseTexture3D(gl));
+		this.shadow = createColorTarget(gl, SHADOW_SIZE, SHADOW_SIZE, gl.R8);
+		this.shadowKey = '';
 		this.dirty = true;
 
 		const generation = ++this.generation;
@@ -148,6 +192,7 @@ export class Terrain implements Drawable {
 				this.ground = new Ground(h.field, this.settings.farField, this.settings.fog);
 				this.heightTexture = h.texture;
 				this.mapsTexture = mapsTexture;
+				this.shadowKey = '';
 				this.dirty = true;
 			})
 			.catch((error) => console.error('[terrain] loading failed:', error));
@@ -163,6 +208,14 @@ export class Terrain implements Drawable {
 		const ground = this.ground;
 		if (!this.heightTexture || !this.mapsTexture || !ground) return;
 		this.camera.setAspect(ctx.rect.width / ctx.rect.height);
+
+		// Mist: the composite's, and the march weighs the light shafts with it
+		const { mist } = this.settings;
+		const m = this.mistVector;
+		m[0] = mist.density;
+		m[1] = ground.slab[0] + mist.height; // base height above the lowest ground
+		m[2] = Math.max(0.1, mist.falloff);
+		m[3] = mist.banks;
 
 		const march = this.settings.march;
 		const scale = Math.min(1, Math.max(0.25, march.renderScale));
@@ -183,7 +236,7 @@ export class Terrain implements Drawable {
 			this.march(gl, ctx, ground, target);
 			this.shown = target;
 		}
-		this.composite(gl, ctx, ground, this.shown!);
+		this.composite(gl, this.shown!);
 	}
 
 	/** Dev readout: the rough cache is on screen (the camera is moving, or hasn't settled yet). */
@@ -197,6 +250,8 @@ export class Terrain implements Drawable {
 		this.vao = null;
 		this.sharp = this.release(gl, this.sharp);
 		this.rough = this.release(gl, this.rough);
+		if (this.shadow) deleteColorTarget(gl, this.shadow);
+		this.shadow = null;
 		this.heightTexture = null; // textures stay in the renderer's per-context cache
 		this.mapsTexture = null;
 		this.noiseTexture = null;
@@ -223,7 +278,7 @@ export class Terrain implements Drawable {
 	/** Raymarch the ground into the cache, then restore the renderer's target, viewport and scissor. */
 	private march(gl: WebGL2RenderingContext, ctx: DrawContext, ground: Ground, cache: ColorDepthTarget) {
 		const camera = this.camera;
-		const { march, shading, fog, farField } = this.settings;
+		const { march, shading, fog, farField, shafts } = this.settings;
 		const s = this.shadingVector;
 		s[0] = shading.shadowLight;
 		s[1] = shading.aoStrength;
@@ -237,6 +292,10 @@ export class Terrain implements Drawable {
 		const [slabMin, slabMax] = ground.slab;
 		this.slabVector[0] = slabMin;
 		this.slabVector[1] = slabMax;
+		const sm = this.shaftMarchVector;
+		sm[0] = Math.max(0, Math.round(shafts.samples));
+		sm[1] = shafts.softness;
+		sm[2] = fog.density;
 
 		const u = this.marchUniforms;
 		u.uInvViewProj = camera.inverseViewProjection;
@@ -250,10 +309,12 @@ export class Terrain implements Drawable {
 		u.uPrecision = march.precision;
 		u.uMaxDistance = fog.end;
 		u.uTint = shading.tint;
+		u.uShadow = this.shadow!.color;
 
+		gl.disable(gl.SCISSOR_TEST);
+		if (sm[0] > 0) this.renderShadow(gl, this.shadow!);
 		gl.bindFramebuffer(gl.FRAMEBUFFER, cache.framebuffer);
 		gl.viewport(0, 0, cache.width, cache.height);
-		gl.disable(gl.SCISSOR_TEST);
 		this.drawFullscreen(gl, this.marchProgram!, u);
 
 		const { rect, scissor } = ctx;
@@ -268,17 +329,42 @@ export class Terrain implements Drawable {
 		this.marches++;
 	}
 
+	/**
+	 * The shadow ceiling (shadow.frag) into its texture, when the ground it was rendered for changed (load, far
+	 * field, shader reload). Walks toward the sun one texel at a time, until the sun ray clears the slab.
+	 * Leaves the target bound: the march binds its own next.
+	 */
+	private renderShadow(gl: WebGL2RenderingContext, target: ColorTarget) {
+		const f = this.farFieldVector;
+		const key = `${f[0]} ${f[1]} ${f[2]} ${f[3]} ${shaderGeneration}`;
+		if (key === this.shadowKey) return;
+		this.shadowKey = key;
+
+		const [x, y, z] = this.assets.maps.sunDir;
+		const run = Math.hypot(x, z);
+		const step = 1 / (this.shadowBox[2] * SHADOW_SIZE);
+		const range = this.slabVector[1] - this.slabVector[0];
+		this.walkVector[0] = step;
+		this.walkVector[1] = y > 0 && run > 1e-4 ? Math.min(256, Math.ceil((range * run) / y / step)) : 0;
+
+		const u = this.shadowUniforms;
+		u.uHeightmap = this.heightTexture;
+		gl.bindFramebuffer(gl.FRAMEBUFFER, target.framebuffer);
+		gl.viewport(0, 0, target.width, target.height);
+		this.drawFullscreen(gl, this.shadowProgram!, u);
+	}
+
 	/** The cached ground under the live atmosphere, into the view. */
-	private composite(gl: WebGL2RenderingContext, ctx: DrawContext, ground: Ground, cache: ColorDepthTarget) {
+	private composite(gl: WebGL2RenderingContext, cache: ColorDepthTarget) {
 		const camera = this.camera;
-		const { fog, mist, wind } = this.settings;
+		const { fog, mist, wind, shafts } = this.settings;
 		this.sunGlowVector[0] = fog.sunGlow;
 		this.sunGlowVector[1] = fog.sunPower;
-		const m = this.mistVector;
-		m[0] = mist.density;
-		m[1] = ground.slab[0] + mist.height; // base height above the lowest ground
-		m[2] = Math.max(0.1, mist.falloff);
-		m[3] = mist.banks;
+		// Shafts off: the cache's alpha is 1 (all lit), and lit mist keeps the plain sun glow
+		const on = shafts.samples >= 1;
+		this.shaftsVector[0] = on ? shafts.darkness : 0;
+		this.shaftsVector[1] = on ? shafts.glow : 0;
+		this.shaftsVector[2] = Math.max(1, shafts.power);
 		const direction = (wind.direction * Math.PI) / 180; // compass, blowing toward: 0 = north (−Z)
 		this.windVector[0] = Math.sin(direction);
 		this.windVector[1] = -Math.cos(direction);
@@ -289,6 +375,7 @@ export class Terrain implements Drawable {
 		u.uInvViewProj = camera.inverseViewProjection;
 		u.uCamPos = camera.eye;
 		u.uFade = this.fade;
+		u.uShaftView = shafts.view;
 		u.uFogColor = fog.color;
 		u.uSkyColor = fog.skyColor;
 		u.uFogDensity = fog.density;
@@ -322,15 +409,20 @@ export class Terrain implements Drawable {
 	}
 }
 
-// Shader hot reload (also when an included chunk changes: march, shade, terrain, fog, wind…)
+// Shader hot reload (also when an included chunk changes: march, shade, shafts, terrain, fog, wind…)
 if (import.meta.hot) {
-	import.meta.hot.accept(['../../gl/fullscreen.vert', './terrain.frag', './composite.frag'], ([v, m, c]) => {
-		const nextVertex = v?.default ?? vertex;
-		const nextMarch = m?.default ?? marchFragment;
-		const nextComposite = c?.default ?? compositeFragment;
-		hotSwap([vertex, marchFragment], [nextVertex, nextMarch]);
-		hotSwap([vertex, compositeFragment], [nextVertex, nextComposite]);
-		[vertex, marchFragment, compositeFragment] = [nextVertex, nextMarch, nextComposite];
-		shaderGeneration++;
-	});
+	import.meta.hot.accept(
+		['../../gl/fullscreen.vert', './terrain.frag', './composite.frag', './shadow.frag'],
+		([v, m, c, s]) => {
+			const nextVertex = v?.default ?? vertex;
+			const nextMarch = m?.default ?? marchFragment;
+			const nextComposite = c?.default ?? compositeFragment;
+			const nextShadow = s?.default ?? shadowFragment;
+			hotSwap([vertex, marchFragment], [nextVertex, nextMarch]);
+			hotSwap([vertex, compositeFragment], [nextVertex, nextComposite]);
+			hotSwap([vertex, shadowFragment], [nextVertex, nextShadow]);
+			[vertex, marchFragment, compositeFragment, shadowFragment] = [nextVertex, nextMarch, nextComposite, nextShadow];
+			shaderGeneration++;
+		}
+	);
 }

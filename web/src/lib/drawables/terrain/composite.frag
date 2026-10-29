@@ -16,6 +16,7 @@ uniform highp sampler2D uDepth; // highp: samplers default to lowp, which would 
 uniform mat4 uInvViewProj;
 uniform vec3 uCamPos;
 uniform float uFade;            // 0 → 1 once the terrain is loaded
+uniform float uShaftView;       // 1: the light shafts' lit share in grey instead of the scene (dev)
 
 in vec2 vUv;
 out vec4 outColor;
@@ -30,10 +31,12 @@ void main() {
 	if (depth < 1.0) {
 		vec4 p = uInvViewProj * vec4(ndc, depth * 2.0 - 1.0, 1.0);
 		float t = length(p.xyz / p.w - uCamPos);
-		col = atmosphere(texture(uColor, vUv).rgb, uCamPos, rd, t);
+		vec4 cached = texture(uColor, vUv); // alpha: the light shafts (terrain.frag)
+		col = atmosphere(cached.rgb, uCamPos, rd, t, cached.a);
 	} else {
 		col = skyColor(rd);
 	}
+	if (uShaftView > 0.5) col = vec3(texture(uColor, vUv).a);
 
 	gl_FragDepth = depth;
 	outColor = vec4(col * uFade, uFade); // premultiplied: fades in over the page background

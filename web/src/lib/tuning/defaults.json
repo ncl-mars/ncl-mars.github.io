@@ -59,6 +59,14 @@
 		"banks": 0.7,
 		"bankScale": 260
 	},
+	"shafts": {
+		"samples": 24,
+		"softness": 1.5,
+		"darkness": 0.5,
+		"glow": 0.3,
+		"power": 3,
+		"view": 0
+	},
 	"wind": {
 		"direction": 60,
 		"speed": 8

@@ -7,7 +7,11 @@
 //   valleys and pits;
 // - mist banks: wind-scrolled noise modulating the mist, so it drifts.
 // The fog colour brightens toward the sun.
+// Light shafts: the terrain passes how much of the air on the way the sun reaches (`lit`, mist and haze,
+// from the ground's shadow volumes: drawables/terrain/shafts.glsl). Air in shadow loses the sun's glow and
+// darkens; lit air glows toward the sun. Other passes call atmosphere() without it: all lit.
 // The CPU mirrors the distance fog and the mist (not the banks) in terrain/atmosphere.ts, to fade the labels.
+// The shafts only change the colour, not how much fog there is, so the mirror ignores them.
 // Needs the 3D noise texture bound as uNoise (gl/noise.ts, renderer.resource('noise:3d', …)).
 
 uniform vec3 uFogColor;   // fog and horizon (also the page background)
@@ -20,9 +24,17 @@ uniform vec2 uSunGlow;    // x: strength, y: tightness (power)
 uniform vec4 uMist;       // x: density at the base, y: base height (world), z: falloff height, w: bank strength
 uniform float uBankScale; // size of the mist banks, world units
 uniform highp sampler3D uNoise; // gl/noise.ts: 4 tileable gradient noises, sample with p / 8
+uniform vec3 uShafts;     // light shafts: x darkening of air in shadow, y glow of lit air toward the sun, z its tightness
+
+// How much the air glows toward the sun: the fog's own glow, plus the light shafts' wider one. The sky
+// glows the same, so the far fog meets it without a seam.
+float sunGlow(vec3 rd) {
+	float facing = max(dot(rd, uSunDir), 0.0);
+	return uSunGlow.x * pow(facing, uSunGlow.y) + uShafts.y * pow(facing, max(uShafts.z, 1.0));
+}
 
 vec3 fogColorToward(vec3 rd) {
-	return uFogColor + uSunColor * (uSunGlow.x * pow(max(dot(rd, uSunDir), 0.0), uSunGlow.y));
+	return uFogColor + uSunColor * sunGlow(rd);
 }
 
 vec3 skyColor(vec3 rd) {
@@ -50,12 +62,19 @@ float mistDepth(vec3 ro, vec3 rd, float t) {
 	return uMist.x * uMist.z * (exp(-h0) - exp(-h1)) / rd.y;
 }
 
-// Fog `col`, seen from ro along rd at distance t.
-vec3 atmosphere(vec3 col, vec3 ro, vec3 rd, float t) {
+// Fog `col`, seen from ro along rd at distance t. `lit`: share of the air on the way that the sun reaches.
+vec3 atmosphere(vec3 col, vec3 ro, vec3 rd, float t, float lit) {
 	// Banks sampled at the end point and halfway: enough for a low, slow layer
 	float banks = 0.5 * (mistBanks(ro.xz + rd.xz * t) + mistBanks(ro.xz + rd.xz * t * 0.5));
 	float mist = mistDepth(ro, rd, t) * mix(1.0 - uMist.w, 1.0 + uMist.w, banks);
 	float distanceFog = max(1.0 - exp(-t * uFogDensity), smoothstep(uFogEnd * 0.55, uFogEnd, t));
 	float fog = 1.0 - (1.0 - distanceFog) * exp(-mist);
-	return mix(col, fogColorToward(rd), fog);
+	// Light shafts: air in the ground's shadow scatters no sunlight. They melt into the fog with distance
+	// (where the fog turns opaque), so the far ground meets the sky without a seam.
+	lit = mix(lit, 1.0, smoothstep(uFogEnd * 0.55, uFogEnd, t));
+	return mix(col, uFogColor * (1.0 - uShafts.x * (1.0 - lit)) + uSunColor * sunGlow(rd) * lit, fog);
+}
+
+vec3 atmosphere(vec3 col, vec3 ro, vec3 rd, float t) {
+	return atmosphere(col, ro, rd, t, 1.0);
 }

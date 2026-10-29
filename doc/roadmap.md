@@ -2,10 +2,10 @@
 
 Living work plan. Tick boxes as we go, add notes inline, and log decisions at the bottom. Details live in the other docs; this file is the order of work.
 
-**Status (2026-10-29):** M0–M3c, the dust (M8) and the first phone performance pass merged into `develop`. On `feature/legend-collisions`: labels that don't overlap, and stay readable in the mist.
+**Status (2026-10-29):** M0–M3c, the dust (M8) and the first phone performance pass merged into `develop`. Then labels that don't overlap and stay readable in the mist (`feature/legend-collisions`). On `feature/god-rays`: light shafts in the mist (M10).
 
 **Next:**
-- Claude: M4 (deploy), once there is a GitHub repository and an answer to Q1.
+- Deploy (M4) waits: the site stays local for now, until you decide otherwise.
 - You, whenever:
   - tune the camera in the panel → Save defaults → commit `defaults.json`;
   - perf gate: `npm run dev -- --host`, phone fps + model (answers Q4);
@@ -225,6 +225,17 @@ Dropped (2026-10-29): simpler, faster without.
 
 ---
 
+## M10 — Light shafts (`feature/god-rays`)
+
+- [x] Shadow ceiling (`drawables/terrain/shadow.frag`): for each ground position, the height under which the air is in the ground's shadow, walking toward the baked sun; R8 over the slab, 512² over twice the heightmap (the far field around it, lit beyond, faded). Rendered once per ground (load, far field change, shader reload)
+- [x] In the march (`shafts.glsl`): samples along the part of each view ray inside the slab (denser near the eye, jittered), weighted by the air's density (mist and haze) and what reaches the eye; the lit share goes in the cache's alpha, so a still view pays nothing
+- [x] In `/fog`'s `atmosphere(…, lit)`: air in shadow darkens and loses the sun glow, lit air glows toward the sun. Dust and other passes: all lit. (First version acted on the mist only: invisible, the haze is most of the fog)
+- [x] Panel: Light shafts group (samples, 0 = off; edge softness; shadow darkness; glow; glow tightness; show shadow volumes, a grey debug view)
+- [ ] Browser check and look tuning (yours); moving fps on the phone with and without (samples 0)
+- [ ] Later, if wanted: dust darker in the shadow volumes (it could read the shadow ceiling too)
+
+---
+
 ## M9 — Polish & robustness
 
 - [ ] No-WebGL2 fallback: DOM grid of project links over a static image
@@ -243,6 +254,8 @@ Dropped (2026-10-29): simpler, faster without.
 
 ## Decision log
 
+- **2026-10-29**: God rays as light shafts in the mist (the ridges' shadow volumes), not a screen-space blur toward the sun: the camera looks down and the sun is low, so it is almost never on screen. The sun and the ground being fixed, the shadow volumes come from a shadow ceiling rendered once, and the shafts are computed in the march and cached with the ground: no per-frame cost when still. They match the baked shadows (same sun, same ground).
+- **2026-10-29**: The site stays local for now; deploy (M4) when you decide.
 - **2026-10-29**: Legend: labels no longer vanish in the mist (they fade to a floor, 0.5 by default), and in the callout layout they rise out of each other's way, nearest first. They keep sorting themselves out during a flight (it reads as the survey reorganising), just slower (Follow in flight 1, vs 5 at home); freezing them in flight was considered and isn't needed.
 - **2026-10-29**: Q4: the reference device is your old, cheap phone (90 Hz screen), the weakest one to support; the target is 60 fps. The march runs rough while the camera moves and sharp once it settles.
 - **2026-10-29**: Phone performance: dynamic resolution instead of per-device settings (the pixel ratio follows the frame time, judged against the display refresh), and the mist banks moved to the noise texture. Measure on the phone before touching the dust count or the march.
