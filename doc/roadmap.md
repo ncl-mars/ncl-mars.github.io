@@ -2,10 +2,10 @@
 
 Living work plan. Tick boxes as we go, add notes inline, and log decisions at the bottom. Details live in the other docs; this file is the order of work.
 
-**Status (2026-10-29):** M0–M2b, the core removal and the legend lines merged into `develop`. On `feature/poi-navigation`: the camera moves between POIs (planned flights, ordered steps), free camera in dev only.
+**Status (2026-10-29):** M0–M2b, the core removal, the legend lines and the POI navigation committed. On `feature/project-view`: the project overlay (M3c).
 
 **Next:**
-- Claude: after your check of the navigation, M3c (project layer over the scene with isolation, real routes), then M8 (dust).
+- Claude: after your check of the overlay, M8 (dust).
 - You, whenever:
   - tune the camera in the panel → Save defaults → commit `defaults.json`;
   - perf gate: `npm run dev -- --host`, phone fps + model (answers Q4);
@@ -163,12 +163,17 @@ Free navigation is replaced by POIs: the camera flies to any POI, and scrolling 
 - [x] Panel: Flight group (back-off, pace, min / max time, ease); readout "poi n/N · title · flying"
 - [ ] Browser check and flight tuning (yours)
 
-### M3c — Project view (to plan from your sketches)
+### M3c — Project view (`feature/project-view`)
 
-- [ ] Design: survey mode (datavis) or not, light or dark, top-down or oblique, what scrolling does
-- [ ] `projects.ts`: `{ slug, cell, title, text, images }`; `routes/projects/[slug]` prerendered with `entries()`; the camera move continues across the navigation
+- [x] `lib/content/projects.ts`: `{ slug (= POI id), title, presentation, credits, media }`, media = images (enhanced-img) and videos (files as they are), by path in `lib/assets/projects/<slug>/`; 2 placeholders from the old lab images (North ridge has no project)
+- [x] The scene moved to `routes/(site)/+layout.svelte`, shared by `/` and `/projects/[slug]/` (prerendered with `entries()`, title + description in the head): no reload between them
+- [x] Arriving at a POI with a project (any way: label, scroll, keys) navigates to its URL; the overlay shows from `page.data.project`. Back, Escape, the × or a click on the scene closes (a history step back when opened from the scene); a project's URL brings the camera to its POI (jump on load, flight on back / forward)
+- [x] `ProjectOverlay`: CSS `backdrop-filter` isolation (blur, saturation, brightness, tint) over the scene and labels, panel on the right (full screen on phones) scrolling on its own; first line E / N like the legend; images open in the lightbox; videos muted and looping while visible (not with reduced motion), controls to unmute
+- [x] Panel: Project overlay group (scene blur, saturation, brightness, tint + opacity, panel colour + opacity, width, fade time)
+- [ ] Browser check and look tuning (yours); perf of the backdrop blur on the phone (fallback: blur in GL)
+- [ ] Real projects: media in `lib/assets/projects/<slug>/`, text in `projects.ts` (yours)
 
-**Done when:** clicking a project square opens its page with the text and legend lines over the scene, the images open in the lightbox, and back returns to the dig site. `build` outputs one HTML per project and `check` passes.
+**Done when:** arriving at a POI opens its project over the isolated scene, the images open in the lightbox, and back returns to the dig site. `build` outputs one HTML per project and `check` passes.
 
 ---
 
@@ -226,6 +231,7 @@ Dropped (2026-10-29): simpler, faster without.
 
 ## Decision log
 
+- **2026-10-29**: Project view: it opens at the end of the camera flight, with no button, however the POI was reached (label, scroll, keys). Real prerendered URLs (`/projects/<slug>/`); the scene lives in a `(site)` layout shared with `/`, so it never reloads. Isolation by CSS `backdrop-filter` over the scene and the labels, tuned live; blur in GL only if the weak device struggles. Content: title, a few lines of presentation, credits, then images and short videos (5–60 s, Instagram-like), self-hosted MP4 played muted while visible.
 - **2026-10-29**: Navigation by POIs instead of free controls: the camera flies to any POI (procedural, planned flight), and scrolling / arrows / swipes step through them in a curated order; teleport only under reduced motion. Free pan / zoom / rotate stays as a dev tool to frame the POI poses (Copy pose); visitors keep turning the view around the current POI. The project view will be an HTML layer over the scene with isolation (desaturation, blur), opened from a POI; dust particles stay on the list (M8).
 - **2026-10-29**: The core sample is dropped (content inside a hard-to-read object didn't work), and so are the splat finds: simpler, faster, nicer. The 3D stays the misty landscape; information is elegant HTML text over it, tied to places in the scene by legend lines (anchor in 3D, stable label, one elbow). Project view still being planned: a survey mode in a digital datavis style is the leading direction. The canvas outliving navigation makes real prerendered project pages possible without shallow routing. Kept from the core: the lightbox carousel, the noise textures, the homography helper.
 - **2026-10-28**: Core decided: extracted upward from the ground; the dig site behind is isolated by desaturation + blur (a focus pull), not a wireframe or a translucent terrain. `.venv/` (Python) added to `.gitignore`.

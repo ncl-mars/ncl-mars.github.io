@@ -143,6 +143,21 @@ export const schema: Group[] = [
 		]
 	},
 	{
+		key: 'overlay',
+		label: 'Project overlay',
+		params: [
+			{ key: 'blur', label: 'Scene blur (px)', min: 0, max: 40, step: 0.5, hint: 'Blur of everything behind the project (scene, labels).' },
+			{ key: 'saturation', label: 'Scene saturation', min: 0, max: 1.5, step: 0.01, hint: '0: gray. 1: unchanged.' },
+			{ key: 'brightness', label: 'Scene brightness', min: 0.2, max: 1.5, step: 0.01, hint: '1: unchanged.' },
+			{ key: 'tint', label: 'Scene tint', kind: 'color', hint: 'A wash over the scene, at Tint opacity.' },
+			{ key: 'tintOpacity', label: 'Tint opacity', min: 0, max: 1, step: 0.01 },
+			{ key: 'panelColor', label: 'Panel colour', kind: 'color' },
+			{ key: 'panelOpacity', label: 'Panel opacity', min: 0, max: 1, step: 0.01, hint: 'Below 1 the blurred scene shows through.' },
+			{ key: 'width', label: 'Panel width (rem)', min: 20, max: 70, step: 0.5, hint: 'On wide screens. Phones get the full screen.' },
+			{ key: 'fadeTime', label: 'Fade time (s)', min: 0, max: 2, step: 0.05, hint: 'Opening; closing is 1.5× faster.' }
+		]
+	},
+	{
 		key: 'renderer',
 		label: 'Renderer',
 		params: [{ key: 'maxPixelRatio', label: 'Max pixel ratio', min: 0.5, max: 3, step: 0.25 }]

@@ -1,8 +1,7 @@
 <script lang="ts">
-	// The find: the project's images in full colour, as a carousel over everything. Opened by clicking the
-	// relief on a core's cut face. Arrows (buttons or ← / →) and horizontal swipes move between images, wrapping
-	// around; Escape, the × or a click outside the image closes. `index` is bindable, so the page can keep
-	// the core in step with the image shown.
+	// A project's images full screen, as a carousel over everything (the project overlay opens it). Arrows
+	// (buttons or ← / →) and horizontal swipes move between images, wrapping around; Escape, the × or a
+	// click outside the image closes. `index` is bindable.
 	import { fly } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 	import type { Picture } from 'vite-imagetools';

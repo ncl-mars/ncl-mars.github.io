@@ -13,6 +13,8 @@ export class Tour {
 	current = 0;
 	/** Called when the current POI changes (the page mirrors it in UI state). */
 	onChange: ((index: number) => void) | null = null;
+	/** Called when the camera gets there: end of the flight, or right away after a jump. */
+	onArrive: ((index: number) => void) | null = null;
 	private readonly reducedMotion =
 		typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -29,14 +31,20 @@ export class Tour {
 		return this.camera.flying;
 	}
 
-	go(index: number) {
+	/** `instant`: jump instead of flying (a page opened on a project's URL). */
+	go(index: number, instant = false) {
 		index = Math.max(0, Math.min(this.pois.length - 1, index));
 		const changed = index !== this.current;
 		this.current = index;
-		const ground = this.ground();
-		if (ground && !this.reducedMotion) this.camera.flyTo(this.pois[index].view, ground, this.settings);
-		else this.camera.jumpTo(this.pois[index].view);
 		if (changed) this.onChange?.(index);
+		const arrive = () => this.onArrive?.(index);
+		const ground = this.ground();
+		if (ground && !instant && !this.reducedMotion) {
+			this.camera.flyTo(this.pois[index].view, ground, this.settings, arrive);
+		} else {
+			this.camera.jumpTo(this.pois[index].view);
+			arrive();
+		}
 	}
 
 	/** A label clicked: fly to its POI; clicking the current one again goes back to the overview (the first POI). */
