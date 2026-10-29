@@ -4,7 +4,7 @@
 	import { Dust } from '$lib/drawables/dust/Dust';
 	import { terrainAssets } from '$lib/terrain/assets';
 	import { tuning } from '$lib/tuning';
-	import { pois, sites } from '$lib/content/pois';
+	import { pois } from '$lib/content/pois';
 	import { portfolio } from '$lib/content/portfolio';
 	import { projectFor } from '$lib/content/projects';
 	import { Tour } from '$lib/navigation/tour';
@@ -55,23 +55,21 @@
 	let site: HTMLElement;
 	let needle: SVGGElement;
 	let masthead: HTMLElement;
-	/** Phones: each site's menu button, by site id ($state only so `bind:this` binds to a reactive object). */
-	const toggles = $state<Record<string, HTMLButtonElement>>({});
+	let toggle: HTMLButtonElement;
 	let current = $state(tour.current);
-	/** Phones: each site's menu is folded behind its name; the one unfolded (one at a time), or null. */
-	let openSite = $state<string | null>(null);
+	/** Phones: the POI menu is folded behind a Projects button, and unfolded by tapping it. */
+	let menuOpen = $state(false);
 	/** The POI the camera has arrived at (−1 during a flight): its label shows the Data button. */
 	let arrived = $state(-1);
 	const dataAt = $derived(arrived !== -1 && projectFor(pois[arrived].id) ? arrived : -1);
 	const project = $derived(page.data.project);
 	let mounted = false;
 
-	/** Phones: fold the unfolded menu, the keyboard going back to its button if `focus`. */
+	/** Phones: fold the menu, the keyboard going back to its button if `focus`. */
 	function foldMenu(focus: boolean) {
-		const id = openSite;
-		if (id === null) return;
-		openSite = null;
-		if (focus) toggles[id]?.focus();
+		if (!menuOpen) return;
+		menuOpen = false;
+		if (focus) toggle.focus();
 	}
 
 	/** A menu entry: fly there, and fold the menu (phones) */
@@ -185,7 +183,7 @@
 		// Capture phase on the window: ahead of the scene's own listeners.
 		let swallowUntil = 0;
 		const onPointerDown = (event: PointerEvent) => {
-			if (openSite === null || masthead.contains(event.target as Node)) return;
+			if (!menuOpen || masthead.contains(event.target as Node)) return;
 			foldMenu(false);
 			swallowUntil = event.timeStamp + 1000;
 		};
@@ -196,7 +194,7 @@
 			event.preventDefault();
 		};
 		const onKeyDown = (event: KeyboardEvent) => {
-			if (event.key !== 'Escape' || openSite === null) return;
+			if (event.key !== 'Escape' || !menuOpen) return;
 			event.stopPropagation();
 			foldMenu(true);
 		};
@@ -272,39 +270,35 @@
 
 <header class="masthead" inert={!!project} bind:this={masthead}>
 	<p class="name">{portfolio.name}</p>
-	<!-- One menu per site (portfolio.yaml): its name, then its POIs, straight to any of them. On phones each
-	     list folds behind its site's name, one unfolded at a time -->
-	{#each sites as group (group.id)}
-		<nav aria-label={group.name}>
-			<p class="site-title">{group.name}</p>
-			<button
-				type="button"
-				class="toggle"
-				aria-expanded={openSite === group.id}
-				aria-controls="menu-{group.id}"
-				bind:this={toggles[group.id]}
-				onclick={() => (openSite = openSite === group.id ? null : group.id)}
-			>
-				{group.name}
-				<svg class="chevron" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1 5 5 9 1" /></svg>
-			</button>
-			<ol id="menu-{group.id}" class="menu" class:open={openSite === group.id}>
-				{#each group.pois as i, k (i)}
-					<li>
-						<button
-							type="button"
-							class:current={i === current}
-							aria-current={i === current ? 'location' : undefined}
-							onclick={() => choose(i)}
-						>
-							<span class="number">{String(k + 1).padStart(2, '0')}</span>{pois[i].title}
-						</button>
-					</li>
-				{/each}
-			</ol>
-		</nav>
-	{/each}
-	<a class="menu" class:open={openSite !== null} href="/lab/views/">lab: views</a>
+	<!-- Straight to any POI. On phones the list folds behind a Projects button -->
+	<nav aria-label="Projects">
+		<button
+			type="button"
+			class="toggle"
+			aria-expanded={menuOpen}
+			aria-controls="poi-menu"
+			bind:this={toggle}
+			onclick={() => (menuOpen = !menuOpen)}
+		>
+			Projects
+			<svg class="chevron" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1 5 5 9 1" /></svg>
+		</button>
+		<ol id="poi-menu" class="menu" class:open={menuOpen}>
+			{#each pois as poi, i (poi.id)}
+				<li>
+					<button
+						type="button"
+						class:current={i === current}
+						aria-current={i === current ? 'location' : undefined}
+						onclick={() => choose(i)}
+					>
+						<span class="number">{String(i + 1).padStart(2, '0')}</span>{poi.title}
+					</button>
+				</li>
+			{/each}
+		</ol>
+	</nav>
+	<a class="menu" class:open={menuOpen} href="/lab/views/">lab: views</a>
 </header>
 
 <!-- Outside the site element, so its wheel and keys don't reach the tour -->
@@ -399,7 +393,6 @@
 	}
 
 	.masthead li button,
-	.site-title,
 	.toggle {
 		display: flex;
 		gap: 0.7em;
@@ -425,32 +418,19 @@
 		font-weight: 600;
 	}
 
-	.site-title {
-		margin: 0;
-		font-weight: 600;
-		opacity: 1;
-		cursor: default;
-		pointer-events: none;
-	}
-
 	.masthead li button:focus-visible,
 	.toggle:focus-visible {
 		outline: 1px solid currentColor;
 		outline-offset: 2px;
 	}
 
-	/* Desktop: each site's name titles its menu, the lists always there */
+	/* Desktop: the list is always there */
 	.toggle {
 		display: none;
 	}
 
-	/* Phones: each site's name becomes a button; tapping it unfolds its list (and the lab link), folding
-	   the others */
+	/* Phones: folded behind the Projects button; tapping it unfolds the list (and the lab link) under it */
 	@media (max-width: 700px) {
-		.site-title {
-			display: none;
-		}
-
 		.toggle {
 			display: flex;
 			align-items: center;
@@ -476,8 +456,7 @@
 			margin: 0.2rem 0 0.6rem;
 		}
 
-		/* Folded: out of the layout (the site names below close up), of taps, focus and screen readers.
-		   Unfolding fades it in */
+		/* Folded: out of the layout, of taps, focus and screen readers. Unfolding fades it in */
 		.menu:not(.open) {
 			display: none;
 		}

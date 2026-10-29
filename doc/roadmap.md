@@ -23,7 +23,7 @@ Living work plan. Tick boxes as we go, add notes inline, and log decisions at th
 | Q4 | Reference weak device (phone/GPU) for the performance gate, and max pixel ratio | M2a | Your old, cheap phone (90 Hz screen): the weakest device to support. Target 60 fps |
 | Q6 | Rough march while moving (March: motion scale 0.5) applies on every device. On desktop the softness shows in motion, but it isn't disturbing. Keep it, or make it automatic: march sharp while moving, and fall back to rough only on a device whose moving frames drop under ~52 fps (desktop stays sharp, the phone switches by itself)? | M9 | Automatic (2026-10-29, `feature/adaptive-march`): March → Rough in motion, 1 by default |
 
-| Q7 | More sites (topics: simulation, web 3D, archviz, video mapping…), each with its own POIs and a menu headed by its name, like Dig site. Is each site its own scene (its own terrain or world, its own URL), or a group of POIs in the one landscape? | Next site | Groups in the one landscape, by discipline (VFX, simulation, tools…) (2026-10-29). Own scene per site: a nice-to-have for later, the site id on every POI keeps it possible |
+| Q7 | More sites (topics: simulation, web 3D, archviz, video mapping…), each with its own POIs and a menu headed by its name, like Dig site. Is each site its own scene (its own terrain or world, its own URL), or a group of POIs in the one landscape? | Next site | No sites for now (2026-10-29): about 10 POIs at most, one list. If it comes back: groups in the one landscape by discipline (built once, commit 4c136d5), with site labels at home and POI labels inside a site; a scene per site as a later nice-to-have |
 
 Q2, Q3, Q5 were about splats, dropped on 2026-10-29.
 
@@ -244,7 +244,8 @@ Dropped (2026-10-29): simpler, faster without.
 - [x] `lib/assets/projects/<id>/project.md`: title, framing (`view`, from "Copy pose"), credits, media list in a YAML header, the paragraphs under it; media files beside it, a video's poster by name. Contract: [formats/projects.md](formats/projects.md)
 - [x] Read at build time (`vite.config.ts`, `yaml` package, nothing shipped), checked in `content/pois.ts` and `content/projects.ts` with messages naming the file. A POI without a folder gets a label from its id; a folder without a POI is left out (console warnings). No text and no media: no card
 - [x] The four placeholders moved to the new files
-- [x] Sites (Q7): each POI has a site, its discipline written as the menu heading reads (`s@site = "VFX"` in Houdini); each distinct value is a menu, in order of first POI, numbered from 01, folded one at a time on phones. `lib/assets/portfolio.yaml` holds your name and the home description ([formats/portfolio.md](formats/portfolio.md)). No names left in the code
+- [x] `lib/assets/portfolio.yaml`: your name and the home description ([formats/portfolio.md](formats/portfolio.md)). No names left in the code
+- [x] Sites (POIs grouped by discipline, one menu each; commit 4c136d5), then dropped for now: one list, a Projects button on phones (see Q7)
 - [ ] First real export from Houdini with the real heightmap (M6), yours
 
 ---
@@ -257,7 +258,7 @@ Dropped (2026-10-29): simpler, faster without.
   - [x] Mist banks from the 3D noise texture instead of hashed value noise (every pixel and every dust speck, every frame)
   - [x] Dynamic resolution in the renderer (pixel ratio steps down when frames run long, back up when they keep up; Renderer group: adaptive, lowest scale; "q" in the stats)
   - [x] Legend smaller on phones (Phone scale, under 700 px wide)
-  - [x] POI menu folded on phones (`feature/phone-menu`): the site's name (Dig site) unfolds its list; an entry, a tap outside (which does nothing else) or Escape folds it
+  - [x] POI menu folded on phones (`feature/phone-menu`): a Projects button unfolds the list; an entry, a tap outside (which does nothing else) or Escape folds it
   - [x] First check: 90 fps still, down to 30 moving (the march). Adaptive resolution now aims at 60 fps, not the display's 90 / 120 Hz; the march runs at lower resolution while the camera moves (March: motion scale 0.5), then sharp once it has been still 0.15 s
   - [ ] Second phone check (fps moving, q reached); then march steps or dust count for phones if needed
   - [x] Q6: rough march in motion only where moving frames run long (`feature/adaptive-march`). When frames run under ~52 fps, the renderer asks the drawables to get cheaper first (`Drawable.degrade()`): the terrain switches to the rough march in motion if the slow frames were moving ones, once for all (remembered on the device in browser storage); only then does the resolution drop. Long frames in a row count (a slow device), a lone one is a hitch and doesn't; the first 2 s don't. March → Rough in motion: 0 never, 1 automatic, 2 always; the stats show "motion sharp / rough"
@@ -269,6 +270,7 @@ Dropped (2026-10-29): simpler, faster without.
 
 ## Decision log
 
+- **2026-10-29**: No sites for now: about 10 POIs at most, so one list is enough, and content comes first. The phone menu folds behind a Projects button. The sites version stays in the history (commit 4c136d5), with the site-labels idea in Q7.
 - **2026-10-29**: Q7, sites: groups of POIs by discipline in the one landscape, one menu each. The site is written on each POI in Houdini as its heading reads (`s@site = "VFX"`), not listed anywhere else (a first version listed ids and headings in `portfolio.yaml`: duplicated, dropped). `portfolio.yaml` holds your name and the home description, so no name is written in the code. "Dig site" is gone as a name (it stays the scene's metaphor). A scene per site stays possible later: every POI already carries its site.
 - **2026-10-29**: Content pipeline: where a POI stands comes from Houdini (`pois.json`, positions only), what it shows from its project folder (`project.md` + media), matched by id, so a re-export never overwrites text or framing. Framing stays tuned in the web (Copy pose), since the site's camera ties its tilt to its distance and a Houdini camera can't be matched. YAML for `project.md`'s header (nicer than JSON to write by hand), parsed at build time. Houdini only, no Blender exporter.
 - **2026-10-29**: Sites: the POIs belong to a site (Dig site, `site` in `content/pois.ts`) whose name heads their menu (on phones, the button that unfolds it). More sites to come, by topic (Q7).

@@ -1,9 +1,6 @@
 # Portfolio file format
 
 The portfolio's own text, the only text that isn't a project's: your name and the home page's description. Read by `web/src/lib/content/portfolio.ts`, through the build-time reader in `web/vite.config.ts`.
-
-The sites (disciplines) aren't listed here: each POI carries its own, in Houdini ([pois.md](pois.md)).
-
 ## File
 
 `web/src/lib/assets/portfolio.yaml`
