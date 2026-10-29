@@ -2,14 +2,14 @@
 
 Living work plan. Tick boxes as we go, add notes inline, and log decisions at the bottom. Details live in the other docs; this file is the order of work.
 
-**Status (2026-10-29):** M0–M3c, the dust (M8) and the first phone performance pass merged into `develop`. Then labels that don't overlap and stay readable in the mist (`feature/legend-collisions`). Then light shafts in the mist (M10, `feature/god-rays`). On `feature/adaptive-march`: the rough march in motion only on slow devices (Q6).
+**Status (2026-10-29):** M0–M3c, the dust (M8) and the first phone performance pass merged into `develop`. Then labels that don't overlap and stay readable in the mist (`feature/legend-collisions`). Then light shafts in the mist (M10, `feature/god-rays`). Then the rough march in motion only on slow devices (Q6), the phone menu, home as the overview. On `feature/content-pipeline`: POIs placed from Houdini, one folder per project (M11).
 
 **Next:**
 - Deploy (M4) waits: the site stays local for now, until you decide otherwise.
 - You, whenever:
   - tune the camera in the panel → Save defaults → commit `defaults.json`;
   - perf gate: `npm run dev -- --host`, phone fps + model (answers Q4);
-  - orientation check with a first Houdini export (`hou/snippets/export_heightmap.py`).
+  - orientation check with a first Houdini export (`hou/snippets/export_heightmap.py`), then the POIs (`export_pois.py`).
 
 **Docs:** [stack.md](stack.md) (web stack and rules) · [home-concept.md](home-concept.md) (home page) · [project-structure.md](project-structure.md) · [formats/](formats/) (heightmap, terrain maps)
 
@@ -177,7 +177,7 @@ Free navigation is replaced by POIs: the camera flies to any POI, and scrolling 
 - [x] Navigation reworked: no more scroll steps. Home and the POIs are reached by the labels and a masthead menu (01 Dig site, 02 …); clicking the current POI's label or Escape goes home, as you left it (zoom and turn remembered). Around the pivot (home's point, or the POI's), drag / ← → / Q E turn and wheel / pinch / ↑ ↓ / + − zoom
 - [x] Start view in the panel (pivot x / z, distance, heading; "Use view as start" from the free camera); POI views relative to it (`zoom` × start distance, `turn` + start heading), "Copy pose" writes them so. Outdated Start distance removed; Controls group relabelled
 - [ ] Browser check and look tuning (yours); perf of the backdrop blur on the phone (fallback: blur in GL)
-- [ ] Real projects: media in `lib/assets/projects/<slug>/`, text in `projects.ts` (yours)
+- [ ] Real projects: one folder per project in `lib/assets/projects/<id>/` with its `project.md` and media, the POIs placed in Houdini (yours; see M11)
 
 **Done when:** at a POI, Data opens its project as a card over the live scene, the images open in the lightbox, and back returns to the dig site. `build` outputs one HTML per project and `check` passes.
 
@@ -238,6 +238,16 @@ Dropped (2026-10-29): simpler, faster without.
 
 ---
 
+## M11 — Content pipeline (`feature/content-pipeline`)
+
+- [x] `lib/assets/terrain/pois.json`: where the POIs stand (id, x, z, menu order), exported from Houdini by `hou/snippets/export_pois.py` (one point per POI, `s@name` = id). Contract: [formats/pois.md](formats/pois.md)
+- [x] `lib/assets/projects/<id>/project.md`: title, framing (`view`, from "Copy pose"), credits, media list in a YAML header, the paragraphs under it; media files beside it, a video's poster by name. Contract: [formats/projects.md](formats/projects.md)
+- [x] Read at build time (`vite.config.ts`, `yaml` package, nothing shipped), checked in `content/pois.ts` and `content/projects.ts` with messages naming the file. A POI without a folder gets a label from its id; a folder without a POI is left out (console warnings). No text and no media: no card
+- [x] The four placeholders moved to the new files
+- [ ] First real export from Houdini with the real heightmap (M6), yours
+
+---
+
 ## M9 — Polish & robustness
 
 - [ ] No-WebGL2 fallback: DOM grid of project links over a static image
@@ -258,6 +268,7 @@ Dropped (2026-10-29): simpler, faster without.
 
 ## Decision log
 
+- **2026-10-29**: Content pipeline: where a POI stands comes from Houdini (`pois.json`, positions only), what it shows from its project folder (`project.md` + media), matched by id, so a re-export never overwrites text or framing. Framing stays tuned in the web (Copy pose), since the site's camera ties its tilt to its distance and a Houdini camera can't be matched. YAML for `project.md`'s header (nicer than JSON to write by hand), parsed at build time. Houdini only, no Blender exporter.
 - **2026-10-29**: Sites: the POIs belong to a site (Dig site, `site` in `content/pois.ts`) whose name heads their menu (on phones, the button that unfolds it). More sites to come, by topic (Q7).
 - **2026-10-29**: The first POI is a POI like the others (a project page too), not home. Home is the overview framed by the start view, where no POI is current: every label rearranges alike there. Escape, the current POI's label and the Home key go back to it. The POI was "Dig site" at the origin, confusing with the scene's own name: renamed Test pit (`test-pit`) and moved to the hollow north-east of the plateau.
 - **2026-10-29**: Q6: the rough march in motion becomes automatic. Desktops march sharp while moving; a device whose moving frames run under ~52 fps switches to rough by itself, remembered for its next visits. It goes before dynamic resolution: the renderer asks the drawables to get cheaper (`degrade()`) before lowering the pixel ratio, so a slow phone loses sharpness in motion only, not resolution everywhere.

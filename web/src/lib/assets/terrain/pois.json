@@ -1,0 +1,9 @@
+{
+	"version": 1,
+	"pois": [
+		{ "id": "test-pit", "x": 130, "z": -230 },
+		{ "id": "trench-a", "x": -70, "z": 40 },
+		{ "id": "spoil-heap", "x": 90, "z": -60 },
+		{ "id": "north-ridge", "x": -260, "z": -220 }
+	]
+}

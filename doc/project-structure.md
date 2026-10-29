@@ -14,10 +14,10 @@ portfolio/
 │  │  │  ├─ terrain/             CPU side of the terrain: heightfield (load, sample), far field (mirror of terrain.glsl), ground (heights + raycast), asset imports
 │  │  │  ├─ tuning/              defaults.json (every tunable value), schema.ts (dev panel layout)
 │  │  │  ├─ components/          Svelte UI: DevPanel, Lightbox
-│  │  │  ├─ content/             project data (projects.ts, later)
-│  │  │  └─ assets/              pipeline exports + project images (imported → hashed URLs)
-│  │  │     ├─ terrain/          heightmap.bin/.json, maps.png/.json
-│  │  │     └─ projects/<slug>/
+│  │  │  ├─ content/             reads and checks the content: pois.ts (pois.json + framing), projects.ts (project folders)
+│  │  │  └─ assets/              pipeline exports + project folders (imported → hashed URLs)
+│  │  │     ├─ terrain/          heightmap.bin/.json, maps.png/.json, pois.json (Houdini exports)
+│  │  │     └─ projects/<id>/    project.md (title, framing, credits, media list, text) + its images and videos
 │  │  ├─ app.html
 │  │  ├─ app.d.ts
 │  │  └─ ambient.d.ts            module types: shaders, texture imports
@@ -32,7 +32,7 @@ portfolio/
 ├─ doc/
 │  ├─ roadmap.md
 │  ├─ project-structure.md
-│  └─ formats/                   heightmap.md, terrain-maps.md: binary layouts shared by exporters and loaders
+│  └─ formats/                   heightmap.md, terrain-maps.md, pois.md: layouts shared by exporters and loaders; projects.md: the project folders
 ├─ .github/workflows/deploy.yml
 ├─ .claude/memory/               Claude's project notes (tracked)
 ├─ .vscode/                      terminals open in web/; Houdini caches excluded from watch/search

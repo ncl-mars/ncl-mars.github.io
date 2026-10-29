@@ -4,6 +4,7 @@ import glsl from 'vite-plugin-glsl';
 import { defineConfig, normalizePath, type Plugin } from 'vite';
 import { readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
+import { parse as parseYaml } from 'yaml';
 import { formatTuning, sameShape } from './src/lib/tuning/format.ts';
 
 export default defineConfig({
@@ -13,10 +14,36 @@ export default defineConfig({
 		enhancedImages(),
 		// `#include /noise;` resolves from src/lib/gl/chunks (relative to web/, where npm runs vite)
 		glsl({ root: '/src/lib/gl/chunks' }),
+		projectFiles(),
 		tuningSave(),
 		sveltekit()
 	]
 });
+
+/**
+ * Project text files (src/lib/assets/projects/<id>/project.md, format: doc/formats/projects.md) become
+ * modules at build time: the YAML header between the `---` lines parsed, the text under it split into
+ * paragraphs (blank lines between them). The browser gets plain data; content/projects.ts checks it.
+ */
+function projectFiles(): Plugin {
+	return {
+		name: 'project-files',
+		enforce: 'pre',
+		transform(code, id) {
+			const file = id.split('?')[0];
+			if (!file.endsWith('/project.md')) return;
+			const match = /^﻿?---\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n([\s\S]*))?$/.exec(code);
+			if (!match) throw new Error(`${file}: no header (the YAML between two --- lines, at the top)`);
+			const header = parseYaml(match[1]) ?? {};
+			if (typeof header !== 'object' || Array.isArray(header)) throw new Error(`${file}: the header must be "key: value" lines`);
+			const presentation = (match[2] ?? '')
+				.split(/\r?\n[ \t]*\r?\n/)
+				.map((paragraph) => paragraph.replace(/\s*\r?\n\s*/g, ' ').trim())
+				.filter(Boolean);
+			return { code: `export default ${JSON.stringify({ ...header, presentation })};`, map: null };
+		}
+	};
+}
 
 /**
  * Dev server only: the dev panel's "Save defaults" POSTs the tuning values here, and they are written to

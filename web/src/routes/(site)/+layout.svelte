@@ -155,7 +155,7 @@
 				return dev.freeCamera ? 'free camera: drag, wheel, right-drag, keys' : 'back to the POIs';
 			});
 			actions.set('Copy pose', async () => {
-				// Relative to the start view, as POI views are (content/pois.ts)
+				// Relative to the start view, as POI views are (content/pois.ts): a line for the project's project.md
 				const { target, distance, heading } = camera.pose();
 				const start = tuning.start;
 				const turn = ((((heading - start.heading) % 360) + 540) % 360) - 180;
