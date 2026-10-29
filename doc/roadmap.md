@@ -150,7 +150,7 @@ See [home-concept.md](home-concept.md) § Legend lines, § Click: the project vi
 - [x] 4 placeholder labels on the home page; the meta line shows the point's survey coordinates (E / N / ALT)
 - [x] Style values in the panel (Legend lines group: layout, ink, opacity, scale (text size; rise, spacing and anchor ring in em of it), line width, anchor ring, rise, diagonal angle, column inset, spacing, follow, lift, fog cutoff, draw time, stagger)
 - [ ] Browser check and look tuning (yours)
-- [x] `feature/legend-collisions`: callout labels placed nearest first (the current POI's first, with room for its Data button); one that would overlap a placed label rises above it, eased (`follow`). Mist floor: labels fade with the mist down to 0.5 at most, never out
+- [x] `feature/legend-collisions`: callout labels placed nearest first (the current POI's first, with room for its Data button); one that would overlap a placed label rises above it, eased (`follow`, slower during flights: `flightFollow`). Mist floor: labels fade with the mist down to 0.5 at most, never out
 
 ### M3b — POI navigation (`feature/poi-navigation`)
 
@@ -243,7 +243,7 @@ Dropped (2026-10-29): simpler, faster without.
 
 ## Decision log
 
-- **2026-10-29**: Legend: labels no longer vanish in the mist (they fade to a floor, 0.5 by default), and in the callout layout they rise out of each other's way, nearest first.
+- **2026-10-29**: Legend: labels no longer vanish in the mist (they fade to a floor, 0.5 by default), and in the callout layout they rise out of each other's way, nearest first. They keep sorting themselves out during a flight (it reads as the survey reorganising), just slower (Follow in flight 1, vs 5 at home); freezing them in flight was considered and isn't needed.
 - **2026-10-29**: Q4: the reference device is your old, cheap phone (90 Hz screen), the weakest one to support; the target is 60 fps. The march runs rough while the camera moves and sharp once it settles.
 - **2026-10-29**: Phone performance: dynamic resolution instead of per-device settings (the pixel ratio follows the frame time, judged against the display refresh), and the mist banks moved to the noise texture. Measure on the phone before touching the dust count or the march.
 - **2026-10-29**: Dust as stateless particles (position from id + time, computed in the vertex shader) instead of a transform-feedback simulation: no buffers, nothing to rebuild on context loss, any count change is free. Specks drift with the wind and turbulence and skip along the ground in hops; real collisions and bursts would need the stateful version, not needed for ambient dust.

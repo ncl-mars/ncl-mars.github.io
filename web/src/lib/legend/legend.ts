@@ -30,6 +30,7 @@ export interface LegendSettings {
 	column: number;
 	spacing: number;
 	follow: number;
+	flightFollow: number;
 	lift: number;
 	fogCutoff: number;
 	mistFloor: number;
@@ -289,17 +290,22 @@ export class Legend {
 		for (const mark of this.marks) this.draw(mark, tan, em);
 	};
 
+	/** How fast labels ease to their new heights: `flightFollow` while the camera flies to a POI. */
+	private get followRate(): number {
+		return this.camera.flying ? this.settings.flightFollow : this.settings.follow;
+	}
+
 	/**
 	 * Each label beside its anchor: up the diagonal, then the shelf, on the side where it fits. Nearest first
 	 * (the current POI's before all); a label overlapping one already placed rises above it. Boxes use the
-	 * target heights, so the order is settled every frame; the lift itself is eased (`follow`).
+	 * target heights, so the order is settled every frame; the lift itself is eased (`followRate`).
 	 */
 	private layoutCallouts(dt: number, em: number, tan: number) {
 		const s = this.settings;
 		const rise = s.rise * em;
 		const run = rise / tan;
 		const gap = BOX_GAP * em;
-		const k = 1 - Math.exp(-dt * s.follow);
+		const k = 1 - Math.exp(-dt * this.followRate);
 
 		const order = this.order;
 		order.length = 0;
@@ -374,7 +380,7 @@ export class Legend {
 			previous = mark.target = Math.min(mark.target, previous - gap, bottom);
 		}
 
-		const k = 1 - Math.exp(-dt * s.follow);
+		const k = 1 - Math.exp(-dt * this.followRate);
 		for (const mark of column) {
 			mark.labelY = mark.placed ? mark.labelY + (mark.target - mark.labelY) * k : mark.target;
 			const attach = mark.side === 1 ? this.width * (1 - s.column) : this.width * s.column;
