@@ -44,6 +44,11 @@ export interface Drawable {
 	/** Once per frame, before any view is drawn, while the view is visible. */
 	update?(frame: Frame): void;
 	draw(gl: WebGL2RenderingContext, ctx: DrawContext): void;
+	/**
+	 * Frames are running long (under ~52 fps): get cheaper if you can, and return true if you did. Asked
+	 * before the renderer lowers the resolution, so a drawable's own fallback goes first. Nothing undoes it.
+	 */
+	degrade?(): boolean;
 	/** Release GL resources. Programs are shared and stay cached. Not called after a context loss. */
 	dispose?(gl: WebGL2RenderingContext): void;
 }

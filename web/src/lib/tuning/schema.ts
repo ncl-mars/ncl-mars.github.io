@@ -75,7 +75,8 @@ export const schema: Group[] = [
 			{ key: 'steps', label: 'Max steps', kind: 'int', min: 8, max: 512, step: 1 },
 			{ key: 'refineSteps', label: 'Refine steps', kind: 'int', min: 0, max: 16, step: 1 },
 			{ key: 'renderScale', label: 'Render scale', min: 0.25, max: 1, step: 0.05, hint: 'Resolution of the terrain cache (the raymarch). Lower is cheaper; the mist stays full resolution.' },
-			{ key: 'motionScale', label: 'Motion scale', min: 0.1, max: 1, step: 0.05, hint: 'While the camera moves, the march runs at this fraction of the render scale; a sharp march follows once it stops. 1: always sharp.' }
+			{ key: 'motionScale', label: 'Motion scale', min: 0.1, max: 1, step: 0.05, hint: 'Resolution of the rough march while the camera moves (see Rough in motion), as a fraction of the render scale; a sharp march follows once it stops.' },
+			{ key: 'motionMode', label: 'Rough in motion', kind: 'int', min: 0, max: 2, step: 1, hint: '0: never, the march stays sharp while moving. 1: automatic, on for good the first time moving frames run under ~52 fps on this device, before the resolution drops; remembered on the device (switching away and back forgets it and restarts the detection). 2: always. The stats show "motion sharp / rough".' }
 		]
 	},
 	{

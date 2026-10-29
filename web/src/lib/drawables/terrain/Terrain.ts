@@ -30,13 +30,23 @@ let shadowFragment = shadowSource;
 let shaderGeneration = 0;
 /** Seconds the camera must stay still before the sharp march replaces the rough one. */
 const SETTLE_TIME = 0.15;
+/** Browser storage key: this device's moving frames ran slow (automatic rough march in motion), remembered. */
+const SLOW_MOTION_KEY = 'terrain-slow-motion';
 /** Shadow ceiling (light shafts): texels per side, and the square it covers, in heightmap sizes, centred on it. */
 const SHADOW_SIZE = 512;
 const SHADOW_EXTENT = 2;
 
 /** Read live every frame (the dev panel edits them). See schema.ts for what each value does. */
 export interface TerrainSettings {
-	march: { stepScale: number; precision: number; steps: number; refineSteps: number; renderScale: number; motionScale: number };
+	march: {
+		stepScale: number;
+		precision: number;
+		steps: number;
+		refineSteps: number;
+		renderScale: number;
+		motionScale: number;
+		motionMode: number;
+	};
 	shading: { tint: number[]; shadowLight: number; aoStrength: number; cavityStrength: number; exposure: number };
 	fog: {
 		color: number[];
@@ -57,9 +67,10 @@ export interface TerrainSettings {
  * The dig site's ground and its atmosphere, in two passes:
  * 1. March (terrain.frag): the heightmap blended into the endless far field, raymarched and shaded into a
  *    cache (colour + depth), only when the camera moves (`camera.revision`), the view resizes or a terrain
- *    setting changes (`invalidate()`). Its resolution is `march.renderScale`; while the camera moves it
- *    marches a rough cache instead (× `march.motionScale`, the march being the costly part of a moving
- *    frame), and once the camera has been still a moment, the sharp one. The cache's alpha holds the light
+ *    setting changes (`invalidate()`). Its resolution is `march.renderScale`. On a device whose moving
+ *    frames run slow (`march.motionMode`: automatic, see `degrade`), or always, it marches a rough cache
+ *    while the camera moves (× `march.motionScale`, the march being the costly part of a moving frame),
+ *    and once the camera has been still a moment, the sharp one. The cache's alpha holds the light
  *    shafts: the share of the air on each ray (mist and haze) that the sun reaches, through the shadow
  *    ceiling (shadow.frag, rendered once per ground: the sun and the ground are fixed).
  * 2. Composite (composite.frag), every frame: the cache under the live atmosphere (fog, height mist,
@@ -93,6 +104,12 @@ export class Terrain implements Drawable {
 	private rough: ColorDepthTarget | null = null;
 	/** The cache the composite reads: the last one marched. */
 	private shown: ColorDepthTarget | null = null;
+	/** `march.motionMode` as last seen (changing it restarts the automatic detection). */
+	private motionMode = -1;
+	/** Automatic mode: moving frames ran slow on this device (remembered), so the rough cache is marched in motion. */
+	private slowMotion = false;
+	/** Share of the recent frames (~0.5 s) in which the camera moved. */
+	private motionShare = 0;
 	/** The shadow ceiling (R8 over the slab), and the ground it was rendered for (far field, shaders). */
 	private shadow: ColorTarget | null = null;
 	private shadowKey = '';
@@ -176,6 +193,11 @@ export class Terrain implements Drawable {
 		this.shadow = createColorTarget(gl, SHADOW_SIZE, SHADOW_SIZE, gl.R8);
 		this.shadowKey = '';
 		this.dirty = true;
+		try {
+			this.slowMotion ||= localStorage.getItem(SLOW_MOTION_KEY) === '1';
+		} catch {
+			// storage unavailable (private mode): detected again on each visit
+		}
 
 		const generation = ++this.generation;
 		const { heightmapUrl, heightmap, mapsUrl } = this.assets;
@@ -218,15 +240,24 @@ export class Terrain implements Drawable {
 		m[3] = mist.banks;
 
 		const march = this.settings.march;
+		const mode = Math.round(march.motionMode);
+		if (mode !== this.motionMode) {
+			// Changed in the panel (not the first draw): forget the detection, it starts again
+			if (this.motionMode !== -1) this.rememberSlowMotion(false);
+			this.motionMode = mode;
+		}
 		const scale = Math.min(1, Math.max(0.25, march.renderScale));
 		const motion = Math.min(1, Math.max(0.1, march.motionScale));
 		this.sharp = this.fit(gl, this.sharp, ctx, scale);
-		this.rough = motion < 1 ? this.fit(gl, this.rough, ctx, scale * motion) : this.release(gl, this.rough);
+		this.rough =
+			this.roughInMotion && motion < 1 ? this.fit(gl, this.rough, ctx, scale * motion) : this.release(gl, this.rough);
 
-		// Moving: march the rough cache. Still: the sharp one, once the camera has settled (a slow drag has
-		// frames without movement, which shouldn't each pay for a sharp march), or when a setting changed.
+		// Moving: march the rough cache if there is one. Still: the sharp one, once the camera has settled (a
+		// slow drag has frames without movement, which shouldn't each pay for a sharp march), or when a setting
+		// changed.
 		const moved = this.camera.revision !== this.cachedRevision;
 		this.stillTime = moved ? 0 : this.stillTime + ctx.frame.dt;
+		this.motionShare += (Number(moved) - this.motionShare) * Math.min(1, ctx.frame.dt / 0.5);
 		let target: ColorDepthTarget | null = null;
 		if (moved) target = this.rough ?? this.sharp;
 		else if (this.dirty || shaderGeneration !== this.cachedShaders || !this.shown) target = this.sharp;
@@ -242,6 +273,32 @@ export class Terrain implements Drawable {
 	/** Dev readout: the rough cache is on screen (the camera is moving, or hasn't settled yet). */
 	get roughShown(): boolean {
 		return this.shown !== null && this.shown === this.rough;
+	}
+
+	/** A moving camera marches the rough cache: `march.motionMode` 2, or 1 once moving frames ran slow. */
+	get roughInMotion(): boolean {
+		return this.motionMode >= 2 || (this.motionMode === 1 && this.slowMotion);
+	}
+
+	/**
+	 * The renderer's frames run long. In automatic mode, if they were mostly moving frames (in motion the
+	 * march is what costs), march the rough cache while the camera moves from now on, before the renderer
+	 * lowers the resolution. Once for all: remembered on the device, until the mode changes in the panel.
+	 */
+	degrade(): boolean {
+		if (this.motionMode !== 1 || this.slowMotion || this.motionShare < 0.5) return false;
+		this.rememberSlowMotion(true);
+		return true;
+	}
+
+	private rememberSlowMotion(slow: boolean) {
+		this.slowMotion = slow;
+		try {
+			if (slow) localStorage.setItem(SLOW_MOTION_KEY, '1');
+			else localStorage.removeItem(SLOW_MOTION_KEY);
+		} catch {
+			// storage unavailable: this visit only
+		}
 	}
 
 	dispose(gl: WebGL2RenderingContext) {

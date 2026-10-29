@@ -2,7 +2,7 @@
 
 Living work plan. Tick boxes as we go, add notes inline, and log decisions at the bottom. Details live in the other docs; this file is the order of work.
 
-**Status (2026-10-29):** M0–M3c, the dust (M8) and the first phone performance pass merged into `develop`. Then labels that don't overlap and stay readable in the mist (`feature/legend-collisions`). On `feature/god-rays`: light shafts in the mist (M10).
+**Status (2026-10-29):** M0–M3c, the dust (M8) and the first phone performance pass merged into `develop`. Then labels that don't overlap and stay readable in the mist (`feature/legend-collisions`). Then light shafts in the mist (M10, `feature/god-rays`). On `feature/adaptive-march`: the rough march in motion only on slow devices (Q6).
 
 **Next:**
 - Deploy (M4) waits: the site stays local for now, until you decide otherwise.
@@ -21,7 +21,7 @@ Living work plan. Tick boxes as we go, add notes inline, and log decisions at th
 |---|----------|-----------|--------|
 | Q1 | Pages URL: `<user>.github.io` repo, custom domain, or project repo (needs `paths.base`)? | M4 | |
 | Q4 | Reference weak device (phone/GPU) for the performance gate, and max pixel ratio | M2a | Your old, cheap phone (90 Hz screen): the weakest device to support. Target 60 fps |
-| Q6 | Rough march while moving (March: motion scale 0.5) applies on every device. On desktop the softness shows in motion, but it isn't disturbing. Keep it, or make it automatic: march sharp while moving, and fall back to rough only on a device whose moving frames drop under ~52 fps (desktop stays sharp, the phone switches by itself)? | M9 | Kept as is for now (2026-10-29) |
+| Q6 | Rough march while moving (March: motion scale 0.5) applies on every device. On desktop the softness shows in motion, but it isn't disturbing. Keep it, or make it automatic: march sharp while moving, and fall back to rough only on a device whose moving frames drop under ~52 fps (desktop stays sharp, the phone switches by itself)? | M9 | Automatic (2026-10-29, `feature/adaptive-march`): March → Rough in motion, 1 by default |
 
 Q2, Q3, Q5 were about splats, dropped on 2026-10-29.
 
@@ -246,7 +246,8 @@ Dropped (2026-10-29): simpler, faster without.
   - [x] Legend smaller on phones (Phone scale, under 700 px wide)
   - [x] First check: 90 fps still, down to 30 moving (the march). Adaptive resolution now aims at 60 fps, not the display's 90 / 120 Hz; the march runs at lower resolution while the camera moves (March: motion scale 0.5), then sharp once it has been still 0.15 s
   - [ ] Second phone check (fps moving, q reached); then march steps or dust count for phones if needed
-  - [ ] Decide Q6: rough march in motion on every device (now), or automatic (only where moving frames run long)
+  - [x] Q6: rough march in motion only where moving frames run long (`feature/adaptive-march`). When frames run under ~52 fps, the renderer asks the drawables to get cheaper first (`Drawable.degrade()`): the terrain switches to the rough march in motion if the slow frames were moving ones, once for all (remembered on the device in browser storage); only then does the resolution drop. Long frames in a row count (a slow device), a lone one is a hitch and doesn't; the first 2 s don't. March → Rough in motion: 0 never, 1 automatic, 2 always; the stats show "motion sharp / rough"
+  - [ ] Check on the phone that it switches by itself ("motion rough" after the first moves) and that the desktop stays sharp
 - [ ] `prefers-reduced-motion`, keyboard/focus, meta/OG tags, page titles
 - [ ] Lighthouse pass (LCP with a full-screen canvas, CLS)
 
@@ -254,6 +255,7 @@ Dropped (2026-10-29): simpler, faster without.
 
 ## Decision log
 
+- **2026-10-29**: Q6: the rough march in motion becomes automatic. Desktops march sharp while moving; a device whose moving frames run under ~52 fps switches to rough by itself, remembered for its next visits. It goes before dynamic resolution: the renderer asks the drawables to get cheaper (`degrade()`) before lowering the pixel ratio, so a slow phone loses sharpness in motion only, not resolution everywhere.
 - **2026-10-29**: God rays as light shafts in the mist (the ridges' shadow volumes), not a screen-space blur toward the sun: the camera looks down and the sun is low, so it is almost never on screen. The sun and the ground being fixed, the shadow volumes come from a shadow ceiling rendered once, and the shafts are computed in the march and cached with the ground: no per-frame cost when still. They match the baked shadows (same sun, same ground).
 - **2026-10-29**: The site stays local for now; deploy (M4) when you decide.
 - **2026-10-29**: Legend: labels no longer vanish in the mist (they fade to a floor, 0.5 by default), and in the callout layout they rise out of each other's way, nearest first. They keep sorting themselves out during a flight (it reads as the survey reorganising), just slower (Follow in flight 1, vs 5 at home); freezing them in flight was considered and isn't needed.

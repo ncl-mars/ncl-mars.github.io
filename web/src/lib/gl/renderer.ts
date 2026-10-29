@@ -49,8 +49,9 @@ let nextContextId = 1;
  * - Layout is never read inside the frame loop. Element rects are cached in document space from
  *   ResizeObserver / resize / font callbacks, and the scroll offset from scroll events. Each frame is arithmetic.
  * - The loop runs only while a view is on screen and the tab is visible.
- * - Dynamic resolution: when frames run long, the pixel ratio drops a step, and climbs back once frames
- *   keep up (see `adaptQuality`). Phones hold their frame rate, desktops keep full resolution.
+ * - Dynamic resolution: when frames run long, the drawables get a chance to get cheaper first (`degrade`),
+ *   then the pixel ratio drops a step, and climbs back once frames keep up (see `adaptQuality`). Phones
+ *   hold their frame rate, desktops keep full resolution.
  * - Safe to construct during prerender: nothing touches the DOM before `mount`. Views added before `mount`
  *   are initialised once the canvas exists.
  */
@@ -65,6 +66,10 @@ export class Renderer {
 	private onTime = 0;
 	private upgradeDelay = 4;
 	private lastQualityStep: { time: number; up: boolean } = { time: 0, up: false };
+	/** After a drawable got cheaper: slow frames before this time (ms) don't count, it is settling. */
+	private settleUntil = 0;
+	/** The previous frame took over 100 ms. */
+	private lastLong = false;
 	private canvas: HTMLCanvasElement | null = null;
 	private programs: ProgramCache | null = null;
 	private resources = new Map<string, unknown>();
@@ -430,18 +435,22 @@ export class Renderer {
 	/**
 	 * Dynamic resolution. Every half second, the average frame time is compared with 60 fps, whatever the
 	 * display's refresh (resolution matters more than going past 60 on a 90 or 120 Hz screen): under 52 fps,
-	 * the pixel ratio drops a step (×0.85, down to `minScale`); after `upgradeDelay` seconds at 57 fps or
-	 * more, it climbs a step back. A step up that has to be undone soon after doubles that delay (up to a
-	 * minute), so it doesn't see-saw. Frames over 100 ms (tab switch, hitch) don't count; a change gets a
-	 * second to settle (the resize itself re-marches the terrain).
+	 * a visible drawable that can get cheaper does (`degrade`, e.g. the terrain's rough march in motion), or
+	 * if none can, the pixel ratio drops a step (×0.85, down to `minScale`); after `upgradeDelay` seconds at
+	 * 57 fps or more, it climbs a step back. A step up that has to be undone soon after doubles that delay
+	 * (up to a minute), so it doesn't see-saw. A lone frame over 100 ms is a hitch (garbage collection, a
+	 * shader compile) and doesn't count, but long frames in a row do: that's a slow device, which must still
+	 * be seen. Neither do the first 2 s (programs compiling, textures uploading). A change gets a second to
+	 * settle (the resize itself re-marches the terrain). Drawables are asked even with dynamic resolution off.
 	 */
 	private adaptQuality(delta: number, now: number) {
 		const settings = this.qualitySettings;
-		if (!settings || settings.adaptive < 0.5) {
-			if (this.quality !== 1) this.setQuality(1, now);
-			return;
-		}
-		if (delta <= 0 || delta > 0.1) return;
+		const adaptive = settings !== null && settings.adaptive >= 0.5;
+		if (!adaptive && this.quality !== 1) this.setQuality(1, now);
+		const long = delta > 0.1;
+		const hitch = long && !this.lastLong;
+		this.lastLong = long;
+		if (delta <= 0 || hitch || now - this.startTime < 2000) return;
 		const sample = this.qualityWindow;
 		sample.time += delta;
 		sample.frames++;
@@ -452,14 +461,20 @@ export class Renderer {
 		const duration = sample.time;
 		sample.time = sample.frames = 0;
 
-		const minScale = Math.min(1, Math.max(0.25, settings.minScale));
+		const minScale = Math.min(1, Math.max(0.25, settings?.minScale ?? 1));
 		const sinceStep = (now - this.lastQualityStep.time) / 1000;
 		if (average > target * 1.15) {
 			this.onTime = 0;
-			if (sinceStep < 1 || this.quality <= minScale) return;
+			if (sinceStep < 1 || now < this.settleUntil) return;
+			if (this.degradeViews()) {
+				this.settleUntil = now + 1000;
+				return;
+			}
+			if (!adaptive || this.quality <= minScale) return;
 			if (this.lastQualityStep.up && sinceStep < 4) this.upgradeDelay = Math.min(60, this.upgradeDelay * 2);
 			this.setQuality(Math.max(minScale, this.quality * 0.85), now);
 		} else if (average < target * 1.05) {
+			if (!adaptive) return;
 			this.onTime += duration;
 			if (this.quality < 1 && this.onTime >= this.upgradeDelay) {
 				this.onTime = 0;
@@ -468,6 +483,19 @@ export class Renderer {
 		} else {
 			this.onTime = 0;
 		}
+	}
+
+	/** The first visible drawable that can get cheaper does (see `Drawable.degrade`). */
+	private degradeViews(): boolean {
+		for (const view of this.views) {
+			if (!view.visible || !view.ready || !view.drawable.degrade) continue;
+			try {
+				if (view.drawable.degrade()) return true;
+			} catch (error) {
+				this.report(view, 'degrade', error);
+			}
+		}
+		return false;
 	}
 
 	private setQuality(quality: number, now: number) {

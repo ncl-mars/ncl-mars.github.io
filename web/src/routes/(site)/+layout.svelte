@@ -119,7 +119,7 @@
 		readouts.set(
 			'terrain',
 			() =>
-				`terrain ${terrain.marchedLastFrame ? 'marching' : 'cached'}${terrain.roughShown ? ' · rough' : ''} · ${terrain.marches} marches`
+				`terrain ${terrain.marchedLastFrame ? 'marching' : 'cached'}${terrain.roughShown ? ' · rough' : ''} · ${terrain.marches} marches · motion ${terrain.roughInMotion ? 'rough' : 'sharp'}`
 		);
 
 		readouts.set('camera', () => {
