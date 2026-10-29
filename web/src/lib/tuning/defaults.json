@@ -62,6 +62,23 @@
 		"direction": 60,
 		"speed": 8
 	},
+	"dust": {
+		"count": 24000,
+		"size": 0.22,
+		"opacity": 0.55,
+		"color": [0.86, 0.83, 0.78],
+		"backlight": 1.5,
+		"range": 240,
+		"height": 24,
+		"follow": 1,
+		"turbulence": 4,
+		"turbulenceScale": 30,
+		"turbulenceSpeed": 0.15,
+		"hops": 0.3,
+		"hopHeight": 1.5,
+		"maxSize": 24,
+		"nearFade": 4
+	},
 	"farField": {
 		"amplitude": 20,
 		"scale": 300,

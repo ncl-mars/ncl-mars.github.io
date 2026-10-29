@@ -2,10 +2,10 @@
 
 Living work plan. Tick boxes as we go, add notes inline, and log decisions at the bottom. Details live in the other docs; this file is the order of work.
 
-**Status (2026-10-29):** M0–M2b, the core removal, the legend lines and the POI navigation committed. On `feature/project-view`: the project overlay (M3c).
+**Status (2026-10-29):** M0–M3c merged into `develop` (POI navigation, project card). On `feature/m8-dust`: the dust (M8).
 
 **Next:**
-- Claude: after your check of the overlay, M8 (dust).
+- Claude: after your check of the dust, legend labels that don't overlap; then M4 (deploy, needs Q1).
 - You, whenever:
   - tune the camera in the panel → Save defaults → commit `defaults.json`;
   - perf gate: `npm run dev -- --host`, phone fps + model (answers Q4);
@@ -211,13 +211,15 @@ Dropped (2026-10-29): simpler, faster without.
 
 ---
 
-## M8 — GPU particles
+## M8 — Dust (`feature/m8-dust`)
 
-- [ ] Transform feedback ping-pong (`RASTERIZER_DISCARD`; WebGL2 still needs a trivial fragment shader)
-- [ ] State: position, velocity, age/life, seed; ring-buffer emission
-- [ ] Dig dust burst on enter; ambient dust carried by `wind.glsl`
-- [ ] Collision with `height()`, additive, depth-tested, fogged
-- [ ] Optional: verlet cords (cords twang on hover) feeding the same curve renderer
+- [x] `drawables/dust/`: stateless points (no simulation buffers: a speck's position is a function of `gl_VertexID` and the time), drawn as a second view on the scene element after the terrain; depth-tested against the ground, premultiplied blend, no depth write
+- [x] Carried by the wind (`/wind`, per-speck speed spread), turbulence from the 3D noise texture in the frame of the air, most specks low over the ground (`height()` from `/terrain`), a share skipping along it in hops; glow toward the sun (backlight); fogged with `atmosphere()` per speck
+- [x] Box ahead of the camera, anchored in the world and wrapping at its edges (faded there and near the lens), so the density is the same at home and at every POI; under 1.5 px a speck keeps its size and fades by area (no flicker)
+- [x] `Terrain.sceneUniforms`: the ground, wind and fog uniforms for later passes
+- [x] Panel: Dust group (count, size, opacity, colour, backlight, range, height, wind follow, turbulence, eddy size / speed, hopping share, hop height, largest size, near fade)
+- [ ] Browser check and look tuning (yours); count for phones (Q4)
+- [ ] Later, if wanted: a dust burst when a project opens; verlet cords
 
 ---
 
@@ -233,6 +235,7 @@ Dropped (2026-10-29): simpler, faster without.
 
 ## Decision log
 
+- **2026-10-29**: Dust as stateless particles (position from id + time, computed in the vertex shader) instead of a transform-feedback simulation: no buffers, nothing to rebuild on context loss, any count change is free. Specks drift with the wind and turbulence and skip along the ground in hops; real collisions and bursts would need the stateful version, not needed for ambient dust.
 - **2026-10-29**: After the first try of the overlay: no ordered path through the POIs any more. Home is the hub; labels and a menu fly to any POI, Escape or the current label goes home as you left it. The wheel zooms again, toward the pivot (home's point or the POI's), and drag turns. The project opens from a Data button on the arrived POI's label, not by itself, as a card over the live scene (light isolation by default). POI views are relative to a start view tuned in the panel, so retuning its heading carries every POI.
 - **2026-10-29**: Project view: it opens at the end of the camera flight, with no button, however the POI was reached (label, scroll, keys). Real prerendered URLs (`/projects/<slug>/`); the scene lives in a `(site)` layout shared with `/`, so it never reloads. Isolation by CSS `backdrop-filter` over the scene and the labels, tuned live; blur in GL only if the weak device struggles. Content: title, a few lines of presentation, credits, then images and short videos (5–60 s, Instagram-like), self-hosted MP4 played muted while visible.
 - **2026-10-29**: Navigation by POIs instead of free controls: the camera flies to any POI (procedural, planned flight), and scrolling / arrows / swipes step through them in a curated order; teleport only under reduced motion. Free pan / zoom / rotate stays as a dev tool to frame the POI poses (Copy pose); visitors keep turning the view around the current POI. The project view will be an HTML layer over the scene with isolation (desaturation, blur), opened from a POI; dust particles stay on the list (M8).

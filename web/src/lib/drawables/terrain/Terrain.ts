@@ -53,6 +53,12 @@ export class Terrain implements Drawable {
 	/** Dev readout: re-marches since init, and whether the last frame re-marched. */
 	marches = 0;
 	marchedLastFrame = false;
+	/**
+	 * For passes drawn after it in the scene (dust): the uniforms of /terrain, /wind and /fog, so they stand
+	 * on the same ground and sit in the same atmosphere. Refreshed by every draw; empty until the ground has
+	 * loaded (check `uHeightmap`).
+	 */
+	readonly sceneUniforms: Record<string, unknown> = {};
 
 	private marchProgram: Program | null = null;
 	private compositeProgram: Program | null = null;
@@ -249,6 +255,13 @@ export class Terrain implements Drawable {
 		u.uWindSpeed = wind.speed;
 		u.uTime = this.time;
 		this.drawFullscreen(gl, this.compositeProgram!, u);
+
+		const scene = this.sceneUniforms;
+		Object.assign(scene, u);
+		scene.uHeightmap = this.heightTexture;
+		scene.uBoundsMin = this.marchUniforms.uBoundsMin;
+		scene.uBoundsMax = this.marchUniforms.uBoundsMax;
+		scene.uFarField = this.farFieldVector;
 	}
 
 	/** Full-screen triangle with depth writes (ALWAYS: the shader decides the depth itself). */

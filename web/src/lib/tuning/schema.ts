@@ -121,6 +121,27 @@ export const schema: Group[] = [
 		]
 	},
 	{
+		key: 'dust',
+		label: 'Dust',
+		params: [
+			{ key: 'count', label: 'Count', kind: 'int', min: 0, max: 200000, step: 500, hint: 'Specks in the box. The main cost: lower it on phones. 0: no dust.' },
+			{ key: 'size', label: 'Size', min: 0.02, max: 2, step: 0.01, hint: 'World units. Far specks stay 1.5 px and fade instead of shrinking.' },
+			{ key: 'opacity', label: 'Opacity', min: 0, max: 1, step: 0.01 },
+			{ key: 'color', label: 'Colour', kind: 'color' },
+			{ key: 'backlight', label: 'Backlight', min: 0, max: 6, step: 0.05, hint: 'Glow in the sun colour when the camera looks toward the sun through them.' },
+			{ key: 'range', label: 'Range', min: 40, max: 1000, step: 10, hint: 'Size of the box they live in, ahead of the camera. Larger: the same count spread thinner.' },
+			{ key: 'height', label: 'Height', min: 1, max: 120, step: 0.5, hint: 'How high above the ground they go; most stay low.' },
+			{ key: 'follow', label: 'Wind follow', min: 0, max: 2, step: 0.01, hint: 'Fraction of the wind speed they drift at (Wind group).' },
+			{ key: 'turbulence', label: 'Turbulence', min: 0, max: 20, step: 0.1, hint: 'How far each speck wanders around its place (world units).' },
+			{ key: 'turbulenceScale', label: 'Eddy size', min: 2, max: 200, step: 1, hint: 'Specks closer than this wander together.' },
+			{ key: 'turbulenceSpeed', label: 'Eddy speed', min: 0, max: 1, step: 0.01, hint: 'How fast the eddies change.' },
+			{ key: 'hops', label: 'Hopping share', min: 0, max: 1, step: 0.01, hint: 'Share of specks skipping along the ground instead of floating.' },
+			{ key: 'hopHeight', label: 'Hop height', min: 0, max: 10, step: 0.1 },
+			{ key: 'maxSize', label: 'Largest (px)', min: 2, max: 64, step: 1, hint: 'Cap for specks close to the camera.' },
+			{ key: 'nearFade', label: 'Near fade', min: 0, max: 40, step: 0.5, hint: 'Specks closer to the camera than this fade out (world units).' }
+		]
+	},
+	{
 		key: 'farField',
 		label: 'Far field',
 		params: [

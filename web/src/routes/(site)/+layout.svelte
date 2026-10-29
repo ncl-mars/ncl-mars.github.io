@@ -1,6 +1,7 @@
 <script module lang="ts">
 	import { SurveyCamera } from '$lib/gl/camera';
 	import { Terrain } from '$lib/drawables/terrain/Terrain';
+	import { Dust } from '$lib/drawables/dust/Dust';
 	import { terrainAssets } from '$lib/terrain/assets';
 	import { tuning } from '$lib/tuning';
 	import { pois } from '$lib/content/pois';
@@ -11,6 +12,7 @@
 	// back. They read their settings live from `tuning`, which the dev panel edits.
 	const camera = new SurveyCamera(tuning.camera, tuning.controls);
 	const terrain = new Terrain(camera, terrainAssets, tuning);
+	const dust = new Dust(camera, terrain, tuning.dust);
 	const tour = new Tour(camera, pois, () => terrain.ground, tuning.flight, tuning.start);
 	/** Dev only: free camera input (pan, zoom, rotate) to frame POI views. */
 	const dev = { freeCamera: false };
@@ -26,7 +28,8 @@
 
 <script lang="ts">
 	// The dig site, shared by `/` and `/projects/<slug>/`: this layout stays mounted between them, so the
-	// scene never reloads. One full-viewport view drawn by the terrain raymarcher.
+	// scene never reloads. One full-viewport element with two views, drawn in the order they are attached:
+	// the terrain (raymarched ground + atmosphere, writing depth), then the dust over it.
 	// Home is the overview; clicking a label (or a menu entry) flies to that POI, clicking the current POI's
 	// label goes back home, as you left it. Around the current POI, dragging turns and the wheel zooms.
 	// Once the camera has arrived at a POI with a project, its label shows a Data button: it opens the
@@ -185,6 +188,7 @@
 	inert={!!project}
 	bind:this={site}
 	{@attach renderer.view(terrain)}
+	{@attach renderer.view(dust)}
 	{@attach tourControls(tour, { enabled: () => !dev.freeCamera && !project, settings: tuning.controls })}
 	{@attach surveyControls(camera, {
 		ground: () => terrain.ground,
