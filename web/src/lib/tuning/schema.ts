@@ -133,7 +133,9 @@ export const schema: Group[] = [
 			{ key: 'strength', label: 'Strength', min: 0, max: 20, step: 0.1, hint: 'How dark the legend lines’ shadows are in the god rays. Thin sheets: they show when looked along, mostly toward the sun. 0: off.' },
 			{ key: 'thickness', label: 'Thickness (px)', min: 0.5, max: 20, step: 0.5, hint: 'Of the shadow sheet, in pixels of the line at its point’s depth. The line itself is 1 px: thicker reads stronger.' },
 			{ key: 'maxLength', label: 'Longest path', min: 5, max: 300, step: 5, hint: 'World units of a sheet a view ray counts at most: caps the streak when you look right along it.' },
-			{ key: 'ground', label: 'Ground shadow', min: 0, max: 1, step: 0.01, hint: 'How dark the lines’ shadows on the ground are (a thin line, the width of the sheet). Like the baked shadows, nothing where a ridge already shades the ground. 0: off.' }
+			{ key: 'ground', label: 'Ground shadow', min: 0, max: 1, step: 0.01, hint: 'How dark the lines’ shadows on the ground are (a thin line, the width of the sheet). Like the baked shadows, nothing where a ridge already shades the ground. 0: off.' },
+			{ key: 'text', label: 'Text on the ground', min: 0, max: 1, step: 0.01, hint: 'How dark the labels’ letters are on the ground (title and coordinates, stretched by the low sun). 0: off.' },
+			{ key: 'textSoftness', label: 'Text softness', min: 0, max: 0.05, step: 0.001, hint: 'The letters’ penumbra: how much their shadow blurs per world unit from the label. 0: sharp all the way.' }
 		]
 	},
 	{

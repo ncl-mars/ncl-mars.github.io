@@ -105,11 +105,14 @@ class Mark {
 	/** The anchor is in front of the camera, at this depth (NDC z): the line's plane, for its 3D copy. */
 	inFront = false;
 	ndcZ = 0;
-	/** The polyline as last drawn (CSS px): elbow x, shelf y, shelf end x, and the part drawn so far (0..1). */
+	/** The polyline as last drawn (CSS px): elbow x, shelf y, shelf start and end x, and the part drawn so far (0..1). */
 	elbowX = 0;
 	lineY = 0;
+	shelfX = 0;
 	endX = 0;
 	drawn = 0;
+	/** The text's fade in (0..1), after the line. */
+	textFade = 0;
 
 	// Last values written to the DOM: write only on change
 	hidden = true;
@@ -195,6 +198,12 @@ export class Legend {
 			this.byElement.set(mark.el.meta, mark);
 			return mark;
 		});
+		// The labels' fonts and text box, for their shadows' masks (read once, outside the frame loop)
+		if (lines && this.marks.length) {
+			const { title, meta } = this.marks[0].el;
+			lines.fonts = { sans: getComputedStyle(title).fontFamily, mono: getComputedStyle(meta).fontFamily };
+			lines.box = { above: BOX_ABOVE, below: BOX_BELOW };
+		}
 
 		this.observer = new ResizeObserver((entries) => {
 			for (const entry of entries) {
@@ -222,7 +231,7 @@ export class Legend {
 	dispose() {
 		this.observer.disconnect();
 		this.narrowQuery.removeEventListener('change', this.onNarrowChange);
-		if (this.lines) this.lines.count = 0;
+		if (this.lines) this.lines.count = this.lines.labelCount = 0;
 	}
 
 	/** Text size in rem: `scale`, times `smallScale` on narrow screens. Rise, spacing, anchor ring are in em of it. */
@@ -309,8 +318,60 @@ export class Legend {
 		if (layout === 1) this.layoutColumns(frame.dt, em);
 		else this.layoutCallouts(frame.dt, em, tan);
 		for (const mark of this.marks) this.draw(mark, tan, em);
-		if (this.lines) this.exportLines(this.lines);
+		if (this.lines) {
+			this.exportLines(this.lines);
+			this.exportLabels(this.lines, em);
+		}
 	};
+
+	/**
+	 * The shown labels' text boxes in 3D, for their shadows (lines.ts), unprojected like the lines; and their
+	 * text, for the masks (its revision bumped only when it changes).
+	 */
+	private exportLabels(lines: LegendLines, em: number) {
+		const inv = this.camera.inverseViewProjection;
+		const { width, height } = this;
+		const data = lines.labels;
+		const stroke = this.settings.stroke;
+		let n = 0;
+		for (const mark of this.marks) {
+			if (n >= lines.labelCapacity || mark.index >= lines.labelCapacity) break;
+			if (mark.t <= 0 || mark.textFade <= 0 || !mark.inFront || mark.width <= 0) continue;
+			const side = mark.side || 1;
+			const left = side === 1 ? mark.shelfX : mark.shelfX - mark.width;
+			const top = mark.lineY - stroke / 2 - BOX_ABOVE * em;
+			const bottom = mark.lineY - stroke / 2 + BOX_BELOW * em;
+			unproject(inv, left, top, mark.ndcZ, width, height, ELBOW);
+			unproject(inv, left + mark.width, top, mark.ndcZ, width, height, END);
+			unproject(inv, left, bottom, mark.ndcZ, width, height, PROBE);
+			const o = n++ * LegendLines.LABEL_STRIDE;
+			for (let k = 0; k < 3; k++) {
+				data[o + k] = ELBOW[k];
+				data[o + 3 + k] = END[k] - ELBOW[k];
+				data[o + 6 + k] = PROBE[k] - ELBOW[k];
+			}
+			data[o + 9] = mark.index;
+			data[o + 10] = mark.textFade * mark.clear;
+
+			const title = mark.item.title;
+			const meta = mark.el.meta.textContent ?? '';
+			const bold = mark.index === this.current;
+			let text = lines.texts[mark.index];
+			if (!text) text = lines.texts[mark.index] = { title, meta, size: em, bold, side, width: mark.width, revision: 0 };
+			else if (
+				text.title !== title ||
+				text.meta !== meta ||
+				text.size !== em ||
+				text.bold !== bold ||
+				text.side !== side ||
+				text.width !== mark.width
+			) {
+				Object.assign(text, { title, meta, size: em, bold, side, width: mark.width });
+				text.revision++;
+			}
+		}
+		lines.labelCount = n;
+	}
 
 	/**
 	 * The shown labels' lines in 3D, for their shadows (lines.ts): each screen point unprojected at its
@@ -474,6 +535,7 @@ export class Legend {
 		const endX = lx + side * mark.width;
 		mark.elbowX = ex;
 		mark.lineY = lineY;
+		mark.shelfX = lx;
 		mark.endX = endX;
 		const points = `${r1(mark.x)},${r1(mark.y)} ${r1(ex)},${lineY} ${lx},${lineY} ${endX},${lineY}`;
 		if (points !== mark.points) {
@@ -517,7 +579,8 @@ export class Legend {
 			mark.shownSide = side;
 			el.label.dataset.side = side === -1 ? 'left' : 'right'; // not a class: Svelte owns the class list
 		}
-		const text = easeOut(range(mark.t, 0.6, 1)).toFixed(3);
+		mark.textFade = easeOut(range(mark.t, 0.6, 1));
+		const text = mark.textFade.toFixed(3);
 		if (text !== mark.text) {
 			mark.text = text;
 			el.label.style.setProperty('--text', text);

@@ -2,7 +2,7 @@
 	import { SurveyCamera } from '$lib/gl/camera';
 	import { Terrain } from '$lib/drawables/terrain/Terrain';
 	import { Dust } from '$lib/drawables/dust/Dust';
-	import { LegendShadows } from '$lib/drawables/legend-shadows/LegendShadows';
+	import { LegendShadows, MAX_LABEL_SHADOWS } from '$lib/drawables/legend-shadows/LegendShadows';
 	import { LegendLines } from '$lib/legend/lines';
 	import { terrainAssets } from '$lib/terrain/assets';
 	import { tuning } from '$lib/tuning';
@@ -17,7 +17,7 @@
 	const terrain = new Terrain(camera, terrainAssets, tuning);
 	const dust = new Dust(camera, terrain, tuning.dust);
 	// The legend writes its lines in 3D here after each frame; their shadows are drawn in the god rays
-	const legendLines = new LegendLines(pois.length * 2);
+	const legendLines = new LegendLines(pois.length * 2, Math.min(pois.length, MAX_LABEL_SHADOWS));
 	const legendShadows = new LegendShadows(camera, terrain, legendLines, tuning.legendShadows);
 	const tour = new Tour(camera, pois, () => terrain.ground, tuning.flight, tuning.start);
 	/** Dev only: free camera input (pan, zoom, rotate) to frame POI views. */

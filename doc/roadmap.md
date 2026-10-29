@@ -245,6 +245,8 @@ Dropped (2026-10-29): simpler, faster without.
 - [x] Panel: Legend shadows group (strength, 0 = off; thickness in px; longest path counted)
 - [ ] Browser check and tuning (yours); phone fps with and without (strength 0)
 - [x] The shadow on the ground: where a ray meets the ground inside a box, a thin line, soft across, fading with the fog, none where a ridge already shades the ground (Ground shadow, 0.6)
+- [x] The labels' text on the ground: the legend writes each shown label's text box in 3D and its text; the drawable draws the text into a mask atlas (2D canvas, same fonts, redrawn only when a label's text or style changes) and shades the ground where the sun ray from it crossed a letter, blurring with the distance (Text on the ground 0.6, Text softness). Ground only for now: in the god rays it would cost much more (wide boxes, samples)
+- [ ] Phone fps with and without the text (Text on the ground at 0)
 
 ---
 
