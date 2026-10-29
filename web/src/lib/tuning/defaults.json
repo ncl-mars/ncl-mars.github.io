@@ -68,6 +68,11 @@
 		"power": 3,
 		"view": 0
 	},
+	"legendShadows": {
+		"strength": 1,
+		"thickness": 3,
+		"maxLength": 80
+	},
 	"wind": {
 		"direction": 60,
 		"speed": 8

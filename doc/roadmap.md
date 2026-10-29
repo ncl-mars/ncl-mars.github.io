@@ -2,7 +2,7 @@
 
 Living work plan. Tick boxes as we go, add notes inline, and log decisions at the bottom. Details live in the other docs; this file is the order of work.
 
-**Status (2026-10-29):** M0–M3c, the dust (M8) and the first phone performance pass merged into `develop`. Then labels that don't overlap and stay readable in the mist (`feature/legend-collisions`). Then light shafts in the mist (M10, `feature/god-rays`). Then the rough march in motion only on slow devices (Q6), the phone menu, home as the overview. On `feature/content-pipeline`: POIs placed from Houdini, one folder per project (M11).
+**Status (2026-10-29):** M0–M3c, the dust (M8) and the first phone performance pass merged into `develop`. Then labels that don't overlap and stay readable in the mist (`feature/legend-collisions`). Then light shafts in the mist (M10, `feature/god-rays`). Then the rough march in motion only on slow devices (Q6), the phone menu, home as the overview. Then POIs placed from Houdini, one folder per project (M11). On `feature/legend-shadows`: the legend lines cast shadows in the god rays (M12).
 
 **Next:**
 - Deploy (M4) waits: the site stays local for now, until you decide otherwise.
@@ -238,6 +238,16 @@ Dropped (2026-10-29): simpler, faster without.
 
 ---
 
+## M12 — Legend shadows (`feature/legend-shadows`)
+
+- [x] The legend writes its lines in 3D after each frame (`legend/lines.ts`): diagonal and shelf, unprojected at the anchor's depth (a plane facing the camera: they stand exactly where they're seen), the drawn part only, a pixel's size at that depth
+- [x] `drawables/legend-shadows/`: one instanced box per segment, from it along the sun until below the ground, as thick as the line (px); the fragment measures the ray's exact path inside, stops it at the ground (cache depth), and darkens by the sunlight the air there would have scattered (mist and haze density, what reaches the eye, the terrain's shadow ceiling), at three points. Between the terrain and the dust; nothing drawn with no label shown
+- [x] Panel: Legend shadows group (strength, 0 = off; thickness in px; longest path counted)
+- [ ] Browser check and tuning (yours); phone fps with and without (strength 0)
+- [ ] Later, if wanted: the shadow line on the ground
+
+---
+
 ## M11 — Content pipeline (`feature/content-pipeline`)
 
 - [x] `lib/assets/terrain/pois.json`: where the POIs stand (id, x, z, menu order), exported from Houdini by `hou/snippets/export_pois.py` (one point per POI, `s@name` = id). Contract: [formats/pois.md](formats/pois.md)
@@ -270,6 +280,7 @@ Dropped (2026-10-29): simpler, faster without.
 
 ## Decision log
 
+- **2026-10-29**: Legend shadows in the god rays with the legend unchanged (no 3D stakes, which would have changed its look): the lines are placed in 3D facing the camera at their point's depth, so their shadows follow what you see, and turn with you when you orbit. Drawn every frame as geometry over the terrain (the lines move with the labels), not in the cached march.
 - **2026-10-29**: No sites for now: about 10 POIs at most, so one list is enough, and content comes first. The phone menu folds behind a Projects button. The sites version stays in the history (commit 4c136d5), with the site-labels idea in Q7.
 - **2026-10-29**: Q7, sites: groups of POIs by discipline in the one landscape, one menu each. The site is written on each POI in Houdini as its heading reads (`s@site = "VFX"`), not listed anywhere else (a first version listed ids and headings in `portfolio.yaml`: duplicated, dropped). `portfolio.yaml` holds your name and the home description, so no name is written in the code. "Dig site" is gone as a name (it stays the scene's metaphor). A scene per site stays possible later: every POI already carries its site.
 - **2026-10-29**: Content pipeline: where a POI stands comes from Houdini (`pois.json`, positions only), what it shows from its project folder (`project.md` + media), matched by id, so a re-export never overwrites text or framing. Framing stays tuned in the web (Copy pose), since the site's camera ties its tilt to its distance and a Houdini camera can't be matched. YAML for `project.md`'s header (nicer than JSON to write by hand), parsed at build time. Houdini only, no Blender exporter.

@@ -2,6 +2,8 @@
 	import { SurveyCamera } from '$lib/gl/camera';
 	import { Terrain } from '$lib/drawables/terrain/Terrain';
 	import { Dust } from '$lib/drawables/dust/Dust';
+	import { LegendShadows } from '$lib/drawables/legend-shadows/LegendShadows';
+	import { LegendLines } from '$lib/legend/lines';
 	import { terrainAssets } from '$lib/terrain/assets';
 	import { tuning } from '$lib/tuning';
 	import { pois } from '$lib/content/pois';
@@ -14,6 +16,9 @@
 	const camera = new SurveyCamera(tuning.camera, tuning.controls);
 	const terrain = new Terrain(camera, terrainAssets, tuning);
 	const dust = new Dust(camera, terrain, tuning.dust);
+	// The legend writes its lines in 3D here after each frame; their shadows are drawn in the god rays
+	const legendLines = new LegendLines(pois.length * 2);
+	const legendShadows = new LegendShadows(camera, terrain, legendLines, tuning.legendShadows);
 	const tour = new Tour(camera, pois, () => terrain.ground, tuning.flight, tuning.start);
 	/** Dev only: free camera input (pan, zoom, rotate) to frame POI views. */
 	const dev = { freeCamera: false };
@@ -238,6 +243,7 @@
 	inert={!!project}
 	bind:this={site}
 	{@attach renderer.view(terrain)}
+	{@attach renderer.view(legendShadows)}
 	{@attach renderer.view(dust)}
 	{@attach tourControls(tour, { enabled: () => !dev.freeCamera && !project, settings: tuning.controls })}
 	{@attach surveyControls(camera, {
@@ -252,6 +258,7 @@
 		ground={() => terrain.ground}
 		{current}
 		{dataAt}
+		shadowLines={legendLines}
 		onselect={(i) => tour.select(i)}
 		ondata={(i) => openProject(pois[i].id)}
 	/>

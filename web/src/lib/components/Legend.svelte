@@ -8,6 +8,7 @@
 	import { fade } from 'svelte/transition';
 	import { getRenderer } from '$lib/gl/context';
 	import { Legend, type LegendElements, type LegendItem } from '$lib/legend/legend';
+	import type { LegendLines } from '$lib/legend/lines';
 	import { onTuningChange, readouts, tuning } from '$lib/tuning';
 	import type { SurveyCamera } from '$lib/gl/camera';
 	import type { Ground } from '$lib/terrain/ground';
@@ -18,6 +19,7 @@
 		ground,
 		current = -1,
 		dataAt = -1,
+		shadowLines,
 		onselect,
 		ondata
 	}: {
@@ -26,6 +28,8 @@
 		ground: () => Ground | null;
 		current?: number;
 		dataAt?: number;
+		/** Where to write the lines in 3D, for their shadows in the scene (drawables/legend-shadows). */
+		shadowLines?: LegendLines;
 		onselect?: (index: number) => void;
 		ondata?: (index: number) => void;
 	} = $props();
@@ -52,7 +56,7 @@
 			title: titles[i],
 			meta: metas[i]
 		}));
-		const instance = new Legend(root, items, elements, camera, ground, tuning.legend, tuning.fog, tuning.mist);
+		const instance = new Legend(root, items, elements, camera, ground, tuning.legend, tuning.fog, tuning.mist, shadowLines);
 		instance.current = current;
 		legend = instance;
 		// The text size comes from the legend (smaller on phones), so its lines and the CSS agree

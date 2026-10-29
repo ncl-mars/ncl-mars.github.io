@@ -3,6 +3,7 @@ import type { Frame } from '$lib/gl/types';
 import type { Ground } from '$lib/terrain/ground';
 import type { Vec3 } from '$lib/terrain/heightfield';
 import { fogAmount, type FogSettings, type MistSettings } from '$lib/terrain/atmosphere';
+import { LegendLines } from './lines';
 
 export interface LegendItem {
 	/** Short label, above the shelf. */
@@ -101,6 +102,14 @@ class Mark {
 	occluded = false;
 	/** Label opacity from the atmosphere's cover at the anchor (1 clear, 0 lost in the mist). */
 	clear = 1;
+	/** The anchor is in front of the camera, at this depth (NDC z): the line's plane, for its 3D copy. */
+	inFront = false;
+	ndcZ = 0;
+	/** The polyline as last drawn (CSS px): elbow x, shelf y, shelf end x, and the part drawn so far (0..1). */
+	elbowX = 0;
+	lineY = 0;
+	endX = 0;
+	drawn = 0;
 
 	// Last values written to the DOM: write only on change
 	hidden = true;
@@ -169,7 +178,9 @@ export class Legend {
 		private readonly ground: () => Ground | null,
 		private readonly settings: LegendSettings,
 		private readonly fog: FogSettings,
-		private readonly mist: MistSettings & { height: number }
+		private readonly mist: MistSettings & { height: number },
+		/** Where to write the lines in 3D for their shadows in the scene, if anywhere (lines.ts). */
+		private readonly lines: LegendLines | null = null
 	) {
 		this.reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 		this.narrowQuery = matchMedia(NARROW);
@@ -211,6 +222,7 @@ export class Legend {
 	dispose() {
 		this.observer.disconnect();
 		this.narrowQuery.removeEventListener('change', this.onNarrowChange);
+		if (this.lines) this.lines.count = 0;
 	}
 
 	/** Text size in rem: `scale`, times `smallScale` on narrow screens. Rise, spacing, anchor ring are in em of it. */
@@ -267,12 +279,15 @@ export class Legend {
 			// Project (column-major view-projection), into CSS px from the view's top-left
 			const cx = vp[0] * p[0] + vp[4] * p[1] + vp[8] * p[2] + vp[12];
 			const cy = vp[1] * p[0] + vp[5] * p[1] + vp[9] * p[2] + vp[13];
+			const cz = vp[2] * p[0] + vp[6] * p[1] + vp[10] * p[2] + vp[14];
 			const cw = vp[3] * p[0] + vp[7] * p[1] + vp[11] * p[2] + vp[15];
 			const inFront = cw > 1e-3;
+			mark.inFront = inFront;
 			if (inFront) {
 				// Behind the camera, keep the last position so a hiding label retracts where it was
 				mark.x = ((cx / cw) * 0.5 + 0.5) * width;
 				mark.y = (0.5 - (cy / cw) * 0.5) * height;
+				mark.ndcZ = cz / cw;
 			}
 			const onScreen =
 				inFront && mark.x > EDGE && mark.x < width - EDGE && mark.y > EDGE && mark.y < height - EDGE;
@@ -294,7 +309,47 @@ export class Legend {
 		if (layout === 1) this.layoutColumns(frame.dt, em);
 		else this.layoutCallouts(frame.dt, em, tan);
 		for (const mark of this.marks) this.draw(mark, tan, em);
+		if (this.lines) this.exportLines(this.lines);
 	};
+
+	/**
+	 * The shown labels' lines in 3D, for their shadows (lines.ts): each screen point unprojected at its
+	 * anchor's depth, so the copy lies on a plane facing the camera, exactly under the drawn line; only the
+	 * part drawn so far.
+	 */
+	private exportLines(lines: LegendLines) {
+		const inv = this.camera.inverseViewProjection;
+		const { width, height } = this;
+		const data = lines.data;
+		let n = 0;
+		const push = (a: Vec3, b: Vec3, f: number, pixel: number, visibility: number) => {
+			if (n >= lines.capacity || f <= 0) return;
+			const o = n++ * LegendLines.STRIDE;
+			data[o] = a[0];
+			data[o + 1] = a[1];
+			data[o + 2] = a[2];
+			data[o + 3] = a[0] + (b[0] - a[0]) * f;
+			data[o + 4] = a[1] + (b[1] - a[1]) * f;
+			data[o + 5] = a[2] + (b[2] - a[2]) * f;
+			data[o + 6] = pixel;
+			data[o + 7] = visibility;
+		};
+		for (const mark of this.marks) {
+			if (mark.t <= 0 || mark.drawn <= 0 || !mark.inFront) continue;
+			unproject(inv, mark.elbowX, mark.lineY, mark.ndcZ, width, height, ELBOW);
+			unproject(inv, mark.endX, mark.lineY, mark.ndcZ, width, height, END);
+			unproject(inv, mark.x + 1, mark.y, mark.ndcZ, width, height, PROBE);
+			const a = mark.world;
+			const pixel = Math.hypot(PROBE[0] - a[0], PROBE[1] - a[1], PROBE[2] - a[2]);
+			// The line draws itself from the anchor: up the diagonal, then along the shelf
+			const diagonal = Math.hypot(mark.elbowX - mark.x, mark.lineY - mark.y);
+			const shelf = Math.abs(mark.endX - mark.elbowX);
+			const drawn = (diagonal + shelf) * mark.drawn;
+			push(a, ELBOW, diagonal > 0 ? Math.min(1, drawn / diagonal) : 1, pixel, mark.clear);
+			if (shelf > 0) push(ELBOW, END, (drawn - diagonal) / shelf, pixel, mark.clear);
+		}
+		lines.count = n;
+	}
 
 	/** How fast labels ease to their new heights: `flightFollow` while the camera flies to a POI. */
 	private get followRate(): number {
@@ -417,6 +472,9 @@ export class Legend {
 		let ex = mark.x + (side * Math.abs(lineY - mark.y)) / tan; // the elbow: up the diagonal to the shelf
 		if ((ex - lx) * side > 0) ex = lx;
 		const endX = lx + side * mark.width;
+		mark.elbowX = ex;
+		mark.lineY = lineY;
+		mark.endX = endX;
 		const points = `${r1(mark.x)},${r1(mark.y)} ${r1(ex)},${lineY} ${lx},${lineY} ${endX},${lineY}`;
 		if (points !== mark.points) {
 			mark.points = points;
@@ -425,6 +483,7 @@ export class Legend {
 
 		// The line draws itself from the anchor to the end of the shelf
 		const drawn = easeOut(range(mark.t, 0.05, 0.75));
+		mark.drawn = drawn;
 		let dash = 'none';
 		if (drawn < 1) {
 			const length = Math.hypot(ex - mark.x, lineY - mark.y) + Math.abs(endX - ex);
@@ -464,6 +523,20 @@ export class Legend {
 			el.label.style.setProperty('--text', text);
 		}
 	}
+}
+
+const ELBOW: Vec3 = [0, 0, 0];
+const END: Vec3 = [0, 0, 0];
+const PROBE: Vec3 = [0, 0, 0];
+
+/** A point of the view (CSS px from its top-left) back into the world, at depth `ndcZ`. */
+function unproject(inv: ArrayLike<number>, x: number, y: number, ndcZ: number, width: number, height: number, out: Vec3) {
+	const nx = (x / width) * 2 - 1;
+	const ny = 1 - (y / height) * 2;
+	const w = inv[3] * nx + inv[7] * ny + inv[11] * ndcZ + inv[15];
+	out[0] = (inv[0] * nx + inv[4] * ny + inv[8] * ndcZ + inv[12]) / w;
+	out[1] = (inv[1] * nx + inv[5] * ny + inv[9] * ndcZ + inv[13]) / w;
+	out[2] = (inv[2] * nx + inv[6] * ny + inv[10] * ndcZ + inv[14]) / w;
 }
 
 /**

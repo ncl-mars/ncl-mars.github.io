@@ -85,8 +85,9 @@ export class Terrain implements Drawable {
 	marches = 0;
 	marchedLastFrame = false;
 	/**
-	 * For passes drawn after it in the scene (dust): the uniforms of /terrain, /wind and /fog, so they stand
-	 * on the same ground and sit in the same atmosphere. Refreshed by every draw; empty until the ground has
+	 * For passes drawn after it in the scene (dust, legend shadows): the uniforms of /terrain, /wind and /fog,
+	 * so they stand on the same ground and sit in the same atmosphere; the cache's depth (`uDepth`); and the
+	 * shadow ceiling (`uShadow`, `uShadowBox`, `uSlab`). Refreshed by every draw; empty until the ground has
 	 * loaded (check `uHeightmap`).
 	 */
 	readonly sceneUniforms: Record<string, unknown> = {};
@@ -450,6 +451,10 @@ export class Terrain implements Drawable {
 		scene.uBoundsMin = this.marchUniforms.uBoundsMin;
 		scene.uBoundsMax = this.marchUniforms.uBoundsMax;
 		scene.uFarField = this.farFieldVector;
+		// Where the sun reaches the air (the light shafts' shadow ceiling), for passes that cast shadows in it
+		scene.uShadow = this.shadow?.color ?? null;
+		scene.uShadowBox = this.shadowBox;
+		scene.uSlab = this.slabVector;
 	}
 
 	/** Full-screen triangle with depth writes (ALWAYS: the shader decides the depth itself). */

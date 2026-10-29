@@ -127,6 +127,15 @@ export const schema: Group[] = [
 		]
 	},
 	{
+		key: 'legendShadows',
+		label: 'Legend shadows',
+		params: [
+			{ key: 'strength', label: 'Strength', min: 0, max: 20, step: 0.1, hint: 'How dark the legend lines’ shadows are in the god rays. Thin sheets: they show when looked along, mostly toward the sun. 0: off.' },
+			{ key: 'thickness', label: 'Thickness (px)', min: 0.5, max: 20, step: 0.5, hint: 'Of the shadow sheet, in pixels of the line at its point’s depth. The line itself is 1 px: thicker reads stronger.' },
+			{ key: 'maxLength', label: 'Longest path', min: 5, max: 300, step: 5, hint: 'World units of a sheet a view ray counts at most: caps the streak when you look right along it.' }
+		]
+	},
+	{
 		key: 'wind',
 		label: 'Wind',
 		params: [
