@@ -110,6 +110,7 @@
 		"follow": 5,
 		"flightFollow": 1,
 		"lift": 1.5,
+		"occlusionLift": 6,
 		"fogCutoff": 0.9,
 		"mistFloor": 0.5,
 		"drawTime": 1.1,

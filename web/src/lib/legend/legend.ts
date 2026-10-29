@@ -32,6 +32,7 @@ export interface LegendSettings {
 	follow: number;
 	flightFollow: number;
 	lift: number;
+	occlusionLift: number;
 	fogCutoff: number;
 	mistFloor: number;
 	drawTime: number;
@@ -130,9 +131,9 @@ class Mark {
  * - Layout 1 (columns): labels stand in a column on each side, sorted by height and kept apart; only their
  *   height follows the anchor, smoothed, so the text stays calm while the camera moves.
  *
- * Labels hide when their point leaves the view or goes behind the terrain, and fade with the mist (the same
- * fog as the scene), down to `mistFloor`; the line draws itself from the anchor to the end of the shelf,
- * then the text fades in.
+ * Labels hide when their point leaves the view or goes well behind the terrain (tested from `occlusionLift`
+ * above it), and fade with the mist (the same fog as the scene), down to `mistFloor`; the line draws itself
+ * from the anchor to the end of the shelf, then the text fades in.
  */
 export class Legend {
 	/** Labels currently on screen (dev readout). */
@@ -158,6 +159,7 @@ export class Legend {
 	private rootFontSize = 16;
 	private revision = -1;
 	private layout = -1;
+	private occlusionLift = Number.NaN;
 
 	constructor(
 		private readonly root: HTMLElement,
@@ -245,6 +247,10 @@ export class Legend {
 			for (const mark of this.marks) mark.side = 0;
 		}
 
+		// The occlusion lift was edited (panel): test again, even with a still camera
+		const retest = s.occlusionLift !== this.occlusionLift;
+		this.occlusionLift = s.occlusionLift;
+
 		this.shown = 0;
 		for (const mark of this.marks) {
 			const p = mark.world;
@@ -270,7 +276,7 @@ export class Legend {
 			}
 			const onScreen =
 				inFront && mark.x > EDGE && mark.x < width - EDGE && mark.y > EDGE && mark.y < height - EDGE;
-			if (cameraMoved || moved) mark.occluded = onScreen && occluded(ground, p, eye);
+			if (cameraMoved || moved || retest) mark.occluded = onScreen && occluded(ground, p, s.occlusionLift, eye);
 			mark.distance = Math.hypot(p[0] - eye[0], p[1] - eye[1], p[2] - eye[2]);
 			// Fades with the mist, never under the floor: a label stays readable in a thick bank
 			const cutoff = Math.max(0.05, s.fogCutoff);
@@ -460,12 +466,16 @@ export class Legend {
 	}
 }
 
-/** True when the terrain rises across the segment from the anchor to the eye. */
-function occluded(ground: Ground, p: Vec3, eye: Vec3): boolean {
+/**
+ * True when the terrain rises across the segment to the eye from `lift` above the anchor: a point a little
+ * behind a crest keeps its label, one well behind it doesn't.
+ */
+function occluded(ground: Ground, p: Vec3, lift: number, eye: Vec3): boolean {
+	const py = p[1] + Math.max(0, lift);
 	for (let i = 1; i < OCCLUSION_SAMPLES; i++) {
 		const f = i / OCCLUSION_SAMPLES;
 		const x = p[0] + (eye[0] - p[0]) * f;
-		const y = p[1] + (eye[1] - p[1]) * f;
+		const y = py + (eye[1] - py) * f;
 		const z = p[2] + (eye[2] - p[2]) * f;
 		if (y < ground.heightAt(x, z)) return true;
 	}
