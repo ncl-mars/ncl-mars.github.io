@@ -2,10 +2,10 @@
 
 Living work plan. Tick boxes as we go, add notes inline, and log decisions at the bottom. Details live in the other docs; this file is the order of work.
 
-**Status (2026-10-28):** M0–M2b merged into `develop` (pending your merge of M2b). On `feature/m3a-core-viewer`: the core viewer prototype on `/lab/core`, browser check pending.
+**Status (2026-10-29):** M0–M2b and the core viewer experiment merged into `develop`. The core and the splats are dropped. On `feature/legend-lines`: the core removed, then the legend lines prototype on the home page.
 
 **Next:**
-- Claude: iterate on the core viewer from your feedback, then M2c (cords) / M2d (squares) / M3c (integration).
+- Claude: legend lines prototype (placeholder labels pinned on the terrain, style in the panel), then M2d (squares) / M3 (project view) once planned from your sketches.
 - You, whenever:
   - tune the camera in the panel → Save defaults → commit `defaults.json`;
   - perf gate: `npm run dev -- --host`, phone fps + model (answers Q4);
@@ -20,10 +20,9 @@ Living work plan. Tick boxes as we go, add notes inline, and log decisions at th
 | # | Question | Needed by | Answer |
 |---|----------|-----------|--------|
 | Q1 | Pages URL: `<user>.github.io` repo, custom domain, or project repo (needs `paths.base`)? | M4 | |
-| Q2 | Splat finds: home page pits only, or also on project pages? | M5 | Home pits for sure; project pages open |
-| Q3 | Splat file format: own packed `.bin` + `.json` (recommended) or PLY? | M5a | |
 | Q4 | Reference weak device (phone/GPU) for the performance gate, and max pixel ratio | M2a | |
-| Q5 | Max splat count per find, SH degree (0 = baked color)? | M5a | |
+
+Q2, Q3, Q5 were about splats, dropped on 2026-10-29.
 
 Stack choices S1–S4 are tracked in [stack.md](stack.md#open-decisions).
 
@@ -130,7 +129,7 @@ See [home-concept.md](home-concept.md) § Square state, § Hover.
 - [ ] `web/src/lib/content/projects.ts` with `cell` and thumbnail per project (one example project to start)
 - [ ] Square state texture (RGBA8, `texSubImage2D` on change)
 - [ ] CPU picking (same march as the GLSL)
-- [ ] Hover: flat slab (per-square plate height precomputed at load), thumbnail from a `TEXTURE_2D_ARRAY`, emissive, the square's 4 cords highlighted
+- [ ] Hover: flat slab (per-square plate height precomputed at load), thumbnail from a `TEXTURE_2D_ARRAY`, emissive, the square's 4 cords highlighted. Under review: a legend line from the square to the project's title instead.
 - [ ] Keyboard focus on a label = hover; mobile: first tap = hover, second = enter
 - [ ] `preloadData` + hero image preload on hover
 
@@ -138,38 +137,24 @@ See [home-concept.md](home-concept.md) § Square state, § Hover.
 
 ---
 
-## M3 — Core sample + project viewer
+## M3 — Legend lines + project view
 
-See [home-concept.md](home-concept.md) § Click: the core sample, § Core viewer. No page change: the project opens as a core sample cut out of its square.
+See [home-concept.md](home-concept.md) § Legend lines, § Click: the project view. The core sample (old M3a–M3c) is dropped; its experiment is in the history (`feature/m3a-core-viewer`). Kept from it: `Lightbox.svelte` (carousel), `gl/noise.ts` (noise textures), `gl/homography.ts` (HTML on 3D quads).
 
-### M3a — Viewer prototype (`/lab/core`, placeholder images, depth maps and text)
+### M3a — Legend lines prototype (`feature/legend-lines`)
 
-- [x] Placeholders: `npm run gen:lab-core` → five render-like images (lit spheres and discs, five aspect ratios) with their exact relief maps (`doc/formats/relief.md`); shared encoders in `scripts/lib/encode.mjs`
-- [x] ~~First pass: mesh strata + X-ray shell~~ → replaced after review: the core is solid rock, the X-ray idea belongs to the terrain
-- [x] Raymarched rock core (`drawables/core/core.frag` + `rock.glsl`): square prism SDF, walls roughened by low-frequency 3D noise (`valueNoise3` in `/noise`), dipping colour bands, grain; raking light, soft shadows, occlusion; misses discarded, depth written
-- [x] ~~Value noise~~ → noise textures (`gl/noise.ts`): 64³ tileable 3D gradient noise (4 channels, ~73 ms once per context) + 256² hash; fine wavy strata bands, smooth grain
-- [x] The cut: undulates with the rock's own noise; images buried one strata thickness apart, revealed by the cut (emerge highest-first, then sanded flat), plain rock between
-- [x] Scroll = dig: native scroll container (fixed, tall spacer, sticky stage) drives the cut depth (eased); pointer parallax
-- [x] Text in HTML beside the core (below on narrow screens), caption of the focused layer
-- [x] Hit area: button mapped onto the showing image's quad on the cut face with a per-frame `matrix3d` (`gl/homography.ts`); click → `Lightbox.svelte`, a carousel (arrow buttons, ← →, swipe, wrap, directional slide; Escape / × / click outside), with the core following the image shown
-- [x] Panel: Core group (strata thickness, image relief, presence, cut undulation, wall roughness, strata colours, light, shadows, occlusion, steps, framing, smoothing); readout "core focus · frames · reliefs"
+- [x] Core viewer removed (code, `/lab/core`, placeholder assets, relief format and exporter, Core tuning group)
+- [ ] SVG overlay + HTML labels projected in `renderer.onFrame()`: anchor in 3D, stable label position, one elbow, draw-on motion, fog fade
+- [ ] 3–4 placeholder labels pinned on terrain points of the home page
+- [ ] Style values in the panel (stroke, elbow, colours, timing)
 - [ ] Browser check and look tuning (yours)
 
-### M3b — Relief maps
+### M3b — Project view (to plan from your sketches)
 
-- [x] Format spec: [formats/relief.md](formats/relief.md) (half floats + `.json`, row 0 = image top, 1 = near)
-- [ ] Depth maps per project image, made in Houdini (render depth pass, or ML); ComfyUI as a fallback
-- [ ] `projects.ts`: `{ slug, cell, title, text, images: [{ colour, relief, caption }] }`
+- [ ] Design: survey mode (datavis) or not, light or dark, top-down or oblique, what scrolling does
+- [ ] `projects.ts`: `{ slug, cell, title, text, images }`; `routes/projects/[slug]` prerendered with `entries()`; the camera move continues across the navigation
 
-### M3c — Integration with the dig site
-
-- [ ] Cut: `height()` drops to the core depth inside the square (vertical walls), strata on the walls, driven by the square state's `b` channel
-- [ ] Extract: the core lifts out of its hole, turns toward the camera and grows into the foreground (model matrix tween)
-- [ ] Isolation: the dig site behind is desaturated and blurred, ramping in during the extraction (blur the still terrain cache once at half resolution, separable passes via `gl/targets.ts`; the mist composite stays live on top)
-- [ ] Shallow routing: `/projects/<slug>` without leaving home; back closes; a direct visit opens the core; `routes/projects/[slug]` prerendered (home + core open) with `entries()`
-- [ ] Close: ×, Escape, click outside, back → reverse animation
-
-**Done when:** clicking a project square cuts and extracts its core, scrolling digs through its relief layers, clicking a layer shows the colour image, and back closes it, all on the same canvas and GL context. `build` outputs a static site (one HTML per project) and `check` passes.
+**Done when:** clicking a project square opens its page with the text and legend lines over the scene, the images open in the lightbox, and back returns to the dig site. `build` outputs one HTML per project and `check` passes.
 
 ---
 
@@ -185,26 +170,9 @@ See [home-concept.md](home-concept.md) § Click: the core sample, § Core viewer
 
 ---
 
-## M5 — Splat finds
+## M5 — ~~Splat finds~~
 
-Finds in the core or at the bottom of its hole (see [home-concept.md](home-concept.md) § Splat finds). Rendering in WebGL2: a CPU sort in a worker, instanced quads, premultiplied blending. Panning never changes the view direction, so a find re-sorts only when the zoom (pitch) or the heading changes, or when the core moves. Fill rate is the main cost, so scenes stay small.
-
-### M5a — Spike (time-box ~2 sessions, hidden `/lab/splat` route)
-
-- [ ] Loader for the Q3 format (test file you export to `web/src/lib/assets/splats/`); spec in `doc/formats/splat.md`
-- [ ] Pack into an `RGBA32UI` texture, 2 texels per splat (position f32×3 + RGBA8; covariance 6×f16 precomputed at load)
-- [ ] Sort worker: view depth → 16-bit counting sort → `Uint32Array` transferable → instanced index buffer
-- [ ] Vertex shader: covariance projection → 2D eigen → quad, ~0.3 px dilation, culling; fragment: Gaussian falloff, premultiplied, alpha threshold
-- [ ] Blending back-to-front `ONE, ONE_MINUS_SRC_ALPHA`, depth test on, depth write off
-- [ ] Measure on desktop + Q4 device: fps, sort ms, memory, download size
-
-**Go/no-go:** ≥ 60 fps desktop, ≥ 30 fps on the Q4 device with a find on screen, no visible popping while the core moves, ≤ ~5 MB per find.
-
-### M5b — Integration
-
-- [ ] Finds placed in their core / hole, composited against the terrain depth, in the atmosphere
-- [ ] Re-sort only on zoom, heading or core movement; progressive loading
-- [ ] Optional: SH degree 1, SPZ decode (`DecompressionStream`)
+Dropped (2026-10-29): simpler, faster without.
 
 ---
 
@@ -217,10 +185,8 @@ Finds in the core or at the bottom of its hole (see [home-concept.md](home-conce
 
 ## M7 — Transitions polish
 
-Most of the transition work moved into M3 (the core extraction). What's left:
-
-- [ ] Any remaining navigation (other pages, if any) through `onNavigate`, coordinated with the DOM; render-to-texture via `gl/targets.ts` if needed
-- [ ] `prefers-reduced-motion`: instant core open/close, no glides
+- [ ] Navigation through `onNavigate`, the camera move coordinated with the DOM (legend lines drawing in and out); render-to-texture via `gl/targets.ts` if needed
+- [ ] `prefers-reduced-motion`: instant transitions, no glides
 
 ---
 
@@ -229,7 +195,7 @@ Most of the transition work moved into M3 (the core extraction). What's left:
 - [ ] Transform feedback ping-pong (`RASTERIZER_DISCARD`; WebGL2 still needs a trivial fragment shader)
 - [ ] State: position, velocity, age/life, seed; ring-buffer emission
 - [ ] Dig dust burst on enter; ambient dust carried by `wind.glsl`
-- [ ] Collision with `height()` (pits included), additive, depth-tested, fogged
+- [ ] Collision with `height()`, additive, depth-tested, fogged
 - [ ] Optional: verlet cords (cords twang on hover) feeding the same curve renderer
 
 ---
@@ -246,6 +212,7 @@ Most of the transition work moved into M3 (the core extraction). What's left:
 
 ## Decision log
 
+- **2026-10-29**: The core sample is dropped (content inside a hard-to-read object didn't work), and so are the splat finds: simpler, faster, nicer. The 3D stays the misty landscape; information is elegant HTML text over it, tied to places in the scene by legend lines (anchor in 3D, stable label, one elbow). Project view still being planned: a survey mode in a digital datavis style is the leading direction. The canvas outliving navigation makes real prerendered project pages possible without shallow routing. Kept from the core: the lightbox carousel, the noise textures, the homography helper.
 - **2026-10-28**: Core decided: extracted upward from the ground; the dig site behind is isolated by desaturation + blur (a focus pull), not a wireframe or a translucent terrain. `.venv/` (Python) added to `.gitignore`.
 - **2026-10-28**: Core viewer reworked after review: a solid raymarched rock core; the cut face (low-frequency displaced) descends as you scroll; images appear as micro relief from their depth maps at their depth, plain rock between. The X-ray/translucency idea moves to the terrain; extraction upward recommended as the primary gesture, a translucent hover "lens" as an option (decide in M3c).
 - **2026-10-28**: M3a viewer prototype on `/lab/core`. Depth maps come from Houdini (ComfyUI fallback). Design stance recorded: readability through discovery is intended. Relief format: half floats, row 0 = image top, near = 1.

@@ -5,7 +5,9 @@ metadata:
   type: feedback
 ---
 
-The portfolio's interaction design favours discovery: "Readability is not obvious, you have to search and find! ASSUMED!" (the dig site, the core sample, relief images you have to dig through before seeing them in colour).
+The portfolio's interaction design favours discovery: "Readability is not obvious, you have to search and find! ASSUMED!" (the dig site, labels and legend lines that appear on hover).
+
+Limit: discovery is in how you find the content, not in the content itself. The core sample (images as rock relief you had to dig through) was dropped on 2026-10-29: the content itself, once found, is elegant, readable HTML over the 3D.
 
 **Why:** It's the concept itself (archaeology: you search, dig, find), and the user explicitly accepts the readability cost.
 

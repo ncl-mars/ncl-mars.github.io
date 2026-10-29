@@ -4,30 +4,25 @@
 portfolio/
 ├─ web/                          SvelteKit app: the only thing CI builds and deploys
 │  ├─ src/
-│  │  ├─ routes/                 +layout.svelte (owns the canvas), +page.svelte, projects/[slug]/, lab/views, lab/core
+│  │  ├─ routes/                 +layout.svelte (owns the canvas), +page.svelte, projects/[slug]/, lab/views
 │  │  ├─ lib/
 │  │  │  ├─ gl/                  renderer core: renderer, programs, textures, noise, targets, camera, controls, homography, types
 │  │  │  │  └─ chunks/           shared GLSL (`#include /name;`): common, noise, terrain, wind, fog
 │  │  │  ├─ drawables/           one folder per drawable, its TS and shaders side by side
 │  │  │  │  ├─ terrain/          Terrain.ts, terrain.frag (march → cache), composite.frag (atmosphere), surface/march/shade.glsl
-│  │  │  │  ├─ core/             CoreViewer.ts, core.frag (raymarch + light), rock.glsl (SDF, cut, micro relief, colour)
-│  │  │  │  ├─ splat/            later, includes sort.worker.ts
 │  │  │  │  └─ particles/        later
 │  │  │  ├─ terrain/             CPU side of the terrain: heightfield (load, sample), far field (mirror of terrain.glsl), ground (heights + raycast), asset imports
 │  │  │  ├─ tuning/              defaults.json (every tunable value), schema.ts (dev panel layout)
-│  │  │  ├─ core/                relief maps (load, validate)
 │  │  │  ├─ components/          Svelte UI: DevPanel, Lightbox
-│  │  │  ├─ content/             project data (lab-core.ts now, projects.ts later)
+│  │  │  ├─ content/             project data (projects.ts, later)
 │  │  │  └─ assets/              pipeline exports + project images (imported → hashed URLs)
 │  │  │     ├─ terrain/          heightmap.bin/.json, maps.png/.json
-│  │  │     ├─ lab/core/         placeholder project: image-N.png + .relief.bin/.json
-│  │  │     ├─ splats/
 │  │  │     └─ projects/<slug>/
 │  │  ├─ app.html
 │  │  ├─ app.d.ts
 │  │  └─ ambient.d.ts            module types: shaders, texture imports
 │  ├─ static/                    only files that need a fixed URL: favicon, robots.txt, CNAME
-│  ├─ scripts/                   npm scripts: gen-terrain.mjs, gen-lab-core.mjs, lib/encode.mjs (PNG + half floats)
+│  ├─ scripts/                   npm scripts: gen-terrain.mjs, lib/encode.mjs (PNG + half floats)
 │  └─ package.json, svelte.config.js, vite.config.ts, tsconfig.json
 ├─ hou/                          Houdini ($JOB)
 │  ├─ *.hip*, hda/               tracked
@@ -37,7 +32,7 @@ portfolio/
 ├─ doc/
 │  ├─ roadmap.md
 │  ├─ project-structure.md
-│  └─ formats/                   heightmap.md, splat.md: binary layouts shared by exporters and loaders
+│  └─ formats/                   heightmap.md, terrain-maps.md: binary layouts shared by exporters and loaders
 ├─ .github/workflows/deploy.yml
 ├─ .claude/memory/               Claude's project notes (tracked)
 ├─ .vscode/                      terminals open in web/; Houdini caches excluded from watch/search
@@ -52,4 +47,4 @@ portfolio/
 - **`static/` is only for files that need a fixed URL.**
 - **`doc/formats/` is the contract.** Each binary format has one spec, and the exporter and the web loader both follow it.
 - **Other DCCs** get their own top-level folder (`blender/`, `substance/`…) and follow the same tracked/ignored split as `hou/`.
-- **Git:** `.gitattributes` marks every binary as `binary` (`*.bin *.hip* *.hda *.bgeo* *.exr *.ply *.spz` + images), so Windows line-ending conversion can never corrupt an export. Caches and heavy raw inputs stay out of git. Exported web assets stay small (≲ 20 MB each; GitHub rejects pushes with files over 100 MB).
+- **Git:** `.gitattributes` marks every binary as `binary` (`*.bin *.hip* *.hda *.bgeo* *.exr` + images), so Windows line-ending conversion can never corrupt an export. Caches and heavy raw inputs stay out of git. Exported web assets stay small (≲ 20 MB each; GitHub rejects pushes with files over 100 MB).

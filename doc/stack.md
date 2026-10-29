@@ -16,8 +16,7 @@ Related: [project-structure.md](project-structure.md), [home-concept.md](home-co
 | Rendering | **raw WebGL2 + twgl.js** | everything on screen that isn't DOM |
 | Shaders | `vite-plugin-glsl` | `.vert` / `.frag` / `.glsl` with `#include` |
 | Images | `@sveltejs/enhanced-img` (includes `vite-imagetools`) | AVIF/WebP at build time; texture URLs |
-| Binary data | Vite `?url` imports + JSON imports | heightmap, maps metadata, splats |
-| Workers | Vite module workers | splat sort (M5) |
+| Binary data | Vite `?url` imports + JSON imports | heightmap, maps metadata |
 | Styling | plain scoped CSS in Svelte components, custom properties | no CSS framework, no preprocessor |
 | Checks | `svelte-check` + TS strict (`npm run check`) | |
 | Deploy | GitHub Actions → GitHub Pages | |
@@ -58,9 +57,8 @@ Installed in M0 (2026-10-27). `web/package-lock.json` has the exact tree.
 ## SvelteKit
 
 **Used for:**
-- routes: `+layout.svelte` (owns the canvas), `/`, `/projects/[slug]` (prerendered: home with that project's core open, for deep links and search engines);
+- routes: `+layout.svelte` (owns the canvas), `/`, `/projects/[slug]` (prerendered project pages, for deep links and search engines). The canvas outlives page changes, so a camera move can run through a navigation;
 - `entries()` + `load` to prerender project pages from `projects.ts`;
-- **shallow routing** (`pushState` / `page.state` from `$app/navigation` / `$app/state`): opening a core sets `/projects/<slug>` without leaving the home page; back closes it;
 - `{@attach}` (or an action) to register views with the renderer.
 
 **Rules:**
@@ -80,15 +78,15 @@ Installed in M0 (2026-10-27). `web/package-lock.json` has the exact tree.
 |---------|----------|
 | `R16F` textures with LINEAR filtering | heightmap |
 | `TEXTURE_2D_ARRAY` | project thumbnails |
-| `texelFetch`, integer textures (`RGBA32UI`, `usampler2D`) | square state, splat packing |
-| Instancing, `gl_VertexID`, `gl_InstanceID`, VAOs | cords, stakes, splats |
+| `texelFetch` | square state |
+| Instancing, `gl_VertexID`, `gl_InstanceID`, VAOs | cords, stakes |
 | Texture fetch in the vertex shader | cords resting on the terrain |
 | `gl_FragDepth` + `DEPTH_COMPONENT24` textures in FBOs | terrain cache, depth compositing |
 | Transform feedback + `RASTERIZER_DISCARD` | particles |
 | Non-power-of-two textures with mipmaps | maps, thumbnails |
 
 **What WebGL2 lacks, and how we work around it:**
-- No compute shaders → transform feedback for particles, a CPU worker sort for splats.
+- No compute shaders → transform feedback for particles.
 - No geometry or tessellation shaders → curves are instanced strips evaluated in the vertex shader.
 - No guaranteed float render targets (`EXT_color_buffer_float`) → we never render into float textures. Render targets are `RGBA8` plus depth textures. Float data only lives in textures we sample (heightmap) or in buffers (particles).
 - No guaranteed `R32F` filtering → the heightmap is `R16F`.
@@ -129,12 +127,6 @@ Installed in M0 (2026-10-27). `web/package-lock.json` has the exact tree.
 - **Binary files:** `.bin` imported with `?url`, `.json` imported directly. Formats are specified in [formats/](formats/).
 - Pipeline exports live in `web/src/lib/assets/<feature>/`. `static/` only holds files that need a fixed URL (favicon, robots.txt, CNAME).
 
-## Workers
-
-- Vite module workers: `new Worker(new URL('./sort.worker.ts', import.meta.url), { type: 'module' })`.
-- Created in the browser only (from `onMount`), never during prerender.
-- Results go back as transferables (`Uint32Array` buffers).
-
 ## Dev tools (not dependencies)
 
 - **Spector.js** (browser extension): WebGL frame capture, for debugging the terrain cache, FBOs and depth compositing.
@@ -151,7 +143,7 @@ Installed in M0 (2026-10-27). `web/package-lock.json` has the exact tree.
 | Heightmap as PNG through `<img>` | reduced to 8 bits, so visible terracing |
 | `R32F` heightmap | linear filtering needs an extension some phones lack |
 | Runtime shadows / AO | baked in Houdini instead (static terrain, fixed sun) |
-| Gaussian splats for the terrain | full-screen overdraw, tens of MB, no surface for grid/pits/picking. Splats are used for finds only. |
+| Gaussian splats | for the terrain: full-screen overdraw, tens of MB, no surface for grid and picking. For finds: dropped too (2026-10-29), simpler without. |
 
 ## Open decisions
 

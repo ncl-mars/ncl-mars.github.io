@@ -111,42 +111,6 @@ export const schema: Group[] = [
 		]
 	},
 	{
-		key: 'core',
-		label: 'Core',
-		params: [
-			{ key: 'spacing', label: 'Strata thickness', min: 0.1, max: 1.5, step: 0.01, hint: 'Rock between two images, in core widths.' },
-			{ key: 'micro', label: 'Image relief', min: 0, max: 0.15, step: 0.001, hint: 'Height of the micro-displaced depth map on the cut face.' },
-			{ key: 'margin', label: 'Imprint margin', min: 0, max: 0.3, step: 0.005, hint: 'Rock border around each image.' },
-			{ key: 'emerge', label: 'Emerge range', min: 0.02, max: 0.9, step: 0.01, hint: 'Above an image (fraction of the strata thickness), where its relief emerges as the cut comes down.' },
-			{ key: 'sand', label: 'Sand range', min: 0.02, max: 0.9, step: 0.01, hint: 'Below an image, where its relief is sanded flat. Emerge + sand ≤ 1.' },
-			{ key: 'topNoise', label: 'Cut undulation', min: 0, max: 0.2, step: 0.001, hint: 'Low-frequency displacement of the cut face (the rock’s own noise).' },
-			{ key: 'topScale', label: 'Cut undulation freq.', min: 0.2, max: 6, step: 0.05, hint: 'Noise cells per core width.' },
-			{ key: 'sideNoise', label: 'Wall roughness', min: 0, max: 0.1, step: 0.001 },
-			{ key: 'sideScale', label: 'Wall roughness freq.', min: 0.2, max: 10, step: 0.05 },
-			{ key: 'band', label: 'Band thickness', min: 0.005, max: 0.3, step: 0.001, hint: 'Thickness of the fine colour strata.' },
-			{ key: 'warp', label: 'Band waviness', min: 0, max: 3, step: 0.01 },
-			{ key: 'dip', label: 'Strata dip (°)', min: 0, max: 40, step: 0.5, hint: 'Tilt of the colour bands.' },
-			{ key: 'strata', label: 'Strata contrast', min: 0, max: 1, step: 0.01 },
-			{ key: 'grain', label: 'Grain', min: 0, max: 2, step: 0.01 },
-			{ key: 'noiseScale', label: 'Colour noise freq.', min: 0.5, max: 30, step: 0.1, hint: 'Noise cells per core width for the colour.' },
-			{ key: 'mineral', label: 'Rock', kind: 'color' },
-			{ key: 'mineral2', label: 'Rock 2', kind: 'color', hint: 'Second tone of the strata bands.' },
-			{ key: 'lightElevation', label: 'Light elevation (°)', min: 2, max: 89, step: 1, hint: 'Low = raking light, the relief reads best.' },
-			{ key: 'lightAzimuth', label: 'Light azimuth (°)', min: 0, max: 360, step: 1 },
-			{ key: 'shadow', label: 'Shadows', min: 0, max: 1, step: 0.01 },
-			{ key: 'ao', label: 'Occlusion', min: 0, max: 1, step: 0.01 },
-			{ key: 'steps', label: 'March steps', kind: 'int', min: 16, max: 256, step: 1 },
-			{ key: 'stepScale', label: 'March step', min: 0.1, max: 1, step: 0.01, hint: 'Fraction of the distance per step. Lower is safer on steep relief, slower.' },
-			{ key: 'yaw', label: 'Core yaw (°)', min: -90, max: 90, step: 1 },
-			{ key: 'tilt', label: 'Core tilt (°)', min: -10, max: 80, step: 1, hint: 'Toward the camera, to see the cut face.' },
-			{ key: 'parallax', label: 'Parallax (°)', min: 0, max: 20, step: 0.5 },
-			{ key: 'distance', label: 'Camera distance', min: 1, max: 10, step: 0.05 },
-			{ key: 'fov', label: 'FOV (°)', min: 10, max: 80, step: 1 },
-			{ key: 'offsetX', label: 'Offset X', min: -2, max: 2, step: 0.01, hint: 'Moves the core aside for the text.' },
-			{ key: 'smoothing', label: 'Scroll smoothing', min: 1, max: 30, step: 0.5, hint: 'Lower glides longer.' }
-		]
-	},
-	{
 		key: 'renderer',
 		label: 'Renderer',
 		params: [{ key: 'maxPixelRatio', label: 'Max pixel ratio', min: 0.5, max: 3, step: 0.25 }]
