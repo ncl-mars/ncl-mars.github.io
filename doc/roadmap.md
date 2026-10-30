@@ -2,16 +2,20 @@
 
 Living work plan. Tick boxes as we go, add notes inline, and log decisions at the bottom. Details live in the other docs; this file is the order of work.
 
-**Status (2026-10-29):** M0–M3c, the dust (M8) and the first phone performance pass merged into `develop`. Then labels that don't overlap and stay readable in the mist (`feature/legend-collisions`). Then light shafts in the mist (M10, `feature/god-rays`). Then the rough march in motion only on slow devices (Q6), the phone menu, home as the overview. Then POIs placed from Houdini, one folder per project (M11). On `feature/legend-shadows`: the legend lines cast shadows in the god rays (M12).
+**Status (2026-10-29):** M0–M3c, the dust (M8) and the first phone performance pass merged into `develop`. Then labels that don't overlap and stay readable in the mist (`feature/legend-collisions`). Then light shafts in the mist (M10, `feature/god-rays`). Then the rough march in motion only on slow devices (Q6), the phone menu, home as the overview. Then POIs placed from Houdini, one folder per project (M11). Then the legend lines and text cast shadows in the god rays and on the ground (M12, `feature/legend-shadows`, to merge).
 
-**Next:**
-- Deploy (M4) waits: the site stays local for now, until you decide otherwise.
-- You, whenever:
-  - tune the camera in the panel → Save defaults → commit `defaults.json`;
-  - perf gate: `npm run dev -- --host`, phone fps + model (answers Q4);
-  - orientation check with a first Houdini export (`hou/snippets/export_heightmap.py`), then the POIs (`export_pois.py`).
+**Next: your real terrain and first content (M6), on `feature/real-terrain`:**
+1. Commit the tuned `defaults.json`, merge `feature/legend-shadows` into `develop`, branch `feature/real-terrain` (the commands are in the chat of 2026-10-29).
+2. Export the heightmap (`hou/snippets/export_heightmap.py`) and check its orientation (a ramp along +X, a bump near the +X/+Z corner renders the same in Houdini and in the browser).
+3. Bake the maps from the same heightfield, with the sun 5° higher than the placeholder's, same azimuth: `v@sun_dir = {-0.8215, 0.4426, 0.3594}` (26° up), and export them with `export_maps.py` (`maps.png` + `maps.json`: the web's sun comes from it; [formats/terrain-maps.md](formats/terrain-maps.md)).
+4. Place the POIs in Houdini (`s@name` per point) and export them (`export_pois.py`): the placeholder ones will likely fall outside the new bounds, and the page says so.
+5. One folder per project in `web/src/lib/assets/projects/<name>/`: `project.md` (title at least) and the media ([formats/projects.md](formats/projects.md)).
+6. In the dev panel: frame the overview (Free camera, "Use view as start", Save defaults), then each POI ("Copy pose" → `view:` in its `project.md`).
+7. Then the look on the real terrain (fog, mist, god rays, legend shadows), and a phone check.
 
-**Docs:** [stack.md](stack.md) (web stack and rules) · [home-concept.md](home-concept.md) (home page) · [project-structure.md](project-structure.md) · [formats/](formats/) (heightmap, terrain maps)
+Deploy (M4) waits: the site stays local for now, until you decide otherwise.
+
+**Docs:** [stack.md](stack.md) (web stack and rules) · [home-concept.md](home-concept.md) (home page) · [project-structure.md](project-structure.md) · [formats/](formats/) (heightmap, terrain maps, POIs, project folders, portfolio.yaml)
 
 ---
 

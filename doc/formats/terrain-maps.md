@@ -1,6 +1,10 @@
 # Terrain maps format (v1)
 
-Grayscale lighting data baked in Houdini for the terrain. It is the companion to [heightmap.md](heightmap.md) and covers the same footprint. Contract between the Houdini exporter and the web loader. Change it here first, then on both sides.
+Grayscale lighting data baked in Houdini for the terrain. It is the companion to [heightmap.md](heightmap.md) and covers the same footprint. Contract between the Houdini exporter (`hou/snippets/export_maps.py`) and the web loader. Change it here first, then on both sides.
+
+## Houdini
+
+The Python SOP `export_maps.py` reads three heightfield layers (`light`, `occlusion`, `cavity` by default, `LAYERS` at its top), values 0–1, and a detail vector attribute `v@sun_dir` pointing **toward** the sun: the same vector the bake used, so the web's sun (fog glow, god rays, legend shadows) matches the baked shadows. It writes `maps.png` (no colour chunks, a hint of dither) and `maps.json`, refuses layers of different resolutions, over 2048 per side, a `sun_dir` below the horizon, and a footprint that differs from the exported `heightmap.json`. Pass-through, writes on every cook: bypass it when not exporting.
 
 ## Files
 

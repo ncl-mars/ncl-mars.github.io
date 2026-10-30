@@ -10,8 +10,8 @@
 	"start": {
 		"x": 0,
 		"z": 0,
-		"distance": 300,
-		"heading": 246
+		"distance": 350,
+		"heading": 265
 	},
 	"controls": {
 		"wheelSpeed": 0.002,
@@ -84,19 +84,19 @@
 		"speed": 8
 	},
 	"dust": {
-		"count": 24000,
-		"size": 0.22,
+		"count": 21500,
+		"size": 0.91,
 		"opacity": 0.55,
 		"color": [0.86, 0.83, 0.78],
 		"backlight": 1.5,
-		"range": 240,
-		"height": 24,
+		"range": 990,
+		"height": 38.5,
 		"follow": 1,
-		"turbulence": 4,
+		"turbulence": 17.3,
 		"turbulenceScale": 30,
 		"turbulenceSpeed": 0.15,
 		"hops": 0.3,
-		"hopHeight": 1.5,
+		"hopHeight": 2.1,
 		"maxSize": 24,
 		"nearFade": 4
 	},
