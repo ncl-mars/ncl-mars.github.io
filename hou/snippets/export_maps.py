@@ -59,6 +59,19 @@ def grid(volume):
     return g
 
 
+def footprint(volume):
+    """The layer's outer edges in x and z: boundingBox() runs through the voxel centres, half a voxel in."""
+    origin = np.array(volume.indexToPos((0, 0, 0)))
+    voxel = np.abs(np.array(volume.indexToPos((1, 1, 0))) - origin)  # one voxel along both axes
+    bbox = volume.boundingBox()
+    return (
+        bbox.minvec()[0] - voxel[0] / 2,
+        bbox.minvec()[2] - voxel[2] / 2,
+        bbox.maxvec()[0] + voxel[0] / 2,
+        bbox.maxvec()[2] + voxel[2] / 2,
+    )
+
+
 def write_png(path, pixels):
     """8-bit RGB PNG without colour chunks (gamma, ICC, sRGB): the browser must read the values as they are."""
     height, width, _ = pixels.shape
@@ -92,13 +105,12 @@ if any(c.shape != shape for c in channels):
 if max(shape) > MAX_SIZE:
     raise hou.NodeError(f"{shape[1]} x {shape[0]}: stay at {MAX_SIZE} per side or less (WebGL2's guaranteed texture size)")
 
-bbox = volumes[0].boundingBox()
 meta_path = os.path.join(OUT_DIR, "heightmap.json")
 if os.path.exists(meta_path):
     with open(meta_path) as f:
         bounds = json.load(f)["bounds"]
     expected = (bounds["min"][0], bounds["min"][2], bounds["max"][0], bounds["max"][2])
-    actual = (bbox.minvec()[0], bbox.minvec()[2], bbox.maxvec()[0], bbox.maxvec()[2])
+    actual = footprint(volumes[0])
     size = max(expected[2] - expected[0], expected[3] - expected[1])
     if max(abs(a - e) for a, e in zip(actual, expected)) > 1e-3 * size:
         raise hou.NodeError(

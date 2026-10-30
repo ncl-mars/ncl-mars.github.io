@@ -17,5 +17,7 @@
 		"**/hou/render": true,
 		"**/web/.svelte-kit": true,
 		"**/web/build": true
-	}
+	},
+
+	"OpenCL.server.enable": false
 }

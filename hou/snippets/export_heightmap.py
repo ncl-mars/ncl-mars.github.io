@@ -46,15 +46,17 @@ heights = grid + origin[1]  # heightfield values are offsets from the volume's p
 lo, hi = float(heights.min()), float(heights.max())
 normalized = (heights - lo) / max(hi - lo, 1e-6)
 
-bbox = volume.boundingBox()  # outer edges of the voxels, as the format expects
+# The format wants the outer edges of the voxels; boundingBox() runs through their centres, half a voxel in
+bbox = volume.boundingBox()
+half_x, half_z = abs(x_step) / 2, abs(z_step) / 2
 meta = {
     "version": 1,
     "width": int(grid.shape[1]),
     "height": int(grid.shape[0]),
     "format": "r16f",
     "bounds": {
-        "min": [bbox.minvec()[0], lo, bbox.minvec()[2]],
-        "max": [bbox.maxvec()[0], hi, bbox.maxvec()[2]],
+        "min": [bbox.minvec()[0] - half_x, lo, bbox.minvec()[2] - half_z],
+        "max": [bbox.maxvec()[0] + half_x, hi, bbox.maxvec()[2] + half_z],
     },
 }
 
