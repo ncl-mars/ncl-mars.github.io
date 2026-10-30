@@ -76,7 +76,19 @@ void main() {
 		float t = length(p - uCamPos);
 		vec4 cached = texture(uColor, vUv); // alpha: the light shafts (terrain.frag)
 		vec3 ground = cached.rgb;
-		if (abs(p.y - uSeaLevel) < 0.02 + t * 2e-4 && uSea.x + uSea.y > 0.0) ground = sea(ground, p, rd, t);
+		if (uSea.x + uSea.y > 0.0 && rd.y < 0.0 && uCamPos.y > uSeaLevel) {
+			// Water? Asked with the cache texel's own ray: the cache can be coarser than the view (the rough march
+			// in motion), and its depth with this pixel's ray would land off the plane, in flickering patches
+			vec2 cells = vec2(textureSize(uDepth, 0));
+			vec2 centre = (floor(vUv * cells) + 0.5) / cells;
+			vec4 c = uInvViewProj * vec4(centre * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
+			float y = c.y / c.w;
+			if (abs(y - uSeaLevel) < 0.02 + t * 2e-4) {
+				// Then this pixel's own point on the sea, so the waves stay sharp whatever the cache's resolution
+				t = (uSeaLevel - uCamPos.y) / rd.y;
+				ground = sea(ground, uCamPos + rd * t, rd, t);
+			}
+		}
 		col = atmosphere(ground, uCamPos, rd, t, cached.a);
 	} else {
 		col = skyColor(rd);

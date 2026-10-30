@@ -30,6 +30,7 @@ uniform sampler2D uMasks;       // the labels' text masks, one row each (R8, mip
 uniform vec2 uRowScale[32];
 uniform vec3 uAtlas;            // x: rows, y: width in texels, z: a row's height in texels
 uniform vec4 uText;             // x: ground strength, y: softness (blur per world unit), z: air strength, w: air samples
+uniform float uSeaLevel;
 uniform float uFade;            // the terrain's fade in
 
 in vec3 vWorld;
@@ -62,6 +63,23 @@ float sunVisibility(vec3 p) {
 	return smoothstep(ceiling - 1.5, ceiling + 1.5, p.y);
 }
 
+// Mirror of sheet.frag's groundUnder: the ground under this pixel, asked with the cache texel's own ray
+// (steady on a coarser cache), or this pixel's own point on the sea. False over the sky.
+bool groundUnder(vec2 uv, vec3 rd, out vec3 g, out float dist) {
+	float depth = texture(uDepth, uv).r;
+	if (depth >= 1.0) return false;
+	vec2 cells = vec2(textureSize(uDepth, 0));
+	vec2 centre = (floor(uv * cells) + 0.5) / cells;
+	vec4 c = uInvViewProj * vec4(centre * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
+	g = c.xyz / c.w;
+	dist = length(g - uCamPos);
+	if (rd.y < 0.0 && uCamPos.y > uSeaLevel && abs(g.y - uSeaLevel) < 0.02 + dist * 2e-4) {
+		dist = (uSeaLevel - uCamPos.y) / rd.y;
+		g = uCamPos + rd * dist;
+	}
+	return true;
+}
+
 // The mask at box point b, blurred by its distance to the text, and at least to `lod`
 float mask(vec3 b, vec2 extent, float row, float lod) {
 	vec2 st = vec2(b.x * extent.x, (row + b.y * extent.y) / uAtlas.x);
@@ -85,18 +103,18 @@ void main() {
 	vec2 extent = uRowScale[index];
 	float row = float(index);
 
-	// Ground: where the ray stops inside the box
+	// Ground: where the ray stops, if that's inside the box
 	vec2 uv = (gl_FragCoord.xy - uViewport.xy) / uViewport.zw;
-	float depth = texture(uDepth, uv).r;
+	vec3 g;
+	float tGround;
 	float ground = 0.0;
-	if (depth < 1.0) {
-		vec4 p = uInvViewProj * vec4(uv * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
-		float tGround = length(p.xyz / p.w - uCamPos);
-		if (tGround < t1 && uText.x > 0.0) {
-			vec3 g = uCamPos + rd * tGround;
+	if (groundUnder(uv, rd, g, tGround)) {
+		vec3 bg = vToBox * (g - vOrigin);
+		bool inside = all(greaterThanEqual(bg, vec3(0.0))) && all(lessThanEqual(bg, vec3(1.0)));
+		if (inside && uText.x > 0.0) {
 			float fog = max(1.0 - exp(-tGround * uFogDensity), smoothstep(uFogEnd * 0.55, uFogEnd, tGround));
 			float seen = (1.0 - fog) * exp(-mistDepth(uCamPos, rd, tGround));
-			ground = uText.x * mask(o + d * tGround, extent, row, 0.0) * sunVisibility(g + vec3(0.0, 1.5, 0.0)) * seen;
+			ground = uText.x * mask(bg, extent, row, 0.0) * sunVisibility(g + vec3(0.0, 1.5, 0.0)) * seen;
 		}
 		t1 = min(t1, tGround);
 	}
