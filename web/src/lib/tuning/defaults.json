@@ -29,8 +29,8 @@
 		"ease": 2.5
 	},
 	"march": {
-		"stepScale": 0.45,
-		"precision": 0.0015,
+		"stepScale": 0.51,
+		"precision": 0.0049,
 		"steps": 128,
 		"refineSteps": 6,
 		"renderScale": 1,

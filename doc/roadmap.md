@@ -7,7 +7,7 @@ Living work plan. Tick boxes as we go, add notes inline, and log decisions at th
 **Next: your real terrain and first content (M6), on `feature/real-terrain`:**
 1. Commit the tuned `defaults.json`, merge `feature/legend-shadows` into `develop`, branch `feature/real-terrain` (the commands are in the chat of 2026-10-29).
 2. Export the heightmap (`hou/snippets/export_heightmap.py`) and check its orientation (a ramp along +X, a bump near the +X/+Z corner renders the same in Houdini and in the browser).
-3. Bake the maps from the same heightfield, with the sun 5° higher than the placeholder's, same azimuth: `v@sun_dir = {-0.8215, 0.4426, 0.3594}` (26° up), and export them with `export_maps.py` (`maps.png` + `maps.json`: the web's sun comes from it; [formats/terrain-maps.md](formats/terrain-maps.md)).
+3. Bake the maps in Copernicus on the same height, flattened at the sea (`max(height, 0)`): `light` with `hou/snippets/bake_light.cl` (the sun 5° higher than the placeholder's, same azimuth: `sun_dir = {-0.8215, 0.4426, 0.3594}`, 26° up), `occlusion` with Height to Ambient Occlusion, `cavity` with Curvature remapped around 0.5. Import them into SOPs as layers, with `v@sun_dir` referencing the kernel's (`chv`), and export them with `export_maps.py` (`maps.png` + `maps.json`: the web's sun comes from it; [formats/terrain-maps.md](formats/terrain-maps.md)). Check that the baked shadows fall the same way as the legend shadows.
 4. Place the POIs in Houdini (`s@name` per point) and export them (`export_pois.py`): the placeholder ones will likely fall outside the new bounds, and the page says so.
 5. One folder per project in `web/src/lib/assets/projects/<name>/`: `project.md` (title at least) and the media ([formats/projects.md](formats/projects.md)).
 6. In the dev panel: frame the overview (Free camera, "Use view as start", Save defaults), then each POI ("Copy pose" → `view:` in its `project.md`).
@@ -279,7 +279,7 @@ Dropped (2026-10-29): simpler, faster without.
 
 ## M9 — Polish & robustness
 
-- [ ] No-WebGL2 fallback: DOM grid of project links over a static image
+- ~~No-WebGL2 fallback~~: dropped, WebGL2 only (decision log)
 - [ ] Full context-loss recovery (rebuild programs, textures, buffers)
 - [ ] Phone perf pass (`feature/perf-mobile`, phone at 30 fps before):
   - [x] Mist banks from the 3D noise texture instead of hashed value noise (every pixel and every dust speck, every frame)
@@ -297,6 +297,8 @@ Dropped (2026-10-29): simpler, faster without.
 
 ## Decision log
 
+- **2026-10-30**: The maps are baked in Copernicus, where the terrain is made; SOPs only import the layers and export them. `light` by an OpenCL COP (`hou/snippets/bake_light.cl`: the placeholder's bake, diffuse × a soft cast shadow), `occlusion` and `cavity` by Copernicus nodes (Height to Ambient Occlusion, Curvature). Height to Shadow (disk and directional) was tried for the shadows; you preferred the kernel's look, and it sets the sun once, in world units (the export's `sun_dir` references it).
+- **2026-10-30**: No fallback for browsers without WebGL2 (not even a plain list of the projects): the site is WebGL2 only, period.
 - **2026-10-30**: The heights' GPU copy is RG8 instead of RG16F: the file's two bytes per sample as they are, put back together in the shader. Once the shader filtered exactly near the ground, the split into two half floats no longer earned its cost: half the GPU memory (as much as the file), no conversion at load, the same precision (exact when fetched; filtered, as precise as RG16F was). Half floats weren't the problem: half-float textures are core WebGL2, filterable on every device, Safari on Metal included; what isn't everywhere is float32 filtering and rendering into float targets, unused here. Ruled out: R16F (11 bits can't hold 16, and filtering exactly can't restore what the data lost) and R16UI (exact, but the GPU can't filter integers, and the march's cheap big steps need it).
 - **2026-10-30**: Heightmaps in 16-bit integers (`r16`), before the real exports: half floats stepped by up to 1/2048 of the height range. On the GPU, two half floats in one RG16F texture rather than an extension (`EXT_texture_norm16`, `OES_texture_float_linear`, not on every phone). The stairs on the steep test ramp remained until the heights near the ground were filtered in the shader (four `texelFetch`es, fp32): hardware bilinear filtering isn't exact (8-bit sub-texel weights, iq's "hardware interpolation"). Found with a debug view of the march's ground rather than by guessing: two fixes made blind (the march's stop, the shadow ceiling's precision) were right but weren't the cause. Hybrid: the exact reads only near the ground, the big steps keep the one-read hardware filtering.
 - **2026-10-30**: Terrain colour by zones, not a colour map: meaning (water, rock…), crisp at any zoom, palette live in the panel. The sea needs no data: altitude 0 is sea level, the ground is `max(height, 0)` and the seabed gives the depth. Waves are shading only, so the terrain stays cached. `zones.png` is RGB (alpha can be premultiplied or rewritten under transparent pixels), three soft masks. The surroundings come from an optional low-resolution far map from Houdini (coast, mountains), not from tuning the noise.

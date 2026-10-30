@@ -6,6 +6,8 @@ Grayscale lighting data baked in Houdini for the terrain. It is the companion to
 
 The Python SOP `export_maps.py` reads three heightfield layers (`light`, `occlusion`, `cavity` by default, `LAYERS` at its top), values 0–1, and a detail vector attribute `v@sun_dir` pointing **toward** the sun: the same vector the bake used, so the web's sun (fog glow, god rays, legend shadows) matches the baked shadows. It writes `maps.png` (no colour chunks, a hint of dither) and `maps.json`, refuses layers of different resolutions, over 2048 per side, a `sun_dir` below the horizon, and a footprint that differs from the exported `heightmap.json`. Pass-through, writes on every cook: bypass it when not exporting.
 
+The layers are baked in Copernicus on the height flattened at the sea (`max(height, 0)`), then imported into SOPs: `light` by the OpenCL COP `hou/snippets/bake_light.cl` (the sun's diffuse × its soft cast shadow, from its `sun_dir` parameter, which `v@sun_dir` references with `chv`), `occlusion` by Height to Ambient Occlusion (1 = open sky), `cavity` by Curvature remapped around 0.5 (crests above). Those two nodes must read the heights at the ground's scale (metres over the image's width), or slopes come out far too steep.
+
 ## Files
 
 In `web/src/lib/assets/terrain/`:
