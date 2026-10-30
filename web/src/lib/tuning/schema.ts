@@ -127,6 +127,22 @@ export const schema: Group[] = [
 		]
 	},
 	{
+		key: 'zones',
+		label: 'Ground colours',
+		params: [
+			{ key: 'zone1', label: 'Zone 1 (R)', kind: 'color', hint: 'The zones.png red mask (export_zones.py, zone1). Where no zone and no rock: Shading → Tint.' },
+			{ key: 'zone2', label: 'Zone 2 (G)', kind: 'color', hint: 'The green mask, over zone 1.' },
+			{ key: 'zone3', label: 'Zone 3 (B)', kind: 'color', hint: 'The blue mask, over the others.' },
+			{ key: 'edge', label: 'Zone edge softness', min: 0, max: 0.5, step: 0.005, hint: 'How soft a zone’s edge is (in mask units around its 0.5 level). 0: as crisp as a pixel at any zoom.' },
+			{ key: 'rock', label: 'Rock', kind: 'color', hint: 'On steep slopes, over the zones.' },
+			{ key: 'rockAmount', label: 'Rock amount', min: 0, max: 1, step: 0.01, hint: '0: no rock.' },
+			{ key: 'rockSlope', label: 'Rock slope (°)', min: 5, max: 85, step: 1, hint: 'Slope where rock takes over.' },
+			{ key: 'rockSoftness', label: 'Rock softness (°)', min: 0.5, max: 30, step: 0.5, hint: 'Over how many degrees of slope it blends in.' },
+			{ key: 'detail', label: 'Variation', min: 0, max: 0.5, step: 0.01, hint: 'A light colour variation, so large zones aren’t flat. 0: none.' },
+			{ key: 'detailSize', label: 'Variation size (m)', min: 1, max: 100, step: 0.5, hint: 'Size of its patches.' }
+		]
+	},
+	{
 		key: 'water',
 		label: 'Water',
 		params: [

@@ -63,6 +63,18 @@ export interface TerrainSettings {
 	};
 	mist: { density: number; height: number; falloff: number; banks: number; bankScale: number };
 	shafts: { samples: number; softness: number; darkness: number; glow: number; power: number; view: number };
+	zones: {
+		zone1: number[];
+		zone2: number[];
+		zone3: number[];
+		edge: number;
+		rock: number[];
+		rockAmount: number;
+		rockSlope: number;
+		rockSoftness: number;
+		detail: number;
+		detailSize: number;
+	};
 	water: {
 		level: number;
 		shallow: number[];
@@ -119,6 +131,8 @@ export class Terrain implements Drawable {
 	/** The far map's heights, or null without one (the heightmap's then stands in, unused). */
 	private farTexture: WebGLTexture | null = null;
 	private mapsTexture: WebGLTexture | null = null;
+	/** The zones' masks, or a 1×1 black stand-in without a zones file. */
+	private zonesTexture: WebGLTexture | null = null;
 	/** For the mist banks (/fog). */
 	private noiseTexture: WebGLTexture | null = null;
 	/** The terrain cache at `renderScale`, and at `renderScale × motionScale` for a moving camera. */
@@ -156,6 +170,9 @@ export class Terrain implements Drawable {
 	private readonly shaftMarchVector = new Float32Array(4);
 	private readonly shaftsVector = new Float32Array(3);
 	private readonly waterVector = new Float32Array(3);
+	private readonly rockVector = new Float32Array(4);
+	private readonly rockSlopeVector = new Float32Array(2);
+	private readonly detailVector = new Float32Array(2);
 	private readonly wavesVector = new Float32Array(4);
 	private readonly seaVector = new Float32Array(3);
 	private readonly marchUniforms: Record<string, unknown>;
@@ -196,7 +213,10 @@ export class Terrain implements Drawable {
 			uShadowBox: this.shadowBox,
 			uShaftMarch: this.shaftMarchVector,
 			uMist: this.mistVector,
-			uWater: this.waterVector
+			uWater: this.waterVector,
+			uRock: this.rockVector,
+			uRockSlope: this.rockSlopeVector,
+			uDetail: this.detailVector
 		};
 		this.compositeUniforms = {
 			uSunDir: assets.maps.sunDir,
@@ -243,7 +263,7 @@ export class Terrain implements Drawable {
 		}
 
 		const generation = ++this.generation;
-		const { heightmapUrl, heightmap, farMapUrl, farMap, mapsUrl } = this.assets;
+		const { heightmapUrl, heightmap, farMapUrl, farMap, mapsUrl, zonesUrl } = this.assets;
 		const heights = (url: string, meta: typeof heightmap) =>
 			renderer.resource(`height:${url}`, (gl) =>
 				loadHeightfield(url, meta).then((field) => ({
@@ -254,13 +274,17 @@ export class Terrain implements Drawable {
 		const height = heights(heightmapUrl, heightmap);
 		const far = farMapUrl && farMap ? heights(farMapUrl, farMap) : Promise.resolve(null);
 		const maps = renderer.resource(`maps:${mapsUrl}`, (gl) => loadDataTexture(gl, mapsUrl));
-		Promise.all([height, far, maps])
-			.then(([h, f, mapsTexture]) => {
+		const zones = zonesUrl
+			? renderer.resource(`maps:${zonesUrl}`, (gl) => loadDataTexture(gl, zonesUrl))
+			: Promise.resolve(renderer.resource('zones:none', (gl) => blackTexture(gl)));
+		Promise.all([height, far, maps, zones])
+			.then(([h, f, mapsTexture, zonesTexture]) => {
 				if (generation !== this.generation) return; // disposed or re-initialised meanwhile
 				this.ground = new Ground(h.field, f?.field ?? null, this.settings.farField, this.settings.water, this.settings.fog);
 				this.heightTexture = h.texture;
 				this.farTexture = f?.texture ?? null;
 				this.mapsTexture = mapsTexture;
+				this.zonesTexture = zonesTexture;
 				this.shadowKey = '';
 				this.dirty = true;
 			})
@@ -358,6 +382,7 @@ export class Terrain implements Drawable {
 		this.shadow = null;
 		this.heightTexture = null; // textures stay in the renderer's per-context cache
 		this.farTexture = null;
+		this.zonesTexture = null;
 		this.mapsTexture = null;
 		this.noiseTexture = null;
 		this.fade = 0;
@@ -383,7 +408,7 @@ export class Terrain implements Drawable {
 	/** Raymarch the ground into the cache, then restore the renderer's target, viewport and scissor. */
 	private march(gl: WebGL2RenderingContext, ctx: DrawContext, ground: Ground, cache: ColorDepthTarget) {
 		const camera = this.camera;
-		const { march, shading, fog, farField, shafts, water } = this.settings;
+		const { march, shading, fog, farField, shafts, water, zones } = this.settings;
 		const s = this.shadingVector;
 		s[0] = shading.shadowLight;
 		s[1] = shading.aoStrength;
@@ -423,6 +448,15 @@ export class Terrain implements Drawable {
 		this.waterVector[0] = water.depth;
 		this.waterVector[1] = water.foam;
 		this.waterVector[2] = water.foamWidth;
+		u.uZones = this.zonesTexture;
+		u.uZone1 = zones.zone1;
+		u.uZone2 = zones.zone2;
+		u.uZone3 = zones.zone3;
+		u.uZoneEdge = zones.edge;
+		this.rockVector.set([zones.rock[0], zones.rock[1], zones.rock[2], zones.rockAmount]);
+		this.rockSlopeVector.set([zones.rockSlope, Math.max(0.1, zones.rockSoftness)]);
+		this.detailVector.set([zones.detail, zones.detailSize]);
+		u.uNoise = this.noiseTexture;
 
 		gl.disable(gl.SCISSOR_TEST);
 		this.renderShadow(gl, this.shadow!); // also shades the terrain past the baked maps: needed with the shafts off
@@ -536,6 +570,17 @@ export class Terrain implements Drawable {
 		gl.disable(gl.DEPTH_TEST);
 		gl.bindVertexArray(null);
 	}
+}
+
+/** A 1×1 black texture: the zones without a zones file (no zone anywhere). */
+function blackTexture(gl: WebGL2RenderingContext): WebGLTexture {
+	const texture = gl.createTexture()!;
+	gl.bindTexture(gl.TEXTURE_2D, texture);
+	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 255]));
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+	gl.bindTexture(gl.TEXTURE_2D, null);
+	return texture;
 }
 
 // Shader hot reload (also when an included chunk changes: march, shade, shafts, terrain, fog, wind…)

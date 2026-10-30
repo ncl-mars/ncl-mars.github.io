@@ -61,6 +61,15 @@ Y-up, right-handed, with the same axes in Houdini and WebGL. The exporter does a
 - Upload: `texImage2D(TEXTURE_2D, 0, R16F, width, height, 0, RED, HALF_FLOAT, Uint16Array)` with `UNPACK_ALIGNMENT = 2`, `LINEAR` min/mag, `CLAMP_TO_EDGE`.
 - Keep a CPU copy decoded to `Float32Array` (world heights) for picking and camera collision.
 
+## Precision (and the fix, if it ever shows)
+
+Half floats aren't evenly spaced: normalized to 0–1, the gap between two values is 1/2048 in the upper half of the range (finer below). Over 300 m of relief that's about 15 cm; over 1000 m, about 49 cm. On a steep, smooth slope the rounding repeats as a sawtooth, and the low sun turns a height error into a horizontal shift of the shadows (about ×2 at 26°): thin shadows (the legend's) zigzag. Seen on a 1000 m test ramp at 45°, not on a gentler terrain. Not implemented; the fix, if a real terrain shows it:
+
+- **File:** 16-bit unsigned integers, `"format": "r16"`, same layout and size (2 bytes per sample), evenly spaced: 65,536 levels (1.5 cm over 1000 m). The exporter writes `np.rint(normalized * 65535).astype('<u2')`. Loaders keep accepting `"r16f"` (the placeholder).
+- **GPU:** no extension. 16-bit normalized textures need `EXT_texture_norm16` (not everywhere), float32 filtering needs `OES_texture_float_linear` (missing on many phones), and `R16UI` can't be filtered (a manual bilinear: four reads per height sample in the march, too slow on the phone). Instead, at load, split each height into two half floats in one **RG16F** texture (filterable in core WebGL2): R = half(v), G = (v − R) × 2048. Shaders read `r + g / 2048.0` (`mapHeight`, `farMapHeight` in `terrain.glsl`): bilinear filtering stays exact, since it's linear, and the march reads no more texels.
+- **CPU:** `Heightfield` decodes the integers directly.
+- **Cost:** GPU memory doubles (4 bytes per sample: 4 MB at 1024², 16 MB at 2048²), plus a one-off conversion at load (a few hundred ms at most on the phone for 2048²).
+
 ## Size guidance
 
 - WebGL2 guarantees `MAX_TEXTURE_SIZE ≥ 2048`. Stay at **≤ 2048** per side; non-power-of-two is fine.

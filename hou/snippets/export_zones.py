@@ -6,8 +6,8 @@
 # Expects the heightfield layers named in ZONES, one per channel (R, G, B), values 0..1: 1 inside the zone,
 # 0 outside, blurred over a few texels (the shader thresholds them at 0.5, so the edge stays crisp at any zoom,
 # and the blur gives it bands near the edge). Lying in XZ like the height (no rotation; axis flips and swaps
-# are handled), covering the same footprint as the exported heightmap. The sea, rock on slopes and snow
-# above an altitude need no mask: the shader derives them from the height.
+# are handled), covering the same footprint as the exported heightmap. The sea and rock on steep slopes
+# need no mask: the shader derives them from the height.
 
 import json
 import os

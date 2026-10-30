@@ -12,6 +12,12 @@ const farUrls = import.meta.glob<string>('../assets/terrain/farmap.bin', { eager
 const farJsons = import.meta.glob<unknown>('../assets/terrain/farmap.json', { eager: true, import: 'default' });
 const farUrl = Object.values(farUrls)[0];
 const farJson = Object.values(farJsons)[0];
+// The zones (three soft masks, doc/formats/terrain-maps.md) are optional too: without, no zone anywhere
+const zoneUrls = import.meta.glob<string>('../assets/terrain/zones.png', {
+	eager: true,
+	query: '?lossless&format=webp',
+	import: 'default'
+});
 
 export const terrainAssets = {
 	heightmapUrl,
@@ -19,7 +25,8 @@ export const terrainAssets = {
 	farMapUrl: farUrl && farJson ? farUrl : null,
 	farMap: farUrl && farJson ? parseHeightmapMeta(farJson, 'farmap.json') : null,
 	mapsUrl,
-	maps: parseMapsMeta(mapsJson)
+	maps: parseMapsMeta(mapsJson),
+	zonesUrl: Object.values(zoneUrls)[0] ?? null
 };
 
 export type TerrainAssets = typeof terrainAssets;

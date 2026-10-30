@@ -63,8 +63,8 @@ What kind of ground each place is, for the shader to colour (palette in the dev 
 - Lossless 8-bit **RGB** (no alpha: browsers may premultiply it, and WebP may rewrite the colour under transparent pixels), linear data, no gamma or ICC profile. Imported like `maps.png` (`?lossless&format=webp`).
 - Same footprint and orientation as `maps.png` (see above); its own resolution, ≤ 2048 per side.
 - **R, G, B: three zones' soft masks.** 1 inside the zone, 0 outside, **blurred over a few texels** (2 to 4): the shader thresholds each at 0.5, so the zone's edge stays crisp at any zoom, and the gradient gives it bands near the edge (a fringe, a darker rim). Where masks overlap, the later channel wins (B over G over R).
-- Where no mask is set: the base ground colour. The sea (altitude below 0: colour from the depth, foam at the shore), rock on steep slopes and snow above an altitude need no mask: the shader derives them from the height.
-- Meaning is the palette's: zone 1, 2, 3 are named and coloured in the panel.
+- Where no mask is set: the base ground colour. The sea (altitude below 0: colour from the depth, foam at the shore) and rock on steep slopes need no mask: the shader derives them from the height.
+- Meaning is the palette's: zone 1, 2, 3 are coloured in the panel (Ground colours), over the base tint, under rock on steep slopes. Optional: without the file, no zone anywhere.
 
 In Houdini: one heightfield layer per zone (`zone1`, `zone2`, `zone3` by default, `ZONES` at the top of the snippet; a missing one exports empty), blurred a few texels. The snippet refuses layers of different resolutions, over 2048 per side, and a footprint that differs from the exported `heightmap.json`.
 
