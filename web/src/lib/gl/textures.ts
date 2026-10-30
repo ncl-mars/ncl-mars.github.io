@@ -1,10 +1,10 @@
 /** Texture helpers. Formats: doc/formats/. */
 
 /**
- * Heights as RG16F: two half floats per sample (a main value and its remainder, terrain/heightfield.ts), which
- * the shaders add back. LINEAR filtering on half floats is core in WebGL2 (R32F would need an extension), and
- * filtering is linear, so filtering both channels then adding them is exact. No mipmaps: shaders sample it
- * with textureLod(…, 0). Row 0 = texture row 0, no flip.
+ * Heights as RG8: each 16-bit sample's two bytes as they lie in memory (little-endian: R the low byte, G the
+ * high one, terrain/heightfield.ts), which the shaders put back together (terrain.glsl). Exact when fetched,
+ * and filterable like any colour: filtering is linear, so the filtered bytes give the filtered height (to the
+ * hardware's precision). No mipmaps: shaders sample it with textureLod(…, 0). Row 0 = texture row 0, no flip.
  */
 export function createHeightTexture(
 	gl: WebGL2RenderingContext,
@@ -15,7 +15,10 @@ export function createHeightTexture(
 	const texture = gl.createTexture()!;
 	gl.bindTexture(gl.TEXTURE_2D, texture);
 	gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
-	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RG16F, width, height, 0, gl.RG, gl.HALF_FLOAT, texels); // rows: width × 4 bytes
+	gl.pixelStorei(gl.UNPACK_ALIGNMENT, 2); // rows of width × 2 bytes: not 4-aligned when the width is odd
+	const bytes = new Uint8Array(texels.buffer, texels.byteOffset, texels.byteLength);
+	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RG8, width, height, 0, gl.RG, gl.UNSIGNED_BYTE, bytes);
+	gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
 	setSampling(gl, gl.LINEAR, gl.LINEAR);
 	gl.bindTexture(gl.TEXTURE_2D, null);
 	return texture;

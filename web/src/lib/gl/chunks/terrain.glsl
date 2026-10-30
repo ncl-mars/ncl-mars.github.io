@@ -7,7 +7,7 @@
 //
 // Two ways to read the heights. `height()` lets the GPU filter the texture: one read, but hardware bilinear
 // filtering isn't exact (its weights are fixed point, 8 bits of sub-texel precision; some GPUs also blend
-// half floats at half precision), so a steep slope seen at a grazing angle comes out stepped, whatever the
+// at half precision), so a steep slope seen at a grazing angle comes out stepped, whatever the
 // file's precision (iq's "hardware interpolation" article). `heightExact()` (and `terrainHeight()`,
 // `terrainNormal()`) filter it here, in fp32, from the four texels around the point: exact, four reads. The
 // march steps with the first and switches to the second near the ground; programs that don't set
@@ -16,7 +16,7 @@
 // MIRROR OF web/src/lib/terrain/farfield.ts + ground.ts: the CPU (camera, picking) must agree with this.
 // Change both together.
 
-uniform highp sampler2D uHeightmap; // RG16F, normalized 0..1 as r + g / 2048 (heightfield.ts), no mipmaps
+uniform highp sampler2D uHeightmap; // RG8: the 16-bit samples' bytes, R low, G high (heightfield.ts), no mipmaps
 uniform vec3 uBoundsMin;      // heightmap world box: x/z are the outer edges of the samples, y the height range
 uniform vec3 uBoundsMax;
 uniform vec4 uFarField;       // x: noise base height, y: amplitude (±), z: feature size, w: heightmap blend band (world units)
@@ -50,9 +50,18 @@ float coreMask(vec2 xz) {
 	return smoothstep(0.0, uFarField.w, min(d.x, d.y));
 }
 
-// A height texel's normalized value: the main half float plus the remainder (heightfield.ts)
+// A height texel's normalized value from its two bytes read as 0..1 (R low, G high): the 16-bit integer
+// / 65535, which is (256 high + low) / 257 (65535 = 255 × 257). Filtering is linear, so filtered bytes give
+// the filtered height.
 float heightTexel(vec2 v) {
-	return v.x + v.y / 2048.0;
+	return (v.y * 256.0 + v.x) / 257.0;
+}
+
+// The same for a fetched texel, exact: the bytes rounded back to integers first, so the rounding of their
+// conversion to floats can't reach the sum (the high byte weighs 256 times more)
+float heightTexelExact(vec2 v) {
+	vec2 b = round(v * 255.0);
+	return (b.y * 256.0 + b.x) / 65535.0;
 }
 
 // The texel cell around uv in a texture of `size` texels: the lower and upper texels (clamped to the edge, as
@@ -72,10 +81,10 @@ float mapValue(vec2 uv, bool exact) {
 	ivec2 lo, hi;
 	vec2 f;
 	texelCell(uv, vec2(textureSize(uHeightmap, 0)), lo, hi, f);
-	float a = heightTexel(texelFetch(uHeightmap, lo, 0).rg);
-	float b = heightTexel(texelFetch(uHeightmap, ivec2(hi.x, lo.y), 0).rg);
-	float c = heightTexel(texelFetch(uHeightmap, ivec2(lo.x, hi.y), 0).rg);
-	float d = heightTexel(texelFetch(uHeightmap, hi, 0).rg);
+	float a = heightTexelExact(texelFetch(uHeightmap, lo, 0).rg);
+	float b = heightTexelExact(texelFetch(uHeightmap, ivec2(hi.x, lo.y), 0).rg);
+	float c = heightTexelExact(texelFetch(uHeightmap, ivec2(lo.x, hi.y), 0).rg);
+	float d = heightTexelExact(texelFetch(uHeightmap, hi, 0).rg);
 	return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
 }
 
@@ -85,10 +94,10 @@ float farMapValue(vec2 uv, bool exact) {
 	ivec2 lo, hi;
 	vec2 f;
 	texelCell(uv, vec2(textureSize(uFarMap, 0)), lo, hi, f);
-	float a = heightTexel(texelFetch(uFarMap, lo, 0).rg);
-	float b = heightTexel(texelFetch(uFarMap, ivec2(hi.x, lo.y), 0).rg);
-	float c = heightTexel(texelFetch(uFarMap, ivec2(lo.x, hi.y), 0).rg);
-	float d = heightTexel(texelFetch(uFarMap, hi, 0).rg);
+	float a = heightTexelExact(texelFetch(uFarMap, lo, 0).rg);
+	float b = heightTexelExact(texelFetch(uFarMap, ivec2(hi.x, lo.y), 0).rg);
+	float c = heightTexelExact(texelFetch(uFarMap, ivec2(lo.x, hi.y), 0).rg);
+	float d = heightTexelExact(texelFetch(uFarMap, hi, 0).rg);
 	return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
 }
 
