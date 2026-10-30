@@ -31,6 +31,7 @@ uniform vec2 uRowScale[32];
 uniform vec3 uAtlas;            // x: rows, y: width in texels, z: a row's height in texels
 uniform vec4 uText;             // x: ground strength, y: softness (blur per world unit), z: air strength, w: air samples
 uniform float uSeaLevel;
+uniform float uPixel;           // a pixel's angle (radians): its footprint, to filter the letters on the ground
 uniform float uFade;            // the terrain's fade in
 
 in vec3 vWorld;
@@ -114,7 +115,11 @@ void main() {
 		if (inside && uText.x > 0.0) {
 			float fog = max(1.0 - exp(-tGround * uFogDensity), smoothstep(uFogEnd * 0.55, uFogEnd, tGround));
 			float seen = (1.0 - fog) * exp(-mistDepth(uCamPos, rd, tGround));
-			ground = uText.x * mask(bg, extent, row, 0.0) * sunVisibility(g + vec3(0.0, 1.5, 0.0)) * seen;
+			// The mask read as blurred as a pixel's footprint on the ground (stretched as the view grazes it),
+			// so small letters don't break into dark stray pixels
+			float footprint = tGround * uPixel / max(-rd.y, 0.15);
+			float lod = log2(max(1.0, footprint / vTexel));
+			ground = uText.x * mask(bg, extent, row, lod) * sunVisibility(g + vec3(0.0, 1.5, 0.0)) * seen;
 		}
 		t1 = min(t1, tGround);
 	}

@@ -212,6 +212,7 @@ Dropped (2026-10-29): simpler, faster without.
 - [x] The optional far map (`farmap.bin`/`.json`, same format, low resolution, large area): the heightmap blends into it, it blends into the noise. The shadow ceiling (always rendered) also shades the terrain past the baked maps, within twice the heightmap (its detail kept for the centre)
 - [x] Water shading: water hits snapped onto the sea plane, colour from the depth and foam at the shore (march, cached); waves (two drifting layers of the noise texture, filtered with distance), Fresnel reflection of the sky and the sun's glint (cut by the shadow ceiling) in the composite. Water group in the panel, Sea level included (0 by contract; raise it to test on the placeholder)
 - [ ] Water look tuned on the real coast (colours, depth, foam, waves), yours
+- [ ] Watch for terracing on the real terrain: half floats normalised over the height range give steps of about 1/2000 of it at the top (0.5 m for the 1000 m test ramp, ~0.15 m for 300 m). If it shows: a 16-bit integer heightmap (EXT_texture_norm16 where available, or two 8-bit channels with a manual bilinear)
 - [ ] `zones.png`: RGB, three soft masks (crisp at any zoom by thresholding), plus slope and altitude rules (rock, snow) and a base colour; palette in the panel
 - [ ] Swap the placeholders for your exports; tune bounds, fog (end distance for far mountains), mist, start view, POIs
 - [ ] If the gate needs it: max-height mip pyramid (explicit mip uploads) or cone map (`RG16F`), through the strategy hook

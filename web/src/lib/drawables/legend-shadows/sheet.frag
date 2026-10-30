@@ -29,6 +29,7 @@ uniform vec2 uSlab;
 uniform vec4 uSheet;            // x: strength, y: thickness (px), z: longest path counted (world units), w: ground shadow
 uniform float uSoftness;        // penumbra: half width added per world unit from the line
 uniform float uSeaLevel;
+uniform float uPixel;           // a pixel's angle (radians): its footprint, to anti-alias thin shadows
 uniform float uFade;            // the terrain's fade in
 
 in vec3 vWorld;
@@ -85,9 +86,11 @@ float airDensity(vec3 p, float banks) {
 }
 
 // How much of the sun the line hides at box point b: its shadow (half width vHalf) blurred by the sun's
-// disc at b's distance from the line: a trapezoid across, no darker than the line covers of the disc
-float occlusion(vec3 b) {
-	float penumbra = b.y * vReach * uSoftness;
+// disc at b's distance from the line: a trapezoid across, no darker than the line covers of the disc.
+// Blurred at least over `pixel` (half a pixel's footprint there), so a shadow thinner than a pixel spreads
+// and fades instead of breaking into stairs.
+float occlusion(vec3 b, float pixel) {
+	float penumbra = max(b.y * vReach * uSoftness, pixel);
 	float inner = abs(vHalf - penumbra);
 	float outer = max(vHalf + penumbra, inner + 1e-4);
 	return min(1.0, vHalf / max(penumbra, 1e-6)) * (1.0 - smoothstep(inner, outer, abs(b.z) * vWide));
@@ -117,7 +120,9 @@ void main() {
 		if (inside && uSheet.w > 0.0) {
 			float fog = max(1.0 - exp(-tGround * uFogDensity), smoothstep(uFogEnd * 0.55, uFogEnd, tGround));
 			float seen = (1.0 - fog) * exp(-mistDepth(uCamPos, rd, tGround));
-			ground = uSheet.w * occlusion(bg) * sunVisibility(g + vec3(0.0, 1.5, 0.0)) * seen;
+			// On the ground a pixel's footprint stretches as the view grazes it
+			float pixel = tGround * uPixel * 0.5 / max(-rd.y, 0.15);
+			ground = uSheet.w * occlusion(bg, pixel) * sunVisibility(g + vec3(0.0, 1.5, 0.0)) * seen;
 		}
 		t1 = min(t1, tGround);
 	}
@@ -135,7 +140,7 @@ void main() {
 		float missing = 0.0;
 		for (int i = 0; i < 4; i++) {
 			float t = t0 + (float(i) + jitter) * gap;
-			float shadow = occlusion(o + d * t);
+			float shadow = occlusion(o + d * t, t * uPixel * 0.5);
 			if (shadow < 0.001) continue;
 			vec3 p = uCamPos + rd * t;
 			float reach = exp(-uFogDensity * t - mistDepth(uCamPos, rd, t) * banks);
