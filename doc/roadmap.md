@@ -209,7 +209,7 @@ Dropped (2026-10-29): simpler, faster without.
 
 - [x] Exporters: `export_heightmap.py` (`NAME`: heightmap or farmap), `export_maps.py` (light, AO, cavity + `v@sun_dir` → `maps.json`), `export_pois.py`
 - [x] The sea at altitude 0: the ground is `max(height, 0)` on the GPU and the CPU, the seabed kept for the water's depth (no mask needed)
-- [x] The optional far map (`farmap.bin`/`.json`, same format, low resolution, large area): the heightmap blends into it, it blends into the noise; the shadow ceiling covers it (1024²) and shades the terrain past the baked maps
+- [x] The optional far map (`farmap.bin`/`.json`, same format, low resolution, large area): the heightmap blends into it, it blends into the noise. The shadow ceiling (always rendered) also shades the terrain past the baked maps, within twice the heightmap (its detail kept for the centre)
 - [ ] Water shading: colour from the depth, foam at the shore (march, cached); animated waves, sun glint and reflected sky in the composite (shading only: the terrain stays cached)
 - [ ] `zones.png`: RGB, three soft masks (crisp at any zoom by thresholding), plus slope and altitude rules (rock, snow) and a base colour; palette in the panel
 - [ ] Swap the placeholders for your exports; tune bounds, fog (end distance for far mountains), mist, start view, POIs

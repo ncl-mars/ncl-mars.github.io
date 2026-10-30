@@ -19,7 +19,7 @@ Heights are altitudes in world units, and **the sea is at 0**: the web ground is
 
 ## The far map (optional)
 
-`farmap.bin` + `farmap.json`, **the same format**, exported by the same snippet (`NAME = "farmap"`): the surroundings at low resolution over a large area (for example 8 km at 512²) that contains the heightmap's footprint. The heightmap blends into it over its edge band, and it blends into the endless noise over its own (Far field → Blend, a fraction of each map's smaller side); the noise continues at its edges' mean height. Make it match the heightmap along the heightmap's edges (both from the same heightfield). Without it, the noise starts at the heightmap's edges. Terrain past the baked maps gets its shadows from the shadow ceiling (`drawables/terrain/shadow.frag`), which then covers the far map.
+`farmap.bin` + `farmap.json`, **the same format**, exported by the same snippet (`NAME = "farmap"`): the surroundings at low resolution over a large area (for example 8 km at 512²) that contains the heightmap's footprint. The heightmap blends into it over its edge band, and it blends into the endless noise over its own (Far field → Blend, a fraction of each map's smaller side); the noise continues at its edges' mean height. Make it match the heightmap along the heightmap's edges (both from the same heightfield). Without it, the noise starts at the heightmap's edges. Terrain past the baked maps gets its cast shadows from the shadow ceiling (`drawables/terrain/shadow.frag`), which covers twice the heightmap around it (far mountains near it do cast shadows into it); further out, sun shading only.
 
 ## `heightmap.bin`
 
