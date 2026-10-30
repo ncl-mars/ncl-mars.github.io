@@ -1,21 +1,21 @@
 /** Texture helpers. Formats: doc/formats/. */
 
 /**
- * Half-float data (heightmap, relief maps) as R16F. LINEAR filtering on R16F is core in WebGL2 (R32F would
- * need an extension). No mipmaps: shaders sample it with textureLod(…, 0). Row 0 = texture row 0, no flip.
+ * Heights as RG16F: two half floats per sample (a main value and its remainder, terrain/heightfield.ts), which
+ * the shaders add back. LINEAR filtering on half floats is core in WebGL2 (R32F would need an extension), and
+ * filtering is linear, so filtering both channels then adding them is exact. No mipmaps: shaders sample it
+ * with textureLod(…, 0). Row 0 = texture row 0, no flip.
  */
-export function createHalfFloatTexture(
+export function createHeightTexture(
 	gl: WebGL2RenderingContext,
 	width: number,
 	height: number,
-	half: Uint16Array
+	texels: Uint16Array
 ): WebGLTexture {
 	const texture = gl.createTexture()!;
 	gl.bindTexture(gl.TEXTURE_2D, texture);
-	gl.pixelStorei(gl.UNPACK_ALIGNMENT, 2); // rows are width × 2 bytes, not always a multiple of 4
 	gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
-	gl.texImage2D(gl.TEXTURE_2D, 0, gl.R16F, width, height, 0, gl.RED, gl.HALF_FLOAT, half);
-	gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
+	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RG16F, width, height, 0, gl.RG, gl.HALF_FLOAT, texels); // rows: width × 4 bytes
 	setSampling(gl, gl.LINEAR, gl.LINEAR);
 	gl.bindTexture(gl.TEXTURE_2D, null);
 	return texture;

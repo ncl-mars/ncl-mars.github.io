@@ -8,7 +8,7 @@
 // MIRROR OF web/src/lib/terrain/farfield.ts + ground.ts: the CPU (camera, picking) must agree with this.
 // Change both together.
 
-uniform sampler2D uHeightmap; // R16F, normalized 0..1, no mipmaps
+uniform sampler2D uHeightmap; // RG16F, normalized 0..1 as r + g / 2048 (heightfield.ts), no mipmaps
 uniform vec3 uBoundsMin;      // heightmap world box: x/z are the outer edges of the samples, y the height range
 uniform vec3 uBoundsMax;
 uniform vec4 uFarField;       // x: noise base height, y: amplitude (±), z: feature size, w: heightmap blend band (world units)
@@ -41,9 +41,11 @@ float coreMask(vec2 xz) {
 	return smoothstep(0.0, uFarField.w, min(d.x, d.y));
 }
 
-// textureLod: called inside loops, where implicit derivatives aren't defined
+// A height texture's normalized value is the main half float plus the remainder (heightfield.ts), so a
+// 16-bit export keeps its precision. textureLod: called inside loops, where implicit derivatives aren't defined
 float mapHeight(vec2 xz) {
-	return mix(uBoundsMin.y, uBoundsMax.y, textureLod(uHeightmap, terrainUv(xz), 0.0).r);
+	vec2 v = textureLod(uHeightmap, terrainUv(xz), 0.0).rg;
+	return mix(uBoundsMin.y, uBoundsMax.y, v.r + v.g / 2048.0);
 }
 
 float farHeight(vec2 xz) {
@@ -52,7 +54,8 @@ float farHeight(vec2 xz) {
 
 float farMapHeight(vec2 xz) {
 	vec2 uv = (xz - uFarBounds.xy) / (uFarBounds.zw - uFarBounds.xy);
-	return mix(uFarRange.x, uFarRange.y, textureLod(uFarMap, uv, 0.0).r);
+	vec2 v = textureLod(uFarMap, uv, 0.0).rg;
+	return mix(uFarRange.x, uFarRange.y, v.r + v.g / 2048.0);
 }
 
 // Around the heightmap: the far map where there is one, fading into the noise at its edges

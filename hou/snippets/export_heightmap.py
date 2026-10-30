@@ -1,5 +1,6 @@
 # Python SOP: exports the heightfield's `height` volume for the web terrain.
-# Format: doc/formats/heightmap.md -> <NAME>.bin (little-endian half floats, normalized 0..1) + <NAME>.json.
+# Format: doc/formats/heightmap.md -> <NAME>.bin (little-endian 16-bit unsigned integers, normalized over the
+# height range: 65536 even steps) + <NAME>.json.
 # Tracking copy: the node snippet in the .hip is canonical.
 #
 # Pass-through (the geometry isn't modified). It writes on every cook: bypass the node when not exporting.
@@ -53,7 +54,7 @@ meta = {
     "version": 1,
     "width": int(grid.shape[1]),
     "height": int(grid.shape[0]),
-    "format": "r16f",
+    "format": "r16",
     "bounds": {
         "min": [bbox.minvec()[0] - half_x, lo, bbox.minvec()[2] - half_z],
         "max": [bbox.maxvec()[0] + half_x, hi, bbox.maxvec()[2] + half_z],
@@ -61,6 +62,6 @@ meta = {
 }
 
 os.makedirs(OUT_DIR, exist_ok=True)
-np.ascontiguousarray(normalized).astype("<f2").tofile(os.path.join(OUT_DIR, NAME + ".bin"))
+np.ascontiguousarray(np.rint(normalized * 65535.0)).astype("<u2").tofile(os.path.join(OUT_DIR, NAME + ".bin"))
 with open(os.path.join(OUT_DIR, NAME + ".json"), "w") as f:
     json.dump(meta, f, indent="\t")

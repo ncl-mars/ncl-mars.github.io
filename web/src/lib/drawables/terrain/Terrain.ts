@@ -4,7 +4,7 @@ import marchSource from './terrain.frag';
 import compositeSource from './composite.frag';
 import shadowSource from './shadow.frag';
 import { hotSwap, type Program } from '../../gl/programs';
-import { createHalfFloatTexture, loadDataTexture } from '../../gl/textures';
+import { createHeightTexture, loadDataTexture } from '../../gl/textures';
 import { createNoiseTexture3D } from '../../gl/noise';
 import {
 	createColorDepthTarget,
@@ -268,7 +268,7 @@ export class Terrain implements Drawable {
 			renderer.resource(`height:${url}`, (gl) =>
 				loadHeightfield(url, meta).then((field) => ({
 					field,
-					texture: createHalfFloatTexture(gl, meta.width, meta.height, field.half)
+					texture: createHeightTexture(gl, meta.width, meta.height, field.texels)
 				}))
 			);
 		const height = heights(heightmapUrl, heightmap);
