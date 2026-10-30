@@ -210,7 +210,8 @@ Dropped (2026-10-29): simpler, faster without.
 - [x] Exporters: `export_heightmap.py` (`NAME`: heightmap or farmap), `export_maps.py` (light, AO, cavity + `v@sun_dir` → `maps.json`), `export_pois.py`
 - [x] The sea at altitude 0: the ground is `max(height, 0)` on the GPU and the CPU, the seabed kept for the water's depth (no mask needed)
 - [x] The optional far map (`farmap.bin`/`.json`, same format, low resolution, large area): the heightmap blends into it, it blends into the noise. The shadow ceiling (always rendered) also shades the terrain past the baked maps, within twice the heightmap (its detail kept for the centre)
-- [ ] Water shading: colour from the depth, foam at the shore (march, cached); animated waves, sun glint and reflected sky in the composite (shading only: the terrain stays cached)
+- [x] Water shading: water hits snapped onto the sea plane, colour from the depth and foam at the shore (march, cached); waves (two drifting layers of the noise texture, filtered with distance), Fresnel reflection of the sky and the sun's glint (cut by the shadow ceiling) in the composite. Water group in the panel, Sea level included (0 by contract; raise it to test on the placeholder)
+- [ ] Water look tuned on the real coast (colours, depth, foam, waves), yours
 - [ ] `zones.png`: RGB, three soft masks (crisp at any zoom by thresholding), plus slope and altitude rules (rock, snow) and a base colour; palette in the panel
 - [ ] Swap the placeholders for your exports; tune bounds, fog (end distance for far mountains), mist, start view, POIs
 - [ ] If the gate needs it: max-height mip pyramid (explicit mip uploads) or cone map (`RG16F`), through the strategy hook

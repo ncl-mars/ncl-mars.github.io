@@ -63,6 +63,21 @@ export interface TerrainSettings {
 	};
 	mist: { density: number; height: number; falloff: number; banks: number; bankScale: number };
 	shafts: { samples: number; softness: number; darkness: number; glow: number; power: number; view: number };
+	water: {
+		level: number;
+		shallow: number[];
+		deep: number[];
+		depth: number;
+		foam: number;
+		foamWidth: number;
+		waveSize: number;
+		waveSpeed: number;
+		waves: number;
+		waveFade: number;
+		reflection: number;
+		glint: number;
+		glintSize: number;
+	};
 	wind: { direction: number; speed: number };
 	farField: FarFieldSettings;
 }
@@ -140,6 +155,9 @@ export class Terrain implements Drawable {
 	private readonly walkVector = new Float32Array(2);
 	private readonly shaftMarchVector = new Float32Array(4);
 	private readonly shaftsVector = new Float32Array(3);
+	private readonly waterVector = new Float32Array(3);
+	private readonly wavesVector = new Float32Array(4);
+	private readonly seaVector = new Float32Array(3);
 	private readonly marchUniforms: Record<string, unknown>;
 	private readonly compositeUniforms: Record<string, unknown>;
 	private readonly shadowUniforms: Record<string, unknown>;
@@ -177,14 +195,19 @@ export class Terrain implements Drawable {
 			uSlab: this.slabVector,
 			uShadowBox: this.shadowBox,
 			uShaftMarch: this.shaftMarchVector,
-			uMist: this.mistVector
+			uMist: this.mistVector,
+			uWater: this.waterVector
 		};
 		this.compositeUniforms = {
 			uSunDir: assets.maps.sunDir,
 			uSunGlow: this.sunGlowVector,
 			uMist: this.mistVector,
 			uShafts: this.shaftsVector,
-			uWindDir: this.windVector
+			uWindDir: this.windVector,
+			uWaves: this.wavesVector,
+			uSea: this.seaVector,
+			uShadowBox: this.shadowBox,
+			uSlab: this.slabVector
 		};
 		this.shadowUniforms = {
 			uBoundsMin: min,
@@ -234,7 +257,7 @@ export class Terrain implements Drawable {
 		Promise.all([height, far, maps])
 			.then(([h, f, mapsTexture]) => {
 				if (generation !== this.generation) return; // disposed or re-initialised meanwhile
-				this.ground = new Ground(h.field, f?.field ?? null, this.settings.farField, this.settings.fog);
+				this.ground = new Ground(h.field, f?.field ?? null, this.settings.farField, this.settings.water, this.settings.fog);
 				this.heightTexture = h.texture;
 				this.farTexture = f?.texture ?? null;
 				this.mapsTexture = mapsTexture;
@@ -291,7 +314,7 @@ export class Terrain implements Drawable {
 			this.march(gl, ctx, ground, target);
 			this.shown = target;
 		}
-		this.composite(gl, this.shown!);
+		this.composite(gl, ctx, this.shown!);
 	}
 
 	/** Dev readout: the rough cache is on screen (the camera is moving, or hasn't settled yet). */
@@ -360,7 +383,7 @@ export class Terrain implements Drawable {
 	/** Raymarch the ground into the cache, then restore the renderer's target, viewport and scissor. */
 	private march(gl: WebGL2RenderingContext, ctx: DrawContext, ground: Ground, cache: ColorDepthTarget) {
 		const camera = this.camera;
-		const { march, shading, fog, farField, shafts } = this.settings;
+		const { march, shading, fog, farField, shafts, water } = this.settings;
 		const s = this.shadingVector;
 		s[0] = shading.shadowLight;
 		s[1] = shading.aoStrength;
@@ -394,6 +417,12 @@ export class Terrain implements Drawable {
 		u.uMaxDistance = fog.end;
 		u.uTint = shading.tint;
 		u.uShadow = this.shadow!.color;
+		u.uSeaLevel = water.level;
+		u.uShallow = water.shallow;
+		u.uDeep = water.deep;
+		this.waterVector[0] = water.depth;
+		this.waterVector[1] = water.foam;
+		this.waterVector[2] = water.foamWidth;
 
 		gl.disable(gl.SCISSOR_TEST);
 		this.renderShadow(gl, this.shadow!); // also shades the terrain past the baked maps: needed with the shafts off
@@ -420,7 +449,8 @@ export class Terrain implements Drawable {
 	 */
 	private renderShadow(gl: WebGL2RenderingContext, target: ColorTarget) {
 		const f = this.farFieldVector;
-		const key = `${f[0]} ${f[1]} ${f[2]} ${f[3]} ${this.farRange[2]} ${shaderGeneration}`;
+		const sea = this.settings.water.level;
+		const key = `${f[0]} ${f[1]} ${f[2]} ${f[3]} ${this.farRange[2]} ${sea} ${shaderGeneration}`;
 		if (key === this.shadowKey) return;
 		this.shadowKey = key;
 
@@ -434,15 +464,16 @@ export class Terrain implements Drawable {
 		const u = this.shadowUniforms;
 		u.uHeightmap = this.heightTexture;
 		u.uFarMap = this.farTexture ?? this.heightTexture;
+		u.uSeaLevel = sea;
 		gl.bindFramebuffer(gl.FRAMEBUFFER, target.framebuffer);
 		gl.viewport(0, 0, target.width, target.height);
 		this.drawFullscreen(gl, this.shadowProgram!, u);
 	}
 
 	/** The cached ground under the live atmosphere, into the view. */
-	private composite(gl: WebGL2RenderingContext, cache: ColorDepthTarget) {
+	private composite(gl: WebGL2RenderingContext, ctx: DrawContext, cache: ColorDepthTarget) {
 		const camera = this.camera;
-		const { fog, mist, wind, shafts } = this.settings;
+		const { fog, mist, wind, shafts, water } = this.settings;
 		this.sunGlowVector[0] = fog.sunGlow;
 		this.sunGlowVector[1] = fog.sunPower;
 		// Shafts off: the cache's alpha is 1 (all lit), and lit mist keeps the plain sun glow
@@ -470,6 +501,12 @@ export class Terrain implements Drawable {
 		u.uNoise = this.noiseTexture;
 		u.uWindSpeed = wind.speed;
 		u.uTime = this.time;
+		// The sea's waves, reflection and glint (the cache already holds its colour)
+		u.uSeaLevel = water.level;
+		this.wavesVector.set([water.waveSize, water.waveSpeed, water.waves, water.waveFade]);
+		this.seaVector.set([water.reflection, water.glint, Math.max(1, water.glintSize)]);
+		u.uPixel = 2 / (camera.projection[5] * ctx.rect.height); // projection[5] = 1 / tan(fov / 2)
+		u.uShadow = this.shadow!.color;
 		this.drawFullscreen(gl, this.compositeProgram!, u);
 
 		const scene = this.sceneUniforms;

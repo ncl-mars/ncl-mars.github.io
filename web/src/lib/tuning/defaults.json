@@ -68,6 +68,21 @@
 		"power": 3,
 		"view": 0
 	},
+	"water": {
+		"level": 0,
+		"shallow": [0.37, 0.5, 0.52],
+		"deep": [0.13, 0.21, 0.28],
+		"depth": 6,
+		"foam": 0.6,
+		"foamWidth": 0.6,
+		"waveSize": 14,
+		"waveSpeed": 0.6,
+		"waves": 0.35,
+		"waveFade": 600,
+		"reflection": 0.8,
+		"glint": 2.5,
+		"glintSize": 200
+	},
 	"legendShadows": {
 		"strength": 3.1,
 		"thickness": 2.5,

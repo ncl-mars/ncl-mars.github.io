@@ -28,6 +28,19 @@ void main() {
 
 	Surface s = marchSurface(uCamPos, rd);
 
+	// On the sea, exactly on its plane: the march stops within a pixel's height of a surface, which on a flat
+	// sea far away is metres above it (and further along a grazing ray); the composite recognises the water
+	// by its height
+	if (s.hit && rd.y < 0.0 && uCamPos.y > uSeaLevel) {
+		float tSea = (uSeaLevel - uCamPos.y) / rd.y;
+		vec3 onSea = uCamPos + rd * tSea;
+		float slack = (s.t * uPrecision * 2.0 + 0.1) / max(-rd.y, 1e-4); // that height, along the ray
+		if (tSea <= s.t + slack && terrainHeight(onSea.xz) < uSeaLevel) {
+			s.t = tSea;
+			s.position = onSea;
+		}
+	}
+
 	// Depth from the same matrices as the rasterized passes; 1.0 (far plane) where the ray found nothing
 	if (s.hit) {
 		vec4 clip = uViewProj * vec4(s.position, 1.0);

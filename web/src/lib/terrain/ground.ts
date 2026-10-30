@@ -1,13 +1,11 @@
 import { coreMask, farFbm, type FarFieldSettings } from './farfield';
 import type { Heightfield, Vec3 } from './heightfield';
 
-/** The sea: the ground never goes below it (the seabed under it gives the water its depth). Mirror of terrain.glsl. */
-export const SEA_LEVEL = 0;
-
 /**
  * The whole ground as the CPU sees it, exactly like terrain.glsl: the heightmap, blended into the far map
  * around it if there is one (a low-resolution export of the surroundings), blended into the endless noise
- * beyond; never below the sea. Camera following, line of sight and picking go through this, never through
+ * beyond; never below the sea (`sea.level`, 0 by contract: the exports' altitude 0; the seabed under it
+ * gives the water its depth). Camera following, line of sight and picking go through this, never through
  * the raw heightmaps, so they work past their edges too. Settings are read live (dev panel).
  */
 export class Ground {
@@ -16,6 +14,8 @@ export class Ground {
 		/** The surroundings, low resolution, or null: the noise starts at the heightmap's edges. */
 		readonly farMap: Heightfield | null,
 		private readonly far: FarFieldSettings,
+		/** tuning.water: `level`, the sea's altitude (uSeaLevel in terrain.glsl). */
+		private readonly sea: { level: number },
 		private readonly fog: { end: number }
 	) {}
 
@@ -42,12 +42,12 @@ export class Ground {
 			lo = Math.min(lo, this.farMap.meta.bounds.min[1]);
 			hi = Math.max(hi, this.farMap.meta.bounds.max[1]);
 		}
-		return [Math.max(lo, SEA_LEVEL), Math.max(hi, SEA_LEVEL)];
+		return [Math.max(lo, this.sea.level), Math.max(hi, this.sea.level)];
 	}
 
 	/** The ground's surface: the terrain, or the sea over it. */
 	heightAt(x: number, z: number): number {
-		return Math.max(this.terrainAt(x, z), SEA_LEVEL);
+		return Math.max(this.terrainAt(x, z), this.sea.level);
 	}
 
 	/** The terrain itself, the seabed included. */
