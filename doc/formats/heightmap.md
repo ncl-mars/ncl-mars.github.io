@@ -63,7 +63,12 @@ Y-up, right-handed, with the same axes in Houdini and WebGL. The exporter does a
 
 ## Precision (and the fix, if it ever shows)
 
-Half floats aren't evenly spaced: normalized to 0–1, the gap between two values is 1/2048 in the upper half of the range (finer below). Over 300 m of relief that's about 15 cm; over 1000 m, about 49 cm. On a steep, smooth slope the rounding repeats as a sawtooth, and the low sun turns a height error into a horizontal shift of the shadows (about ×2 at 26°): thin shadows (the legend's) zigzag. Seen on a 1000 m test ramp at 45°, not on a gentler terrain. Not implemented; the fix, if a real terrain shows it:
+Half floats aren't evenly spaced: normalized to 0–1, the gap between two values is 1/2048 in the upper half of the range (finer below). Over 300 m of relief that's about 15 cm; over 1000 m, about 49 cm. On a steep, smooth slope the rounding repeats as a sawtooth. Seen on a 1000 m test ramp at 45°, not on a gentler terrain; two symptoms:
+
+- **Zigzagging shadows:** the low sun turns a height error into a horizontal shift of the shadows (about ×2 at 26°), so thin shadows (the legend's) zigzag.
+- **Bands along the contour lines:** the normal (`terrainNormal`, central differences one texel apart) jitters with the steps, so anything chosen from the slope does too. The rock rule (Ground colours) blending in around the ramp's 45° drew light bands following the height steps. A cheaper mitigation, without the fix: differences over two or more texels (a smoother normal).
+
+Very likely to be implemented once real terrains with steep slopes come in. The fix:
 
 - **File:** 16-bit unsigned integers, `"format": "r16"`, same layout and size (2 bytes per sample), evenly spaced: 65,536 levels (1.5 cm over 1000 m). The exporter writes `np.rint(normalized * 65535).astype('<u2')`. Loaders keep accepting `"r16f"` (the placeholder).
 - **GPU:** no extension. 16-bit normalized textures need `EXT_texture_norm16` (not everywhere), float32 filtering needs `OES_texture_float_linear` (missing on many phones), and `R16UI` can't be filtered (a manual bilinear: four reads per height sample in the march, too slow on the phone). Instead, at load, split each height into two half floats in one **RG16F** texture (filterable in core WebGL2): R = half(v), G = (v − R) × 2048. Shaders read `r + g / 2048.0` (`mapHeight`, `farMapHeight` in `terrain.glsl`): bilinear filtering stays exact, since it's linear, and the march reads no more texels.
