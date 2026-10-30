@@ -34,10 +34,10 @@ const SETTLE_TIME = 0.15;
 const SLOW_MOTION_KEY = 'terrain-slow-motion';
 /**
  * Shadow ceiling (light shafts, shadows on the terrain past the baked maps): texels per side, and the square
- * it covers: twice the heightmap, centred on it; or the far map, when there is one (more texels then).
+ * it covers, in heightmap sizes, centred on it. Kept to the heightmap's surroundings even with a far map, so
+ * the detail stays where the POIs are; terrain further out has no cast shadows.
  */
 const SHADOW_SIZE = 512;
-const SHADOW_SIZE_FAR = 1024;
 const SHADOW_EXTENT = 2;
 
 /** Read live every frame (the dev panel edits them). See schema.ts for what each value does. */
@@ -135,7 +135,6 @@ export class Terrain implements Drawable {
 	private readonly mistVector = new Float32Array(4);
 	private readonly windVector = new Float32Array(2);
 	private readonly shadowBox = new Float32Array(4);
-	private readonly shadowSize: number;
 	private readonly farBounds = new Float32Array(4);
 	private readonly farRange = new Float32Array(3);
 	private readonly walkVector = new Float32Array(2);
@@ -163,11 +162,9 @@ export class Terrain implements Drawable {
 			this.farRange.set([far.min[1], far.max[1], 0]);
 		}
 
-		// The shadow ceiling covers the far map, or twice the heightmap around it (lit beyond, faded)
-		const [x0, z0, x1, z1] = far ? this.farBounds : [min[0], min[2], max[0], max[2]];
-		const size = (far ? 1 : SHADOW_EXTENT) * Math.max(x1 - x0, z1 - z0);
-		this.shadowBox.set([(x0 + x1 - size) / 2, (z0 + z1 - size) / 2, 1 / size, 1 / size]);
-		this.shadowSize = far ? SHADOW_SIZE_FAR : SHADOW_SIZE;
+		// The shadow ceiling covers twice the heightmap around it (lit beyond, faded)
+		const size = SHADOW_EXTENT * Math.max(max[0] - min[0], max[2] - min[2]);
+		this.shadowBox.set([(min[0] + max[0] - size) / 2, (min[2] + max[2] - size) / 2, 1 / size, 1 / size]);
 
 		this.marchUniforms = {
 			uBoundsMin: min,
@@ -213,7 +210,7 @@ export class Terrain implements Drawable {
 		this.shadowProgram = renderer.program(vertex, shadowFragment);
 		this.vao = gl.createVertexArray();
 		this.noiseTexture = renderer.resource('noise:3d', (gl) => createNoiseTexture3D(gl));
-		this.shadow = createColorTarget(gl, this.shadowSize, this.shadowSize, gl.R8);
+		this.shadow = createColorTarget(gl, SHADOW_SIZE, SHADOW_SIZE, gl.R8);
 		this.shadowKey = '';
 		this.dirty = true;
 		try {
@@ -429,7 +426,7 @@ export class Terrain implements Drawable {
 
 		const [x, y, z] = this.assets.maps.sunDir;
 		const run = Math.hypot(x, z);
-		const step = 1 / (this.shadowBox[2] * this.shadowSize);
+		const step = 1 / (this.shadowBox[2] * SHADOW_SIZE);
 		const range = this.slabVector[1] - this.slabVector[0];
 		this.walkVector[0] = step;
 		this.walkVector[1] = y > 0 && run > 1e-4 ? Math.min(256, Math.ceil((range * run) / y / step)) : 0;
