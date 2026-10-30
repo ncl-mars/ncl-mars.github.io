@@ -6,7 +6,8 @@
 # Pass-through (the geometry isn't modified). It writes on every cook: bypass the node when not exporting.
 # Expects:
 # - the baked heightfield layers named in LAYERS, values 0..1, lying in XZ like the height (no rotation;
-#   axis flips and swaps are handled), covering the same footprint as the exported heightmap;
+#   axis flips and swaps are handled), covering the same footprint as the exported heightmap, baked on the
+#   flattened terrain (max(height, 0)) so the shadows land on the sea's surface;
 # - a detail vector attribute `sun_dir` pointing TOWARD the sun: the very vector the bake used. The web
 #   lights everything else with it (fog glow, god rays, legend shadows), so they match the baked shadows.
 #   If your bake's direction is the light's travel (sun to ground), set sun_dir to its negation.

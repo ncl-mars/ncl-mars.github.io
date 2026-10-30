@@ -1,9 +1,12 @@
 # Python SOP: exports the heightfield's `height` volume for the web terrain.
-# Format: doc/formats/heightmap.md -> heightmap.bin (little-endian half floats, normalized 0..1) + heightmap.json.
+# Format: doc/formats/heightmap.md -> <NAME>.bin (little-endian half floats, normalized 0..1) + <NAME>.json.
 # Tracking copy: the node snippet in the .hip is canonical.
 #
 # Pass-through (the geometry isn't modified). It writes on every cook: bypass the node when not exporting.
 # Expects a heightfield lying in XZ (no rotation); axis flips and swaps are handled below.
+# Heights are altitudes: the sea is at 0, and what lies below it (the seabed) gives the water its depth.
+# Two exports, two nodes: NAME = "heightmap" (the detailed terrain), "farmap" (the surroundings, low
+# resolution, a large area containing the heightmap's footprint).
 
 import json
 import os
@@ -12,6 +15,7 @@ import hou
 import numpy as np
 
 OUT_DIR = hou.text.expandString("$HIP/../web/src/lib/assets/terrain")
+NAME = "heightmap"
 
 geo = hou.pwd().geometry()
 volume = next(
@@ -55,6 +59,6 @@ meta = {
 }
 
 os.makedirs(OUT_DIR, exist_ok=True)
-np.ascontiguousarray(normalized).astype("<f2").tofile(os.path.join(OUT_DIR, "heightmap.bin"))
-with open(os.path.join(OUT_DIR, "heightmap.json"), "w") as f:
+np.ascontiguousarray(normalized).astype("<f2").tofile(os.path.join(OUT_DIR, NAME + ".bin"))
+with open(os.path.join(OUT_DIR, NAME + ".json"), "w") as f:
     json.dump(meta, f, indent="\t")

@@ -11,8 +11,8 @@ precision highp int; // the noise hash needs 32-bit integers (fragment ints defa
 #include /terrain;
 #include ./surface;
 #include ./march;
-#include ./shade;
 #include ./shafts;
+#include ./shade;
 
 uniform mat4 uInvViewProj;
 uniform mat4 uViewProj;

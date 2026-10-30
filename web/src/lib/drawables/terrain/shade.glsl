@@ -1,8 +1,8 @@
 // Shading stage: the ground's material colour at a Surface, before any fog (the composite pass adds the
-// atmosphere). Needs /terrain and ./surface.
-// Inside the heightmap: the maps baked in Houdini (doc/formats/terrain-maps.md). On the far field: plain
-// light from the same sun, blended with the baked maps across the band. Near-gray on purpose: the mood is
-// desaturated, colour is kept for meaning.
+// atmosphere). Needs /terrain, ./surface and ./shafts (sunVisibility).
+// Inside the heightmap: the maps baked in Houdini (doc/formats/terrain-maps.md). Beyond (far map, noise):
+// light from the same sun, its shadows from the shadow ceiling (ridges, far mountains), blended with the
+// baked maps across the band. Near-gray on purpose: the mood is desaturated, colour is kept for meaning.
 
 uniform sampler2D uMaps;    // R direct light (sun + shadows), G AO, B cavity: linear data
 uniform vec3 uSunDir;       // toward the sun, the one used for the bake
@@ -16,9 +16,10 @@ vec3 shadeSurface(Surface s) {
 
 	float mask = coreMask(s.position.xz);
 	if (mask < 1.0) {
-		// Far field: sun light, no AO, neutral cavity
-		vec3 farMaps = vec3(max(dot(terrainNormal(s.position.xz), uSunDir), 0.0), 1.0, 0.5);
-		maps = mix(farMaps, maps, mask);
+		// Past the baked maps: sun light and the shadow ceiling's shadows, no AO, neutral cavity
+		vec3 p = s.position;
+		float sun = max(dot(terrainNormal(p.xz), uSunDir), 0.0) * sunVisibility(p + vec3(0.0, 1.5, 0.0));
+		maps = mix(vec3(sun, 1.0, 0.5), maps, mask);
 	}
 
 	float light = mix(uShading.x, 1.0, maps.r);

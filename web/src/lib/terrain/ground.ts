@@ -1,41 +1,78 @@
 import { coreMask, farFbm, type FarFieldSettings } from './farfield';
 import type { Heightfield, Vec3 } from './heightfield';
 
+/** The sea: the ground never goes below it (the seabed under it gives the water its depth). Mirror of terrain.glsl. */
+export const SEA_LEVEL = 0;
+
 /**
- * The whole ground as the CPU sees it: the heightmap blended into the endless far field, exactly like
- * terrain.glsl. Camera following, line of sight and picking go through this, never through the raw
- * heightmap, so they work past its edges too. Settings are read live (dev panel).
+ * The whole ground as the CPU sees it, exactly like terrain.glsl: the heightmap, blended into the far map
+ * around it if there is one (a low-resolution export of the surroundings), blended into the endless noise
+ * beyond; never below the sea. Camera following, line of sight and picking go through this, never through
+ * the raw heightmaps, so they work past their edges too. Settings are read live (dev panel).
  */
 export class Ground {
 	constructor(
 		readonly field: Heightfield,
+		/** The surroundings, low resolution, or null: the noise starts at the heightmap's edges. */
+		readonly farMap: Heightfield | null,
 		private readonly far: FarFieldSettings,
 		private readonly fog: { end: number }
 	) {}
 
-	/** Far-field base level: the mean height of the heightmap's edges, plus the tuned offset. */
+	/** Base level of the endless noise: the mean height of the outermost map's edges, plus the tuned offset. */
 	get farBase(): number {
-		return this.field.edgeMean + this.far.offset;
+		return (this.farMap ?? this.field).edgeMean + this.far.offset;
 	}
 
-	/** Blend band width in world units. */
+	/** Blend band of the heightmap into what surrounds it, world units. */
 	get band(): number {
-		const { min, max } = this.field.meta.bounds;
-		return Math.max(1e-3, this.far.blend * Math.min(max[0] - min[0], max[2] - min[2]));
+		return blendBand(this.field, this.far.blend);
 	}
 
-	/** Height range of the whole ground (heightmap and far field): the slab the raymarch searches. */
+	/** Blend band of the far map into the noise, world units (0 without a far map). */
+	get farBand(): number {
+		return this.farMap ? blendBand(this.farMap, this.far.blend) : 0;
+	}
+
+	/** Height range of the whole ground (heightmaps, noise, the sea): the slab the raymarch searches. */
 	get slab(): [number, number] {
-		const { min, max } = this.field.meta.bounds;
-		return [Math.min(min[1], this.farBase - this.far.amplitude), Math.max(max[1], this.farBase + this.far.amplitude)];
+		let lo = Math.min(this.field.meta.bounds.min[1], this.farBase - this.far.amplitude);
+		let hi = Math.max(this.field.meta.bounds.max[1], this.farBase + this.far.amplitude);
+		if (this.farMap) {
+			lo = Math.min(lo, this.farMap.meta.bounds.min[1]);
+			hi = Math.max(hi, this.farMap.meta.bounds.max[1]);
+		}
+		return [Math.max(lo, SEA_LEVEL), Math.max(hi, SEA_LEVEL)];
 	}
 
+	/** The ground's surface: the terrain, or the sea over it. */
 	heightAt(x: number, z: number): number {
+		return Math.max(this.terrainAt(x, z), SEA_LEVEL);
+	}
+
+	/** The terrain itself, the seabed included. */
+	terrainAt(x: number, z: number): number {
 		const { min, max } = this.field.meta.bounds;
 		const mask = coreMask(x, z, min, max, this.band);
 		if (mask >= 1) return this.field.heightAt(x, z);
-		const far = this.farBase + this.far.amplitude * (farFbm(x / this.far.scale, z / this.far.scale) * 2 - 1);
-		return mask <= 0 ? far : far + (this.field.heightAt(x, z) - far) * mask;
+		const outer = this.surroundingsAt(x, z);
+		return mask <= 0 ? outer : outer + (this.field.heightAt(x, z) - outer) * mask;
+	}
+
+	/** Around the heightmap: the far map where there is one, fading into the noise at its edges. */
+	private surroundingsAt(x: number, z: number): number {
+		const farMap = this.farMap;
+		if (farMap) {
+			const { min, max } = farMap.meta.bounds;
+			const m = coreMask(x, z, min, max, this.farBand);
+			if (m >= 1) return farMap.heightAt(x, z);
+			if (m > 0) return this.noiseAt(x, z) + (farMap.heightAt(x, z) - this.noiseAt(x, z)) * m;
+		}
+		return this.noiseAt(x, z);
+	}
+
+	private noiseAt(x: number, z: number): number {
+		return this.farBase + this.far.amplitude * (farFbm(x / this.far.scale, z / this.far.scale) * 2 - 1);
 	}
 
 	/**
@@ -77,4 +114,10 @@ export class Ground {
 		}
 		return null;
 	}
+}
+
+/** `fraction` of a map's smaller side, world units. */
+function blendBand(map: Heightfield, fraction: number): number {
+	const { min, max } = map.meta.bounds;
+	return Math.max(1e-3, fraction * Math.min(max[0] - min[0], max[2] - min[2]));
 }

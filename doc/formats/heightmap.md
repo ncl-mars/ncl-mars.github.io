@@ -1,10 +1,10 @@
 # Heightmap format (v1)
 
-Contract between the exporters (Houdini Python SOP, placeholder generator `web/scripts/gen-heightmap.mjs`) and the web loader. Change it here first, then on both sides.
+Contract between the exporters (Houdini Python SOP `hou/snippets/export_heightmap.py`, placeholder generator `web/scripts/gen-terrain.mjs`) and the web loader. Change it here first, then on both sides.
 
 ## Files
 
-Two files with the same base name, in `web/src/lib/assets/terrain/`:
+Two files with the same base name (`heightmap`, and `farmap` for the optional far map), in `web/src/lib/assets/terrain/`:
 
 | File | Content |
 |------|---------|
@@ -12,6 +12,14 @@ Two files with the same base name, in `web/src/lib/assets/terrain/`:
 | `heightmap.json` | metadata |
 
 The baked lighting maps share the same footprint: [terrain-maps.md](terrain-maps.md).
+
+## Altitude and the sea
+
+Heights are altitudes in world units, and **the sea is at 0**: the web ground is `max(height, 0)`, a flat sea surface wherever the terrain dips below it (`SEA_LEVEL` in `terrain.glsl` and `ground.ts`). Export the seabed as it is: what lies below 0 gives the water its depth. Bake the lighting maps on the flattened terrain (`max(height, 0)`), so the shadows land on the water's surface.
+
+## The far map (optional)
+
+`farmap.bin` + `farmap.json`, **the same format**, exported by the same snippet (`NAME = "farmap"`): the surroundings at low resolution over a large area (for example 8 km at 512²) that contains the heightmap's footprint. The heightmap blends into it over its edge band, and it blends into the endless noise over its own (Far field → Blend, a fraction of each map's smaller side); the noise continues at its edges' mean height. Make it match the heightmap along the heightmap's edges (both from the same heightfield). Without it, the noise starts at the heightmap's edges. Terrain past the baked maps gets its shadows from the shadow ceiling (`drawables/terrain/shadow.frag`), which then covers the far map.
 
 ## `heightmap.bin`
 

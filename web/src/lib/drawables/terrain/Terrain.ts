@@ -32,8 +32,12 @@ let shaderGeneration = 0;
 const SETTLE_TIME = 0.15;
 /** Browser storage key: this device's moving frames ran slow (automatic rough march in motion), remembered. */
 const SLOW_MOTION_KEY = 'terrain-slow-motion';
-/** Shadow ceiling (light shafts): texels per side, and the square it covers, in heightmap sizes, centred on it. */
+/**
+ * Shadow ceiling (light shafts, shadows on the terrain past the baked maps): texels per side, and the square
+ * it covers: twice the heightmap, centred on it; or the far map, when there is one (more texels then).
+ */
 const SHADOW_SIZE = 512;
+const SHADOW_SIZE_FAR = 1024;
 const SHADOW_EXTENT = 2;
 
 /** Read live every frame (the dev panel edits them). See schema.ts for what each value does. */
@@ -97,6 +101,8 @@ export class Terrain implements Drawable {
 	private shadowProgram: Program | null = null;
 	private vao: WebGLVertexArrayObject | null = null;
 	private heightTexture: WebGLTexture | null = null;
+	/** The far map's heights, or null without one (the heightmap's then stands in, unused). */
+	private farTexture: WebGLTexture | null = null;
 	private mapsTexture: WebGLTexture | null = null;
 	/** For the mist banks (/fog). */
 	private noiseTexture: WebGLTexture | null = null;
@@ -129,6 +135,9 @@ export class Terrain implements Drawable {
 	private readonly mistVector = new Float32Array(4);
 	private readonly windVector = new Float32Array(2);
 	private readonly shadowBox = new Float32Array(4);
+	private readonly shadowSize: number;
+	private readonly farBounds = new Float32Array(4);
+	private readonly farRange = new Float32Array(3);
 	private readonly walkVector = new Float32Array(2);
 	private readonly shaftMarchVector = new Float32Array(4);
 	private readonly shaftsVector = new Float32Array(3);
@@ -147,9 +156,18 @@ export class Terrain implements Drawable {
 		const marginZ = (max[2] - min[2]) * 0.1;
 		camera.setPanBounds(min[0] + marginX, min[2] + marginZ, max[0] - marginX, max[2] - marginZ);
 
-		// The shadow ceiling covers the heightmap and the far field around it (lit beyond, faded)
-		const size = SHADOW_EXTENT * Math.max(max[0] - min[0], max[2] - min[2]);
-		this.shadowBox.set([(min[0] + max[0] - size) / 2, (min[2] + max[2] - size) / 2, 1 / size, 1 / size]);
+		// The far map's box (its heights come once loaded; its band from the settings, per march)
+		const far = assets.farMap?.bounds;
+		if (far) {
+			this.farBounds.set([far.min[0], far.min[2], far.max[0], far.max[2]]);
+			this.farRange.set([far.min[1], far.max[1], 0]);
+		}
+
+		// The shadow ceiling covers the far map, or twice the heightmap around it (lit beyond, faded)
+		const [x0, z0, x1, z1] = far ? this.farBounds : [min[0], min[2], max[0], max[2]];
+		const size = (far ? 1 : SHADOW_EXTENT) * Math.max(x1 - x0, z1 - z0);
+		this.shadowBox.set([(x0 + x1 - size) / 2, (z0 + z1 - size) / 2, 1 / size, 1 / size]);
+		this.shadowSize = far ? SHADOW_SIZE_FAR : SHADOW_SIZE;
 
 		this.marchUniforms = {
 			uBoundsMin: min,
@@ -157,6 +175,8 @@ export class Terrain implements Drawable {
 			uSunDir: assets.maps.sunDir,
 			uShading: this.shadingVector,
 			uFarField: this.farFieldVector,
+			uFarBounds: this.farBounds,
+			uFarRange: this.farRange,
 			uSlab: this.slabVector,
 			uShadowBox: this.shadowBox,
 			uShaftMarch: this.shaftMarchVector,
@@ -174,6 +194,8 @@ export class Terrain implements Drawable {
 			uBoundsMax: max,
 			uSunDir: assets.maps.sunDir,
 			uFarField: this.farFieldVector,
+			uFarBounds: this.farBounds,
+			uFarRange: this.farRange,
 			uSlab: this.slabVector,
 			uShadowBox: this.shadowBox,
 			uWalk: this.walkVector
@@ -191,7 +213,7 @@ export class Terrain implements Drawable {
 		this.shadowProgram = renderer.program(vertex, shadowFragment);
 		this.vao = gl.createVertexArray();
 		this.noiseTexture = renderer.resource('noise:3d', (gl) => createNoiseTexture3D(gl));
-		this.shadow = createColorTarget(gl, SHADOW_SIZE, SHADOW_SIZE, gl.R8);
+		this.shadow = createColorTarget(gl, this.shadowSize, this.shadowSize, gl.R8);
 		this.shadowKey = '';
 		this.dirty = true;
 		try {
@@ -201,19 +223,23 @@ export class Terrain implements Drawable {
 		}
 
 		const generation = ++this.generation;
-		const { heightmapUrl, heightmap, mapsUrl } = this.assets;
-		const height = renderer.resource(`height:${heightmapUrl}`, (gl) =>
-			loadHeightfield(heightmapUrl, heightmap).then((field) => ({
-				field,
-				texture: createHalfFloatTexture(gl, heightmap.width, heightmap.height, field.half)
-			}))
-		);
+		const { heightmapUrl, heightmap, farMapUrl, farMap, mapsUrl } = this.assets;
+		const heights = (url: string, meta: typeof heightmap) =>
+			renderer.resource(`height:${url}`, (gl) =>
+				loadHeightfield(url, meta).then((field) => ({
+					field,
+					texture: createHalfFloatTexture(gl, meta.width, meta.height, field.half)
+				}))
+			);
+		const height = heights(heightmapUrl, heightmap);
+		const far = farMapUrl && farMap ? heights(farMapUrl, farMap) : Promise.resolve(null);
 		const maps = renderer.resource(`maps:${mapsUrl}`, (gl) => loadDataTexture(gl, mapsUrl));
-		Promise.all([height, maps])
-			.then(([h, mapsTexture]) => {
+		Promise.all([height, far, maps])
+			.then(([h, f, mapsTexture]) => {
 				if (generation !== this.generation) return; // disposed or re-initialised meanwhile
-				this.ground = new Ground(h.field, this.settings.farField, this.settings.fog);
+				this.ground = new Ground(h.field, f?.field ?? null, this.settings.farField, this.settings.fog);
 				this.heightTexture = h.texture;
+				this.farTexture = f?.texture ?? null;
 				this.mapsTexture = mapsTexture;
 				this.shadowKey = '';
 				this.dirty = true;
@@ -311,6 +337,7 @@ export class Terrain implements Drawable {
 		if (this.shadow) deleteColorTarget(gl, this.shadow);
 		this.shadow = null;
 		this.heightTexture = null; // textures stay in the renderer's per-context cache
+		this.farTexture = null;
 		this.mapsTexture = null;
 		this.noiseTexture = null;
 		this.fade = 0;
@@ -347,6 +374,7 @@ export class Terrain implements Drawable {
 		f[1] = farField.amplitude;
 		f[2] = farField.scale;
 		f[3] = ground.band;
+		this.farRange[2] = ground.farBand;
 		const [slabMin, slabMax] = ground.slab;
 		this.slabVector[0] = slabMin;
 		this.slabVector[1] = slabMax;
@@ -360,6 +388,7 @@ export class Terrain implements Drawable {
 		u.uViewProj = camera.viewProjection;
 		u.uCamPos = camera.eye;
 		u.uHeightmap = this.heightTexture;
+		u.uFarMap = this.farTexture ?? this.heightTexture;
 		u.uMaps = this.mapsTexture;
 		u.uSteps = march.steps;
 		u.uRefineSteps = march.refineSteps;
@@ -370,7 +399,7 @@ export class Terrain implements Drawable {
 		u.uShadow = this.shadow!.color;
 
 		gl.disable(gl.SCISSOR_TEST);
-		if (sm[0] > 0) this.renderShadow(gl, this.shadow!);
+		this.renderShadow(gl, this.shadow!); // also shades the terrain past the baked maps: needed with the shafts off
 		gl.bindFramebuffer(gl.FRAMEBUFFER, cache.framebuffer);
 		gl.viewport(0, 0, cache.width, cache.height);
 		this.drawFullscreen(gl, this.marchProgram!, u);
@@ -394,19 +423,20 @@ export class Terrain implements Drawable {
 	 */
 	private renderShadow(gl: WebGL2RenderingContext, target: ColorTarget) {
 		const f = this.farFieldVector;
-		const key = `${f[0]} ${f[1]} ${f[2]} ${f[3]} ${shaderGeneration}`;
+		const key = `${f[0]} ${f[1]} ${f[2]} ${f[3]} ${this.farRange[2]} ${shaderGeneration}`;
 		if (key === this.shadowKey) return;
 		this.shadowKey = key;
 
 		const [x, y, z] = this.assets.maps.sunDir;
 		const run = Math.hypot(x, z);
-		const step = 1 / (this.shadowBox[2] * SHADOW_SIZE);
+		const step = 1 / (this.shadowBox[2] * this.shadowSize);
 		const range = this.slabVector[1] - this.slabVector[0];
 		this.walkVector[0] = step;
 		this.walkVector[1] = y > 0 && run > 1e-4 ? Math.min(256, Math.ceil((range * run) / y / step)) : 0;
 
 		const u = this.shadowUniforms;
 		u.uHeightmap = this.heightTexture;
+		u.uFarMap = this.farTexture ?? this.heightTexture;
 		gl.bindFramebuffer(gl.FRAMEBUFFER, target.framebuffer);
 		gl.viewport(0, 0, target.width, target.height);
 		this.drawFullscreen(gl, this.shadowProgram!, u);
@@ -451,6 +481,9 @@ export class Terrain implements Drawable {
 		scene.uBoundsMin = this.marchUniforms.uBoundsMin;
 		scene.uBoundsMax = this.marchUniforms.uBoundsMax;
 		scene.uFarField = this.farFieldVector;
+		scene.uFarMap = this.farTexture ?? this.heightTexture;
+		scene.uFarBounds = this.farBounds;
+		scene.uFarRange = this.farRange;
 		// Where the sun reaches the air (the light shafts' shadow ceiling), for passes that cast shadows in it
 		scene.uShadow = this.shadow?.color ?? null;
 		scene.uShadowBox = this.shadowBox;

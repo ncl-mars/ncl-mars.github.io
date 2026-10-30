@@ -1,6 +1,7 @@
 /**
- * The endless ground around the heightmap: low-frequency value noise that the heightmap fades into over
- * a band along its edges, so the terrain has no border, no thickness, and dissolves into the fog.
+ * The endless ground around the heightmap (and around the far map, when there is one): low-frequency value
+ * noise that the maps fade into over a band along their edges, so the terrain has no border, no thickness,
+ * and dissolves into the fog.
  *
  * MIRROR OF web/src/lib/gl/chunks/noise.glsl (latticeHash, valueNoise) and terrain.glsl (farFbm,
  * coreMask, terrain height): the CPU (camera, picking) and the GPU must agree on the ground. Change both
@@ -13,9 +14,9 @@ export interface FarFieldSettings {
 	amplitude: number;
 	/** Feature size of the far field, world units. */
 	scale: number;
-	/** Width of the blend band inside the heightmap edges, as a fraction of its smaller side. */
+	/** Width of the blend band inside a map's edges (heightmap, far map), as a fraction of its smaller side. */
 	blend: number;
-	/** Offset added to the base level (the mean height of the heightmap's edges). */
+	/** Offset added to the base level (the mean height of the outermost map's edges). */
 	offset: number;
 }
 
@@ -60,7 +61,7 @@ export function farFbm(x: number, y: number): number {
 	return sum / norm;
 }
 
-/** 1 well inside the heightmap, fading to 0 at its edges over `band` world units; 0 outside. */
+/** 1 well inside a map (min, max: its bounds), fading to 0 at its edges over `band` world units; 0 outside. */
 export function coreMask(
 	x: number,
 	z: number,

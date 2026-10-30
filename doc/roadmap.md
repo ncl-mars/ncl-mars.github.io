@@ -205,9 +205,14 @@ Dropped (2026-10-29): simpler, faster without.
 
 ---
 
-## M6 — Real terrain + acceleration
+## M6 — Real terrain + acceleration (`feature/real-terrain`)
 
-- [ ] Swap the placeholders for the Houdini heightmap and baked maps; tune bounds, fog and grid
+- [x] Exporters: `export_heightmap.py` (`NAME`: heightmap or farmap), `export_maps.py` (light, AO, cavity + `v@sun_dir` → `maps.json`), `export_pois.py`
+- [x] The sea at altitude 0: the ground is `max(height, 0)` on the GPU and the CPU, the seabed kept for the water's depth (no mask needed)
+- [x] The optional far map (`farmap.bin`/`.json`, same format, low resolution, large area): the heightmap blends into it, it blends into the noise; the shadow ceiling covers it (1024²) and shades the terrain past the baked maps
+- [ ] Water shading: colour from the depth, foam at the shore (march, cached); animated waves, sun glint and reflected sky in the composite (shading only: the terrain stays cached)
+- [ ] `zones.png`: RGB, three soft masks (crisp at any zoom by thresholding), plus slope and altitude rules (rock, snow) and a base colour; palette in the panel
+- [ ] Swap the placeholders for your exports; tune bounds, fog (end distance for far mountains), mist, start view, POIs
 - [ ] If the gate needs it: max-height mip pyramid (explicit mip uploads) or cone map (`RG16F`), through the strategy hook
 
 ---
@@ -288,6 +293,7 @@ Dropped (2026-10-29): simpler, faster without.
 
 ## Decision log
 
+- **2026-10-30**: Terrain colour by zones, not a colour map: meaning (water, rock…), crisp at any zoom, palette live in the panel. The sea needs no data: altitude 0 is sea level, the ground is `max(height, 0)` and the seabed gives the depth. Waves are shading only, so the terrain stays cached. `zones.png` is RGB (alpha can be premultiplied or rewritten under transparent pixels), three soft masks. The surroundings come from an optional low-resolution far map from Houdini (coast, mountains), not from tuning the noise.
 - **2026-10-29**: Legend shadows looked a little unnatural: penumbra (the sun's disc) and a cooler colour in the air fixed. Casting them from a fixed signboard per POI (so they'd stop swinging and scaling with the camera) was declined: the shadows keep following the labels.
 - **2026-10-29**: Legend shadows in the god rays with the legend unchanged (no 3D stakes, which would have changed its look): the lines are placed in 3D facing the camera at their point's depth, so their shadows follow what you see, and turn with you when you orbit. Drawn every frame as geometry over the terrain (the lines move with the labels), not in the cached march.
 - **2026-10-29**: No sites for now: about 10 POIs at most, so one list is enough, and content comes first. The phone menu folds behind a Projects button. The sites version stays in the history (commit 4c136d5), with the site-labels idea in Q7.

@@ -85,13 +85,13 @@ export function loadHeightfield(url: string, meta: HeightmapMeta): Promise<Heigh
 	return promise;
 }
 
-/** Validate heightmap.json; throws with a clear message instead of rendering garbage. */
-export function parseHeightmapMeta(json: unknown): HeightmapMeta {
+/** Validate heightmap.json (or farmap.json, the same format); throws with a clear message instead of rendering garbage. */
+export function parseHeightmapMeta(json: unknown, name = 'heightmap.json'): HeightmapMeta {
 	const m = json as Partial<HeightmapMeta>;
-	if (m?.version !== 1) throw new Error(`heightmap.json: unsupported version ${m?.version}`);
-	if (m.format !== 'r16f') throw new Error(`heightmap.json: unsupported format ${m.format}`);
-	if (!(Number(m.width) > 0 && Number(m.height) > 0)) throw new Error('heightmap.json: bad width/height');
-	if (!isVec3(m.bounds?.min) || !isVec3(m.bounds?.max)) throw new Error('heightmap.json: bad bounds');
+	if (m?.version !== 1) throw new Error(`${name}: unsupported version ${m?.version}`);
+	if (m.format !== 'r16f') throw new Error(`${name}: unsupported format ${m.format}`);
+	if (!(Number(m.width) > 0 && Number(m.height) > 0)) throw new Error(`${name}: bad width/height`);
+	if (!isVec3(m.bounds?.min) || !isVec3(m.bounds?.max)) throw new Error(`${name}: bad bounds`);
 	return m as HeightmapMeta;
 }
 
