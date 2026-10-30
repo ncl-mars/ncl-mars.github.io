@@ -20,12 +20,12 @@ uniform highp sampler2D uDepth; // highp: samplers default to lowp, which would 
 uniform mat4 uInvViewProj;
 uniform vec3 uCamPos;
 uniform float uFade;            // 0 → 1 once the terrain is loaded
-uniform float uShaftView;       // 1: the light shafts' lit share in grey instead of the scene (dev)
+uniform float uShaftView;       // dev views: 1 the light shafts' lit share in grey; 2 the march's ground, a line every metre
 uniform float uSeaLevel;
 uniform vec4 uWaves;            // x: size (world units), y: speed, z: strength (slope), w: distance they fade over
 uniform vec3 uSea;              // x: reflection, y: glint, z: glint tightness
 uniform float uPixel;           // a pixel's angle (radians), to filter the waves with distance
-uniform sampler2D uShadow;      // the shadow ceiling (shadow.frag), R8 over the slab
+uniform sampler2D uShadow;      // the shadow ceiling (shadow.frag), r + g / 255 over the slab (RG8)
 uniform vec4 uShadowBox;        // xy: its min corner (world xz), zw: 1 / size
 uniform vec2 uSlab;
 
@@ -36,7 +36,8 @@ out vec4 outColor;
 float sunVisibility(vec3 p) {
 	vec2 uv = (p.xz - uShadowBox.xy) * uShadowBox.zw;
 	if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) return 1.0;
-	float ceiling = mix(uSlab.x, uSlab.y, textureLod(uShadow, uv, 0.0).r);
+	vec2 c = textureLod(uShadow, uv, 0.0).rg;
+	float ceiling = mix(uSlab.x, uSlab.y, c.r + c.g / 255.0);
 	return smoothstep(ceiling - 1.5, ceiling + 1.5, p.y);
 }
 
@@ -93,7 +94,21 @@ void main() {
 	} else {
 		col = skyColor(rd);
 	}
-	if (uShaftView > 0.5) col = vec3(texture(uColor, vUv).a);
+	if (uShaftView > 1.5) {
+		// The ground as the march found it (rebuilt from the cache's depth, as the passes after it do): a dark
+		// line every metre of height, a red one every 10 m in x, a blue one in z. Stairs in that surface show
+		// as jagged lines
+		vec4 h = uInvViewProj * vec4(ndc, depth * 2.0 - 1.0, 1.0);
+		vec3 p = h.xyz / h.w;
+		vec3 cell = abs(fract(p * vec3(0.1, 1.0, 0.1) + 0.5) - 0.5) / max(fwidth(p * vec3(0.1, 1.0, 0.1)), vec3(1e-4));
+		col = vec3(0.8);
+		col = mix(col, vec3(0.1), 1.0 - smoothstep(0.5, 1.5, cell.y));
+		col = mix(col, vec3(0.8, 0.2, 0.1), 1.0 - smoothstep(0.5, 1.5, cell.x));
+		col = mix(col, vec3(0.1, 0.3, 0.8), 1.0 - smoothstep(0.5, 1.5, cell.z));
+		if (depth >= 1.0) col = vec3(0.6, 0.7, 0.8);
+	} else if (uShaftView > 0.5) {
+		col = vec3(texture(uColor, vUv).a);
+	}
 
 	gl_FragDepth = depth;
 	outColor = vec4(col * uFade, uFade); // premultiplied: fades in over the page background

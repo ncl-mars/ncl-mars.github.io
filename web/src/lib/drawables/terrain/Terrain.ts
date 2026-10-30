@@ -50,6 +50,7 @@ export interface TerrainSettings {
 		renderScale: number;
 		motionScale: number;
 		motionMode: number;
+		exactHeights: number;
 	};
 	shading: { tint: number[]; shadowLight: number; aoStrength: number; cavityStrength: number; exposure: number };
 	fog: {
@@ -146,7 +147,7 @@ export class Terrain implements Drawable {
 	private slowMotion = false;
 	/** Share of the recent frames (~0.5 s) in which the camera moved. */
 	private motionShare = 0;
-	/** The shadow ceiling (R8 over the slab), and the ground it was rendered for (far field, shaders). */
+	/** The shadow ceiling (RG8 over the slab: coarse + fine), and the ground it was rendered for (far field, shaders). */
 	private shadow: ColorTarget | null = null;
 	private shadowKey = '';
 	private stillTime = 0;
@@ -253,7 +254,7 @@ export class Terrain implements Drawable {
 		this.shadowProgram = renderer.program(vertex, shadowFragment);
 		this.vao = gl.createVertexArray();
 		this.noiseTexture = renderer.resource('noise:3d', (gl) => createNoiseTexture3D(gl));
-		this.shadow = createColorTarget(gl, SHADOW_SIZE, SHADOW_SIZE, gl.R8);
+		this.shadow = createColorTarget(gl, SHADOW_SIZE, SHADOW_SIZE, gl.RG8);
 		this.shadowKey = '';
 		this.dirty = true;
 		try {
@@ -439,6 +440,7 @@ export class Terrain implements Drawable {
 		u.uRefineSteps = march.refineSteps;
 		u.uStepScale = march.stepScale;
 		u.uPrecision = march.precision;
+		u.uExactHeights = march.exactHeights;
 		u.uMaxDistance = fog.end;
 		u.uTint = shading.tint;
 		u.uShadow = this.shadow!.color;

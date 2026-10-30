@@ -59,13 +59,15 @@ Y-up, right-handed, with the same axes in Houdini and WebGL. The exporter does a
 - Import: `heightmap.bin?url` and `heightmap.json` directly (the far map through an optional glob).
 - Check `version`, `format` and byte length; fail loudly on a mismatch.
 - CPU copy (`terrain/heightfield.ts`): decoded to `Float32Array` world heights, for picking and camera collision.
-- GPU copy: one **RG16F** texture, each normalized height split into two half floats, R = half(v), G = half((v − R) × 2048); the shaders read `r + g / 2048.0` (`mapHeight`, `farMapHeight` in `terrain.glsl`). `LINEAR` min/mag, `CLAMP_TO_EDGE`, no mipmaps. See Precision for why.
+- GPU copy: one **RG16F** texture, each normalized height split into two half floats, R = half(v), G = half((v − R) × 2048); a texel's value is `r + g / 2048.0` (`heightTexel` in `terrain.glsl`), exact. `LINEAR` min/mag, `CLAMP_TO_EDGE`, no mipmaps. Near the ground the shaders filter it themselves (see Precision).
 
 ## Precision
 
 Half floats alone aren't evenly spaced: normalized to 0–1, the gap between two values is 1/2048 in the upper half of the range (finer below), 49 cm over 1000 m. On steep, smooth slopes the rounding repeats as a sawtooth, which showed on a 1000 m test ramp at 45°: thin shadows (the legend's) zigzagged, since the low sun turns a height error into a horizontal shift (about ×2 at 26°), and the rock rule banded along the contour lines, since the normal jittered. Hence the 16-bit integers (65,536 even steps).
 
-The GPU needs no extension for them: 16-bit normalized textures would need `EXT_texture_norm16` (not everywhere), float32 filtering `OES_texture_float_linear` (missing on many phones), and `R16UI` can't be filtered (a manual bilinear: four reads per height sample in the march, too slow on the phone). Split into two half floats in one RG16F texture (filterable in core WebGL2), the integers come back to 0.004 of a step (checked over all 65,536 values), bilinear filtering stays exact since it's linear, and the march reads no more texels. Cost: GPU memory doubles (4 bytes per sample: 4 MB at 1024², 16 MB at 2048²), and a one-off conversion at load.
+The GPU needs no extension for them: 16-bit normalized textures would need `EXT_texture_norm16` (not everywhere), float32 filtering `OES_texture_float_linear` (missing on many phones). Split into two half floats in one RG16F texture (core WebGL2), each texel's value comes back to 0.004 of an integer step (checked over all 65,536 values). Cost: GPU memory doubles (4 bytes per sample: 4 MB at 1024², 16 MB at 2048²), and a one-off conversion at load.
+
+That alone didn't remove the steps: **hardware bilinear filtering isn't exact** either. Its weights are fixed point, with 8 bits of sub-texel precision (iq's "hardware interpolation" article), and some GPUs blend half floats at half precision. On a steep slope at a grazing angle, the surface the march found was stepped once per texel (seen in the debug view: Light shafts → Debug view 2). So near the ground, and for the shading's normal, `terrain.glsl` filters the heights itself: four `texelFetch`es, the bilinear blend in fp32 (`heightExact`, `terrainHeight`, `terrainNormal`). The march's big steps, high above the ground, keep the one-read hardware filtering, whose error doesn't matter there; so do programs that don't set `uExactHeights` (dust, shadow ceiling). March → Exact heights switches it off (the cheap way everywhere).
 
 ## Size guidance
 

@@ -4,4 +4,5 @@
 - [Design: discovery](design-discovery.md) — non-obvious readability is intended; don't push "make it obvious" fixes
 - [Browser testing](browser-testing.md) — use the user's Brave, ask first; never probe for or install browsers
 - [Deploy later](deploy-later.md) — site stays local; don't push M4 / GitHub until the user brings it up
+- [Diagnose first](diagnose-first.md) — visual artifacts: data check / debug view before any fix; no blind fixes
 - [Baked lighting](baked-lighting.md) — light and shadows stay baked; to change where the sun shows, aim the camera

@@ -29,30 +29,51 @@ Surface marchSurface(vec3 ro, vec3 rd) {
 	vec2 span = slabInterval(ro, rd);
 	if (span.x >= span.y) return s;
 
+	// Both stops end exactly on the surface (on a plane; very close on real terrain), from clearances already
+	// measured: later passes rebuild the ground from this depth (shadows on the ground, the sea), and a gap
+	// that jumps from band to band across a slope would show in them as stairs.
+	// The big steps read the heights as the GPU filters them (one read; not exact, see /terrain, but off by far
+	// less than 1/4096 of the height range); within four times that of the ground, they're read exactly
+	float nearGround = (uSlab.y - uSlab.x) / 1024.0;
 	float t = span.x;
 	float tAbove = span.x;
+	float cAbove = -1.0; // clearance at tAbove; < 0: not measured yet
 	for (int i = 0; i < uSteps; i++) {
 		vec3 p = ro + rd * t;
 		float clearance = p.y - height(p.xz);
+		if (clearance < nearGround + t * uPrecision) clearance = p.y - heightExact(p.xz);
 		if (clearance <= 0.0) {
-			// The surface is between tAbove (above ground) and t (below): bisect
+			// The surface is between tAbove (above ground) and t (below): bisect, then where the clearance
+			// crosses zero in the last bracket
 			float a = tAbove;
 			float b = t;
+			float ca = cAbove;
+			float cb = clearance;
 			for (int j = 0; j < uRefineSteps; j++) {
 				float m = 0.5 * (a + b);
 				vec3 q = ro + rd * m;
-				if (q.y <= height(q.xz)) b = m;
-				else a = m;
+				float cm = q.y - heightExact(q.xz);
+				if (cm <= 0.0) {
+					b = m;
+					cb = cm;
+				} else {
+					a = m;
+					ca = cm;
+				}
 			}
-			t = 0.5 * (a + b);
+			t = ca > 0.0 ? a + (b - a) * ca / (ca - cb) : 0.5 * (a + b);
 			s.hit = true;
 			break;
 		}
 		if (clearance < t * uPrecision) {
-			s.hit = true; // closer than a pixel: good enough
+			// Closer than a pixel's height: one secant step onto the surface, from the previous sample (at most
+			// as far again as the last step)
+			if (cAbove > clearance) t += min(clearance * (t - tAbove) / (cAbove - clearance), t - tAbove);
+			s.hit = true;
 			break;
 		}
 		tAbove = t;
+		cAbove = clearance;
 		t += max(clearance * uStepScale, t * uPrecision);
 		if (t > span.y) break;
 	}

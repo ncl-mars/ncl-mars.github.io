@@ -23,7 +23,7 @@ uniform highp sampler2D uDepth; // the terrain cache's depth: the ray stops at t
 uniform mat4 uInvViewProj;
 uniform vec3 uCamPos;
 uniform vec4 uViewport;         // the view's rectangle in device px (x, y, width, height)
-uniform sampler2D uShadow;      // the terrain's shadow ceiling (drawables/terrain/shadow.frag), R8 over the slab
+uniform sampler2D uShadow;      // the terrain's shadow ceiling (drawables/terrain/shadow.frag), r + g / 255 over the slab (RG8)
 uniform vec4 uShadowBox;        // xy: its min corner (world xz), zw: 1 / size
 uniform vec2 uSlab;
 uniform vec4 uSheet;            // x: strength, y: thickness (px), z: longest path counted (world units), w: ground shadow
@@ -58,7 +58,8 @@ void clip(float o, float d, float lo, float hi, inout float t0, inout float t1) 
 float sunVisibility(vec3 p) {
 	vec2 uv = (p.xz - uShadowBox.xy) * uShadowBox.zw;
 	if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) return 1.0;
-	float ceiling = mix(uSlab.x, uSlab.y, textureLod(uShadow, uv, 0.0).r);
+	vec2 c = textureLod(uShadow, uv, 0.0).rg;
+	float ceiling = mix(uSlab.x, uSlab.y, c.r + c.g / 255.0);
 	return smoothstep(ceiling - 1.5, ceiling + 1.5, p.y);
 }
 

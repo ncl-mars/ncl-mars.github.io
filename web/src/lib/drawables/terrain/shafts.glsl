@@ -5,7 +5,7 @@
 // camera changes it, and a still view pays nothing. The composite (/fog's atmosphere) turns it into light
 // and shade on the mist.
 
-uniform sampler2D uShadow; // shadow ceiling, 0..1 over the slab (R8)
+uniform sampler2D uShadow; // shadow ceiling, 0..1 over the slab as r + g / 255 (RG8, shadow.frag)
 uniform vec4 uShadowBox;   // xy: min corner (world xz), zw: 1 / size
 uniform vec4 uShaftMarch;  // x: samples per ray (0: off), y: edge softness (world units), z: fog density
 uniform vec4 uMist;        // as in /fog: x density at the base, y base height (world), z falloff height
@@ -16,7 +16,8 @@ float sunVisibility(vec3 p) {
 	vec2 edge = min(uv, 1.0 - uv);
 	float inside = smoothstep(0.0, 0.1, min(edge.x, edge.y));
 	if (inside <= 0.0) return 1.0;
-	float ceiling = mix(uSlab.x, uSlab.y, textureLod(uShadow, uv, 0.0).r);
+	vec2 c = textureLod(uShadow, uv, 0.0).rg;
+	float ceiling = mix(uSlab.x, uSlab.y, c.r + c.g / 255.0);
 	float soft = max(uShaftMarch.y, 1e-3);
 	return mix(1.0, smoothstep(ceiling - soft, ceiling + soft, p.y), inside);
 }

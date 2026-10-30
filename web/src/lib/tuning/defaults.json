@@ -35,7 +35,8 @@
 		"refineSteps": 6,
 		"renderScale": 1,
 		"motionScale": 0.5,
-		"motionMode": 1
+		"motionMode": 1,
+		"exactHeights": 1
 	},
 	"shading": {
 		"tint": [0.8, 0.81, 0.83],

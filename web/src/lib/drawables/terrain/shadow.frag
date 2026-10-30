@@ -4,7 +4,10 @@ precision highp int; // the noise hash needs 32-bit integers (fragment ints defa
 
 // The shadow ceiling, for the light shafts (./shafts): for each ground position, the height under which the
 // air is in the ground's shadow (a ridge stands between it and the sun). Only depends on the ground and the
-// baked sun, so it is rendered once (again when the far field changes), into an R8 texture over the slab.
+// baked sun, so it is rendered once (again when the far field changes), into an RG8 texture over the slab:
+// a coarse value and the remainder × 255, which readers add back after filtering (exact, since filtering is
+// linear): 1/65025 of the slab instead of 8 bits' 1/255 (2 m over a 500 m slab, enough to cut thin shadows
+// on steep slopes into dashes).
 // A point is shadowed when, walking toward the sun, the ground rises above the sun ray through it:
 // ceiling(xz) = max over d of height(xz + toward · d) − d · rise.
 
@@ -32,5 +35,7 @@ void main() {
 		float d = float(i) * uWalk.x;
 		ceiling = max(ceiling, height(xz + toward * d) - d * rise);
 	}
-	outColor = vec4((ceiling - uSlab.x) / (uSlab.y - uSlab.x), 0.0, 0.0, 1.0);
+	float v = clamp((ceiling - uSlab.x) / (uSlab.y - uSlab.x), 0.0, 1.0) * 255.0;
+	float coarse = min(floor(v), 254.0); // exactly k / 255 once stored; the rest goes to the fine channel
+	outColor = vec4(coarse / 255.0, v - coarse, 0.0, 1.0);
 }
