@@ -22,3 +22,4 @@ hou/**/backup/
 hou/geo/
 hou/cache/
 hou/render/
+hou/usd/

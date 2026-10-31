@@ -4,8 +4,10 @@
 // Tracking copy: the node snippet in the .hip is canonical.
 //
 // Input `height`: altitudes in world units, flattened at the sea first (max(height, 0)), so the shadows land
-// on the water's surface. Square image, -1..1 in image space over `size` world units; image +x = world +X,
-// image +y = world +Z.
+// on the water's surface. Square image, -1..1 in image space over `size` world units. The COP-to-SOP import
+// transposes the axes: image +x = world +Z, image +y = world +X, so the sun is swizzled into image axes (.zyx).
+// (Found by fitting the baked light against the exported heightmap's slopes: unswizzled, the bake was lit by
+// the sun with X and Z swapped.)
 // `sun_dir` points toward the sun, in world axes. In SOPs, the v@sun_dir that export_maps.py reads references
 // it (chv), so the web's sun (fog glow, god rays, legend shadows) is the bake's.
 // The other two layers come from Copernicus nodes on the same flattened height: occlusion from Height to
@@ -21,7 +23,7 @@
 
 @KERNEL
 {
-    float3 L = normalize(@sun_dir);              // toward the sun
+    float3 L = normalize(@sun_dir).zyx;          // toward the sun, in image axes (x: world Z, z: world X)
     float extent = 0.5f * @size;                 // world units per image unit
     float px = 2.0f / @xres;                     // one pixel, in image units
     float cell = @size / @xres;                  // one pixel, in world units
