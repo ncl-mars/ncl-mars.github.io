@@ -1,7 +1,7 @@
 // Placeholder terrain for the dig site, used until the real Houdini export exists.
 // Writes, in src/lib/assets/terrain/:
 //   heightmap.bin + heightmap.json   (doc/formats/heightmap.md)
-//   maps.png + maps.json             (doc/formats/terrain-maps.md: R light + soft shadows, G AO, B cavity)
+//   maps.png + maps.json             (doc/formats/terrain-maps.md: R soft shadows, G AO, B cavity)
 //
 // Usage, from web/:  npm run gen:terrain [-- --force] [-- --size 1024 --seed 7]
 // Existing files are never overwritten without --force: they may be a real export.
@@ -75,38 +75,34 @@ const bilinear = (u, v) => {
 };
 const maxHeight = BOUNDS.max[1];
 
-const light = new Float32Array(N * N);
+// Soft shadows only: the web computes the sun's angle on the slope from the heightmap's normal
+const shadow = new Float32Array(N * N);
 const sunXZ = Math.hypot(SUN_DIR[0], SUN_DIR[2]);
 const sunStep = [SUN_DIR[0] / sunXZ, SUN_DIR[2] / sunXZ]; // one texel along the sun's ground direction
 const sunRise = (SUN_DIR[1] / sunXZ) * CELL; // ray climb per texel
 for (let j = 0; j < N; j++) {
 	for (let i = 0; i < N; i++) {
-		const n = normalize([
-			-(at(i + 1, j) - at(i - 1, j)) / (2 * CELL),
-			1,
-			-(at(i, j + 1) - at(i, j - 1)) / (2 * CELL)
-		]);
-		const ndl = Math.max(0, dot(n, SUN_DIR));
-		// Soft shadow: march toward the sun, keep the smallest clearance / distance ratio
+		// March toward the sun one texel at a time (growing steps band the penumbrae), until even the highest
+		// ground couldn't shade the ray; keep the smallest clearance / distance ratio
 		const h0 = at(i, j) + 0.05;
-		let shadow = 1;
-		for (let s = 1; ; s += Math.max(1, s * 0.04)) {
+		let lit = 1;
+		for (let s = 1; ; s++) {
+			const rayHeight = h0 + sunRise * s;
+			if (rayHeight - maxHeight >= (s * CELL) / 10) break;
 			const u = i + sunStep[0] * s;
 			const v = j + sunStep[1] * s;
 			if (u < 0 || v < 0 || u > N - 1 || v > N - 1) break;
-			const rayHeight = h0 + sunRise * s;
-			if (rayHeight > maxHeight) break;
 			const clearance = rayHeight - bilinear(u, v);
 			if (clearance <= 0) {
-				shadow = 0;
+				lit = 0;
 				break;
 			}
-			shadow = Math.min(shadow, (10 * clearance) / (s * CELL));
+			lit = Math.min(lit, (10 * clearance) / (s * CELL));
 		}
-		light[j * N + i] = ndl * smoothstep(0, 1, shadow);
+		shadow[j * N + i] = smoothstep(0, 1, lit);
 	}
 }
-step('light');
+step('shadow');
 
 // Ambient occlusion: horizon angle in 8 directions, samples at 1..64 texels
 const ao = new Float32Array(N * N);
@@ -149,12 +145,12 @@ writeJson('heightmap.json', { version: 1, width: N, height: N, format: 'r16f', b
 
 const rgb = new Uint8Array(N * N * 3);
 for (let k = 0; k < N * N; k++) {
-	rgb[k * 3] = Math.round(light[k] * 255);
+	rgb[k * 3] = Math.round(shadow[k] * 255);
 	rgb[k * 3 + 1] = Math.round(ao[k] * 255);
 	rgb[k * 3 + 2] = Math.round(cavity[k] * 255);
 }
 writePng(join(OUT, 'maps.png'), N, N, rgb);
-writeJson('maps.json', { version: 1, sunDir: SUN_DIR.map((v) => Number(v.toFixed(5))) });
+writeJson('maps.json', { version: 2, sunDir: SUN_DIR.map((v) => Number(v.toFixed(5))) });
 step('write');
 console.log(`Wrote ${N}×${N} terrain to ${OUT}`);
 
@@ -249,9 +245,6 @@ function writeJson(name, data) {
 function normalize(v) {
 	const l = Math.hypot(...v);
 	return v.map((c) => c / l);
-}
-function dot(a, b) {
-	return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 }
 function clamp(v, a, b) {
 	return Math.min(b, Math.max(a, v));

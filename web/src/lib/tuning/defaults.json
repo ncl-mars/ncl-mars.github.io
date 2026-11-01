@@ -40,9 +40,9 @@
 	},
 	"shading": {
 		"tint": [0.8, 0.81, 0.83],
-		"shadowLight": 0.38,
-		"aoStrength": 0.85,
-		"cavityStrength": 0.7,
+		"shadowLight": 0.11,
+		"aoStrength": 0.41,
+		"cavityStrength": 0.32,
 		"exposure": 1.05
 	},
 	"fog": {
@@ -55,8 +55,8 @@
 		"sunPower": 6
 	},
 	"mist": {
-		"density": 0.0075,
-		"height": 28.5,
+		"density": 0.006,
+		"height": 12.5,
 		"falloff": 10,
 		"banks": 0.7,
 		"bankScale": 260

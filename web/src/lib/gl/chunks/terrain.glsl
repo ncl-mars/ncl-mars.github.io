@@ -148,9 +148,11 @@ float heightExact(vec2 xz) {
 	return max(terrainHeightAt(xz, uExactHeights > 0.5), uSeaLevel);
 }
 
-// Surface normal from central differences, one heightmap texel apart (up over the sea), from exact heights.
-vec3 terrainNormal(vec2 xz) {
-	vec2 e = (uBoundsMax.xz - uBoundsMin.xz) / vec2(textureSize(uHeightmap, 0));
+// Surface normal from central differences (up over the sea), from exact heights: one heightmap texel apart, or
+// `span` apart where that's wider (a pixel's footprint far away, so relief finer than a pixel averages out
+// instead of crawling as the camera moves).
+vec3 terrainNormal(vec2 xz, float span) {
+	vec2 e = max((uBoundsMax.xz - uBoundsMin.xz) / vec2(textureSize(uHeightmap, 0)), vec2(span));
 	float dx = heightExact(xz + vec2(e.x, 0.0)) - heightExact(xz - vec2(e.x, 0.0));
 	float dz = heightExact(xz + vec2(0.0, e.y)) - heightExact(xz - vec2(0.0, e.y));
 	return normalize(vec3(-dx / (2.0 * e.x), 1.0, -dz / (2.0 * e.y)));

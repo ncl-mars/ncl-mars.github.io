@@ -1,6 +1,6 @@
 # Python SOP: exports the baked lighting maps for the web terrain, and the sun direction they were baked with.
-# Format: doc/formats/terrain-maps.md -> maps.png (8-bit RGB, linear: R direct light with its shadows,
-# G ambient occlusion, B cavity) + maps.json (sunDir).
+# Format: doc/formats/terrain-maps.md -> maps.png (8-bit RGB, linear: R the sun's cast shadow, G ambient
+# occlusion, B cavity) + maps.json (version 2, sunDir).
 # Tracking copy: the node snippet in the .hip is canonical.
 #
 # Pass-through (the geometry isn't modified). It writes on every cook: bypass the node when not exporting.
@@ -9,7 +9,8 @@
 #   axis flips and swaps are handled), covering the same footprint as the exported heightmap, baked on the
 #   flattened terrain (max(height, 0)) so the shadows land on the sea's surface;
 # - a detail vector attribute `sun_dir` pointing TOWARD the sun: the very vector the bake used. The web
-#   lights everything else with it (fog glow, god rays, legend shadows), so they match the baked shadows.
+#   lights the slopes with it (the sun's angle on them isn't baked) and everything else (fog glow, god rays,
+#   legend shadows), so they all match the baked shadows.
 #   If your bake's direction is the light's travel (sun to ground), set sun_dir to its negation.
 
 import json
@@ -21,9 +22,10 @@ import hou
 import numpy as np
 
 OUT_DIR = hou.text.expandString("$HIP/../web/src/lib/assets/terrain")
-# Heightfield layer per channel: R direct light (0 = fully shadowed), G ambient occlusion (1 = open sky),
-# B cavity (0.5 = flat, below concave, above convex)
-LAYERS = ("light", "occlusion", "cavity")
+# Heightfield layer per channel: R the sun's cast shadow (1 = lit, 0 = in shadow; not the sun's angle on the
+# slope, which the web computes), G ambient occlusion (1 = open sky), B cavity (0.5 = flat, below concave,
+# above convex)
+LAYERS = ("shadow", "occlusion", "cavity")
 # Noise under one 8-bit step, so smooth dark gradients don't band under the fog (terrain-maps.md, Precision)
 DITHER = True
 MAX_SIZE = 2048
@@ -125,4 +127,4 @@ pixels = np.ascontiguousarray(np.clip(np.rint(rgb * 255.0), 0, 255).astype(np.ui
 os.makedirs(OUT_DIR, exist_ok=True)
 write_png(os.path.join(OUT_DIR, "maps.png"), pixels)  # file row 0 = min Z, as the format expects
 with open(os.path.join(OUT_DIR, "maps.json"), "w") as f:
-    json.dump({"version": 1, "sunDir": [round(float(v), 6) for v in sun]}, f, indent="\t")
+    json.dump({"version": 2, "sunDir": [round(float(v), 6) for v in sun]}, f, indent="\t")

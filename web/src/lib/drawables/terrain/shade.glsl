@@ -1,8 +1,10 @@
 // Shading stage: the ground's material colour at a Surface, before any fog (the composite pass adds the
 // atmosphere). Needs /terrain, ./surface and ./shafts (sunVisibility).
-// Inside the heightmap: the maps baked in Houdini (doc/formats/terrain-maps.md). Beyond (far map, noise):
-// light from the same sun, its shadows from the shadow ceiling (ridges, far mountains), blended with the
-// baked maps across the band. Near-gray on purpose: the mood is desaturated, colour is kept for meaning.
+// The sun's light: its angle on the slope, from the heightmap's normal (as sharp as the heights, whatever the
+// maps' resolution), times its shadow. Inside the heightmap, the shadow, AO and cavity are the maps baked in
+// Houdini (doc/formats/terrain-maps.md); beyond (far map, noise), the shadow ceiling's shadows (ridges, far
+// mountains), blended with the maps across the band. Near-gray on purpose: the mood is desaturated, colour
+// is kept for meaning.
 // The ground's colour: the tint, under the zones (three soft masks from Houdini, each crisp at any zoom by
 // thresholding it at 0.5, B over G over R), under rock on steep slopes, with a light variation from the noise
 // texture so large zones aren't flat.
@@ -10,8 +12,9 @@
 // foam where it thins out at the shore; lit the same way (the maps are baked on the flattened terrain).
 // The waves (reflection, glint) are the composite's: they move, the cache doesn't.
 
-uniform sampler2D uMaps;    // R direct light (sun + shadows), G AO, B cavity: linear data
+uniform sampler2D uMaps;    // R the sun's cast shadow (1: lit), G AO, B cavity: linear data
 uniform vec3 uSunDir;       // toward the sun, the one used for the bake
+uniform float uPixel;       // a pixel's angle in the cache (radians): the normal's footprint with distance
 uniform vec3 uTint;         // ground tint, near gray: where no zone and no rock
 uniform sampler2D uZones;   // R, G, B: three zones' soft masks (doc/formats/terrain-maps.md); black without
 uniform vec3 uZone1;        // their colours
@@ -43,15 +46,14 @@ vec3 shadeSurface(Surface s) {
 	if (!s.hit) return vec3(0.0);
 
 	vec3 p = s.position;
-	vec3 normal = terrainNormal(p.xz);
+	vec3 normal = terrainNormal(p.xz, s.t * uPixel);
 	float mask = coreMask(p.xz);
 	if (mask < 1.0) {
-		// Past the baked maps: sun light and the shadow ceiling's shadows, no AO, neutral cavity
-		float sun = max(dot(normal, uSunDir), 0.0) * sunVisibility(p + vec3(0.0, 1.5, 0.0));
-		maps = mix(vec3(sun, 1.0, 0.5), maps, mask);
+		// Past the baked maps: the shadow ceiling's shadows, no AO, neutral cavity
+		maps = mix(vec3(sunVisibility(p + vec3(0.0, 1.5, 0.0)), 1.0, 0.5), maps, mask);
 	}
 
-	float light = mix(uShading.x, 1.0, maps.r);
+	float light = mix(uShading.x, 1.0, max(dot(normal, uSunDir), 0.0) * maps.r);
 	float ao = mix(1.0, maps.g, uShading.y);
 	float cavity = 1.0 + (maps.b - 0.5) * uShading.z;
 

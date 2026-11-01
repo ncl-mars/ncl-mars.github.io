@@ -18,7 +18,8 @@ export interface HeightmapMeta {
 }
 
 export interface TerrainMapsMeta {
-	version: 1;
+	/** 2: R is the sun's cast shadow alone (1 baked the light: the sun's angle on the slope times the shadow). */
+	version: 2;
 	/** Unit vector toward the sun, as used for the bake. */
 	sunDir: Vec3;
 }
@@ -105,11 +106,13 @@ export function parseHeightmapMeta(json: unknown, name = 'heightmap.json'): Heig
 /** Validate maps.json; the sun direction is re-normalised. */
 export function parseMapsMeta(json: unknown): TerrainMapsMeta {
 	const m = json as Partial<TerrainMapsMeta>;
-	if (m?.version !== 1) throw new Error(`maps.json: unsupported version ${m?.version}`);
+	const version: unknown = m?.version;
+	if (version === 1) throw new Error('maps.json: version 1 baked the light into R, now the shadow alone: re-export the maps');
+	if (version !== 2) throw new Error(`maps.json: unsupported version ${version}`);
 	if (!isVec3(m.sunDir)) throw new Error('maps.json: bad sunDir');
 	const [x, y, z] = m.sunDir;
 	const length = Math.hypot(x, y, z);
-	return { version: 1, sunDir: [x / length, y / length, z / length] };
+	return { version: 2, sunDir: [x / length, y / length, z / length] };
 }
 
 function isVec3(v: unknown): v is Vec3 {

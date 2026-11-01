@@ -440,6 +440,7 @@ export class Terrain implements Drawable {
 		u.uRefineSteps = march.refineSteps;
 		u.uStepScale = march.stepScale;
 		u.uPrecision = march.precision;
+		u.uPixel = 2 / (camera.projection[5] * cache.height); // this cache's pixels (the rough one's are larger)
 		u.uExactHeights = march.exactHeights;
 		u.uMaxDistance = fog.end;
 		u.uTint = shading.tint;
