@@ -13,7 +13,7 @@ const farJsons = import.meta.glob<unknown>('../assets/terrain/farmap.json', { ea
 const farUrl = Object.values(farUrls)[0];
 const farJson = Object.values(farJsons)[0];
 // Optional too (doc/formats/terrain-maps.md): the materials' masks (without: ground everywhere), and the
-// ground's colour, lossy since it's colour rather than data (without: Shading → Tint, rock on steep slopes)
+// ground's colour, lossy since it's colour rather than data (without: Shading → Tint)
 const materialUrls = import.meta.glob<string>('../assets/terrain/materials.png', {
 	eager: true,
 	query: '?lossless&format=webp',

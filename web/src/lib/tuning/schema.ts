@@ -77,14 +77,14 @@ export const schema: Group[] = [
 			{ key: 'renderScale', label: 'Render scale', min: 0.25, max: 1, step: 0.05, hint: 'Resolution of the terrain cache (the raymarch). Lower is cheaper; the mist stays full resolution.' },
 			{ key: 'motionScale', label: 'Motion scale', min: 0.1, max: 1, step: 0.05, hint: 'Resolution of the rough march while the camera moves (see Rough in motion), as a fraction of the render scale; a sharp march follows once it stops.' },
 			{ key: 'motionMode', label: 'Rough in motion', kind: 'int', min: 0, max: 2, step: 1, hint: '0: never, the march stays sharp while moving. 1: automatic, on for good the first time moving frames run under ~52 fps on this device, before the resolution drops; remembered on the device (switching away and back forgets it and restarts the detection). 2: always. The stats show "motion sharp / rough".' },
-			{ key: 'exactHeights', label: 'Exact heights', kind: 'int', min: 0, max: 1, step: 1, hint: '1: near the ground (and for the shading’s slope), the march filters the heightmap itself, in full precision (four reads instead of one). 0: the GPU’s filtering everywhere, cheaper, but not exact (8-bit sub-texel weights): steep slopes come out stepped (stairs in thin shadows, bands in the rock).' }
+			{ key: 'exactHeights', label: 'Exact heights', kind: 'int', min: 0, max: 1, step: 1, hint: '1: near the ground (and for the shading’s slope), the march filters the heightmap itself, in full precision (four reads instead of one). 0: the GPU’s filtering everywhere, cheaper, but not exact (8-bit sub-texel weights): steep slopes come out stepped (stairs in thin shadows, bands in the light).' }
 		]
 	},
 	{
 		key: 'shading',
 		label: 'Shading',
 		params: [
-			{ key: 'tint', label: 'Tint', kind: 'color', hint: 'The ground’s colour without an albedo file, and past the heightmap (under rock on steep slopes).' },
+			{ key: 'tint', label: 'Tint', kind: 'color', hint: 'The ground’s colour without an albedo file, and past the heightmap.' },
 			{ key: 'shadowLight', label: 'Light in shadow', min: 0, max: 1, step: 0.01 },
 			{ key: 'aoStrength', label: 'AO strength', min: 0, max: 1, step: 0.01 },
 			{ key: 'cavityStrength', label: 'Cavity strength', min: 0, max: 2, step: 0.01 },
@@ -132,11 +132,7 @@ export const schema: Group[] = [
 		label: 'Ground colours',
 		params: [
 			{ key: 'albedoSaturation', label: 'Albedo saturation', min: 0, max: 2, step: 0.01, hint: 'Of albedo.png (export_albedo.py), the ground’s colour inside the heightmap. 1: as exported, 0: grey.' },
-			{ key: 'albedoTint', label: 'Albedo tint', kind: 'color', hint: 'Multiplies it. White: as exported. Without an albedo file, and past the heightmap: Shading → Tint, under rock.' },
-			{ key: 'rock', label: 'Rock', kind: 'color', hint: 'On steep slopes, where there’s no albedo (past the heightmap, or without the file): the albedo has its rock painted in.' },
-			{ key: 'rockAmount', label: 'Rock amount', min: 0, max: 1, step: 0.01, hint: '0: no rock.' },
-			{ key: 'rockSlope', label: 'Rock slope (°)', min: 5, max: 85, step: 1, hint: 'Slope where rock takes over.' },
-			{ key: 'rockSoftness', label: 'Rock softness (°)', min: 0.5, max: 30, step: 0.5, hint: 'Over how many degrees of slope it blends in.' },
+			{ key: 'albedoTint', label: 'Albedo tint', kind: 'color', hint: 'Multiplies it. White: as exported. Without an albedo file, and past the heightmap: Shading → Tint.' },
 			{ key: 'detail', label: 'Variation', min: 0, max: 0.5, step: 0.01, hint: 'A light colour variation on the ground: finer than the albedo’s texels, and over large flat areas. 0: none.' },
 			{ key: 'detailSize', label: 'Variation size (m)', min: 1, max: 100, step: 0.5, hint: 'Size of its patches.' }
 		]

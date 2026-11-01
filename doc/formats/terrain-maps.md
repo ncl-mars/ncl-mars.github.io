@@ -6,7 +6,7 @@ Image data baked in Houdini for the terrain: the lighting maps (`maps.png`), and
 
 The Python SOP `export_maps.py` reads three heightfield layers (`shadow`, `occlusion`, `cavity` by default, `LAYERS` at its top), values 0–1, and a detail vector attribute `v@sun_dir` pointing **toward** the sun: the same vector the bake used, so the web's sun (its light on the slopes, fog glow, god rays, legend shadows) matches the baked shadows. It writes `maps.png` (no colour chunks, a hint of dither) and `maps.json`, refuses layers of different resolutions, over 2048 per side, a `sun_dir` below the horizon, and a footprint that differs from the exported `heightmap.json`. Pass-through, writes on every cook: bypass it when not exporting.
 
-The layers are baked in Copernicus on the height flattened at the sea (`max(height, 0)`), then imported into SOPs: `shadow` by the OpenCL COP `hou/snippets/bake_shadow.cl` (the sun's soft cast shadow, from its `sun_dir` parameter, which `v@sun_dir` references with `chv`; baked on the heights at full resolution, then downsampled to the maps' resolution, so small occluders keep their shadows), `occlusion` by Height to Ambient Occlusion (1 = open sky), `cavity` by Curvature remapped around 0.5 (crests above). Those two nodes must read the heights at the ground's scale (metres over the image's width), or slopes come out far too steep.
+The layers are baked in Copernicus on the height flattened at the sea (`max(height, 0)`), then imported into SOPs: `shadow` by the OpenCL COP `hou/snippets/bake_shadow.cl` (the sun's soft cast shadow, from its `sun_dir` parameter, which `v@sun_dir` references with `chv`; baked on the heights at full resolution, then downsampled to the maps' resolution, so small occluders keep their shadows), `occlusion` by Height to Ambient Occlusion (1 = open sky), `cavity` by Curvature remapped around 0.5 (crests above). Those two nodes must read the heights at the ground's scale (metres over the image's width), or slopes come out far too steep. Keep Height to Ambient Occlusion's radius around 10 to 20 m (20 to 40 pixels at 2048²): larger, every low area sees distant hills as walls, and open water and plains go dark; detail finer than about 5 m is the cavity's job.
 
 ## Files
 
@@ -77,10 +77,10 @@ The ground's colour inside the heightmap, from `hou/snippets/export_albedo.py`.
 - 8-bit **RGB** (no alpha), **display values (sRGB)**: the renderer has no colour management, and the panel's colours are display values too. No gamma or ICC chunk: the values are read as they are. Colour rather than data, so imported as lossy WebP (`?format=webp&quality=90`), a fraction of the lossless size.
 - **Albedo only**: no AO, cavity, shadow or light in it (they're in `maps.png`, so they'd count twice). The ground only: metal, gloss and spare take their colours from the panel. Under the sea it's unused (the water's colour comes from its depth).
 - Same footprint and orientation as `maps.png`; its own resolution, ≤ 2048 per side. 1024² is enough: the shader's variation (Ground colours → Variation) adds detail below the texel.
-- Rock is painted into it (slope, erosion: in Copernicus): the shader's rock on steep slopes only applies where there's no albedo (past the heightmap, or without the file).
+- Rock is painted into it (slope, erosion: in Copernicus): the shader has no rock rule.
 - Past the heightmap, the ground is Shading → Tint: match it to the map's edges.
 - Graded live in the panel (Ground colours → Albedo saturation, Albedo tint). Keep it near grey for the tone.
-- Optional: without the file, Shading → Tint under rock on steep slopes, as past the heightmap.
+- Optional: without the file, Shading → Tint, as past the heightmap.
 
 In Houdini: three heightfield layers, R, G, B (`albedo_r`, `albedo_g`, `albedo_b` by default, `LAYERS` at the top of the snippet), already converted to display values in Copernicus. The snippet only reads, checks and packs, with the same checks as the materials.
 

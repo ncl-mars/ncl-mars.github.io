@@ -67,10 +67,6 @@ export interface TerrainSettings {
 	ground: {
 		albedoSaturation: number;
 		albedoTint: number[];
-		rock: number[];
-		rockAmount: number;
-		rockSlope: number;
-		rockSoftness: number;
 		detail: number;
 		detailSize: number;
 	};
@@ -144,7 +140,7 @@ export class Terrain implements Drawable {
 	private mapsTexture: WebGLTexture | null = null;
 	/** The materials' masks, or a 1×1 black stand-in without a materials file (ground everywhere). */
 	private materialsTexture: WebGLTexture | null = null;
-	/** The ground's colour, or null without an albedo file (the tint and rock instead). */
+	/** The ground's colour, or null without an albedo file (the tint instead). */
 	private albedoTexture: WebGLTexture | null = null;
 	/** For the mist banks (/fog). */
 	private noiseTexture: WebGLTexture | null = null;
@@ -183,8 +179,6 @@ export class Terrain implements Drawable {
 	private readonly shaftMarchVector = new Float32Array(4);
 	private readonly shaftsVector = new Float32Array(3);
 	private readonly waterVector = new Float32Array(3);
-	private readonly rockVector = new Float32Array(4);
-	private readonly rockSlopeVector = new Float32Array(2);
 	private readonly detailVector = new Float32Array(2);
 	private readonly albedoGradeVector = new Float32Array(2);
 	private readonly metalSurfaceVector = new Float32Array(2);
@@ -231,8 +225,6 @@ export class Terrain implements Drawable {
 			uShaftMarch: this.shaftMarchVector,
 			uMist: this.mistVector,
 			uWater: this.waterVector,
-			uRock: this.rockVector,
-			uRockSlope: this.rockSlopeVector,
 			uDetail: this.detailVector,
 			uAlbedoGrade: this.albedoGradeVector,
 			uMetalSurface: this.metalSurfaceVector,
@@ -477,12 +469,10 @@ export class Terrain implements Drawable {
 		this.waterVector[0] = water.depth;
 		this.waterVector[1] = water.foam;
 		this.waterVector[2] = water.foamWidth;
-		// The ground: the albedo map (without one, the stand-in is bound and ignored), else the tint and rock
+		// The ground: the albedo map (without one, the stand-in is bound and ignored), else the tint
 		u.uAlbedo = this.albedoTexture ?? this.materialsTexture;
 		this.albedoGradeVector.set([this.albedoTexture ? 1 : 0, colours.albedoSaturation]);
 		u.uAlbedoTint = colours.albedoTint;
-		this.rockVector.set([colours.rock[0], colours.rock[1], colours.rock[2], colours.rockAmount]);
-		this.rockSlopeVector.set([colours.rockSlope, Math.max(0.1, colours.rockSoftness)]);
 		this.detailVector.set([colours.detail, colours.detailSize]);
 		// The materials, and the sky they reflect (as the fog draws it)
 		u.uMaterials = this.materialsTexture;

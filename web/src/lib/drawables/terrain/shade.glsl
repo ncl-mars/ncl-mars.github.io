@@ -8,8 +8,8 @@
 // the largest weight wins, anti-aliased against the runner-up, so the edges stay crisp at any zoom. Metal,
 // gloss and spare reflect the sky and the sun's highlight (a colour, how metallic, how rough: the panel's
 // Materials); they depend on the view, which re-marches the cache anyway. The ground is matte: albedo.png
-// inside the heightmap, else the tint under rock on steep slopes, with a light variation from the noise
-// texture. Near-gray on purpose: the mood is desaturated, colour is kept for meaning.
+// inside the heightmap (rock painted in), else the tint, with a light variation from the noise texture.
+// Near-gray on purpose: the mood is desaturated, colour is kept for meaning.
 // Under the sea (terrainHeight below uSeaLevel), the water's own colour, whatever the material: shallow to
 // deep with its depth, foam where it thins out at the shore; lit the same way (the maps are baked on the
 // flattened terrain). The waves (reflection, glint) are the composite's: they move, the cache doesn't.
@@ -21,8 +21,6 @@ uniform vec3 uTint;           // the ground's colour without an albedo map, and 
 uniform sampler2D uAlbedo;    // the ground's colour inside the heightmap (display values), used if uAlbedoGrade.x
 uniform vec2 uAlbedoGrade;    // x: 1 with an albedo map, 0 without; y: its saturation
 uniform vec3 uAlbedoTint;     // multiplies it (white: as exported)
-uniform vec4 uRock;           // rgb: rock's colour; a: how much (0: none). Where there's no albedo
-uniform vec2 uRockSlope;      // x: the slope where rock takes over (degrees), y: over how many degrees
 uniform vec2 uDetail;         // x: colour variation, y: its size (world units)
 uniform highp sampler3D uNoise; // gl/noise.ts: tileable gradient noise, sample with p / 8
 uniform sampler2D uMaterials; // R metal, G gloss, B spare: soft masks (doc/formats/terrain-maps.md); black without
@@ -107,13 +105,8 @@ vec3 shadeSurface(Surface s, vec3 rd) {
 	float ao = mix(1.0, maps.g, uShading.y);
 	float cavity = 1.0 + (maps.b - 0.5) * uShading.z;
 
-	// The ground: the albedo map inside the heightmap, else the tint under rock on steep slopes; then a light
-	// variation
+	// The ground: the albedo map inside the heightmap, else the tint; then a light variation
 	vec3 ground = uTint;
-	if (uRock.a > 0.0) {
-		float slope = degrees(acos(clamp(normal.y, 0.0, 1.0)));
-		ground = mix(ground, uRock.rgb, uRock.a * smoothstep(uRockSlope.x - uRockSlope.y, uRockSlope.x + uRockSlope.y, slope));
-	}
 	if (uAlbedoGrade.x > 0.0) {
 		vec3 graded = mix(vec3(dot(albedo, vec3(0.2126, 0.7152, 0.0722))), albedo, uAlbedoGrade.y) * uAlbedoTint;
 		ground = mix(ground, graded, mask);

@@ -70,12 +70,8 @@
 		"view": 0
 	},
 	"ground": {
-		"albedoSaturation": 1,
+		"albedoSaturation": 0.76,
 		"albedoTint": [1, 1, 1],
-		"rock": [0.66, 0.64, 0.61],
-		"rockAmount": 1,
-		"rockSlope": 40,
-		"rockSoftness": 8,
 		"detail": 0.1,
 		"detailSize": 8
 	},
