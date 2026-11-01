@@ -84,7 +84,7 @@ export const schema: Group[] = [
 		key: 'shading',
 		label: 'Shading',
 		params: [
-			{ key: 'tint', label: 'Tint', kind: 'color' },
+			{ key: 'tint', label: 'Tint', kind: 'color', hint: 'The ground’s colour without an albedo file, and past the heightmap (under rock on steep slopes).' },
 			{ key: 'shadowLight', label: 'Light in shadow', min: 0, max: 1, step: 0.01 },
 			{ key: 'aoStrength', label: 'AO strength', min: 0, max: 1, step: 0.01 },
 			{ key: 'cavityStrength', label: 'Cavity strength', min: 0, max: 2, step: 0.01 },
@@ -128,19 +128,33 @@ export const schema: Group[] = [
 		]
 	},
 	{
-		key: 'zones',
+		key: 'ground',
 		label: 'Ground colours',
 		params: [
-			{ key: 'zone1', label: 'Zone 1 (R)', kind: 'color', hint: 'The zones.png red mask (export_zones.py, zone1). Where no zone and no rock: Shading → Tint.' },
-			{ key: 'zone2', label: 'Zone 2 (G)', kind: 'color', hint: 'The green mask, over zone 1.' },
-			{ key: 'zone3', label: 'Zone 3 (B)', kind: 'color', hint: 'The blue mask, over the others.' },
-			{ key: 'edge', label: 'Zone edge softness', min: 0, max: 0.5, step: 0.005, hint: 'How soft a zone’s edge is (in mask units around its 0.5 level). 0: as crisp as a pixel at any zoom.' },
-			{ key: 'rock', label: 'Rock', kind: 'color', hint: 'On steep slopes, over the zones.' },
+			{ key: 'albedoSaturation', label: 'Albedo saturation', min: 0, max: 2, step: 0.01, hint: 'Of albedo.png (export_albedo.py), the ground’s colour inside the heightmap. 1: as exported, 0: grey.' },
+			{ key: 'albedoTint', label: 'Albedo tint', kind: 'color', hint: 'Multiplies it. White: as exported. Without an albedo file, and past the heightmap: Shading → Tint, under rock.' },
+			{ key: 'rock', label: 'Rock', kind: 'color', hint: 'On steep slopes, where there’s no albedo (past the heightmap, or without the file): the albedo has its rock painted in.' },
 			{ key: 'rockAmount', label: 'Rock amount', min: 0, max: 1, step: 0.01, hint: '0: no rock.' },
 			{ key: 'rockSlope', label: 'Rock slope (°)', min: 5, max: 85, step: 1, hint: 'Slope where rock takes over.' },
 			{ key: 'rockSoftness', label: 'Rock softness (°)', min: 0.5, max: 30, step: 0.5, hint: 'Over how many degrees of slope it blends in.' },
-			{ key: 'detail', label: 'Variation', min: 0, max: 0.5, step: 0.01, hint: 'A light colour variation, so large zones aren’t flat. 0: none.' },
+			{ key: 'detail', label: 'Variation', min: 0, max: 0.5, step: 0.01, hint: 'A light colour variation on the ground: finer than the albedo’s texels, and over large flat areas. 0: none.' },
 			{ key: 'detailSize', label: 'Variation size (m)', min: 1, max: 100, step: 0.5, hint: 'Size of its patches.' }
+		]
+	},
+	{
+		key: 'materials',
+		label: 'Materials',
+		params: [
+			{ key: 'metal', label: 'Metal (R)', kind: 'color', hint: 'The materials.png red mask (export_materials.py, metal). Where no mask: the ground (Ground colours).' },
+			{ key: 'metalMetallic', label: 'Metal: metallic', min: 0, max: 1, step: 0.01, hint: '1: a metal, no diffuse, the sky and the sun reflected in its colour. 0: its colour under white reflections, strong only at grazing angles (glass, lacquer).' },
+			{ key: 'metalRoughness', label: 'Metal: roughness', min: 0.05, max: 1, step: 0.01, hint: 'Lower: a smaller, brighter highlight and a sharper reflection of the sky.' },
+			{ key: 'gloss', label: 'Gloss (G)', kind: 'color', hint: 'The green mask: glass, lacquer, polished stone.' },
+			{ key: 'glossMetallic', label: 'Gloss: metallic', min: 0, max: 1, step: 0.01 },
+			{ key: 'glossRoughness', label: 'Gloss: roughness', min: 0.05, max: 1, step: 0.01 },
+			{ key: 'spare', label: 'Spare (B)', kind: 'color', hint: 'The blue mask, free.' },
+			{ key: 'spareMetallic', label: 'Spare: metallic', min: 0, max: 1, step: 0.01 },
+			{ key: 'spareRoughness', label: 'Spare: roughness', min: 0.05, max: 1, step: 0.01 },
+			{ key: 'edge', label: 'Edge softness', min: 0, max: 0.5, step: 0.005, hint: 'How soft the edges between materials are, in mask units. 0: as crisp as a pixel at any zoom.' }
 		]
 	},
 	{

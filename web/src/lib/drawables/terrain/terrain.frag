@@ -48,5 +48,5 @@ void main() {
 	} else {
 		gl_FragDepth = 1.0;
 	}
-	outColor = vec4(shadeSurface(s), shaftLight(uCamPos, rd, s.hit ? s.t : uMaxDistance));
+	outColor = vec4(shadeSurface(s, rd), shaftLight(uCamPos, rd, s.hit ? s.t : uMaxDistance));
 }

@@ -41,14 +41,14 @@
 	"shading": {
 		"tint": [0.8, 0.81, 0.83],
 		"shadowLight": 0.11,
-		"aoStrength": 0.41,
+		"aoStrength": 0.81,
 		"cavityStrength": 0.32,
 		"exposure": 1.05
 	},
 	"fog": {
 		"color": [0.459, 0.561, 0.663],
 		"skyColor": [0.56, 0.64, 0.73],
-		"density": 0.00045,
+		"density": 0.00095,
 		"end": 3480,
 		"sunColor": [0.95, 0.86, 0.72],
 		"sunGlow": 0.35,
@@ -69,17 +69,27 @@
 		"power": 3,
 		"view": 0
 	},
-	"zones": {
-		"zone1": [0.74, 0.69, 0.58],
-		"zone2": [0.56, 0.6, 0.5],
-		"zone3": [0.62, 0.6, 0.57],
-		"edge": 0.02,
+	"ground": {
+		"albedoSaturation": 1,
+		"albedoTint": [1, 1, 1],
 		"rock": [0.66, 0.64, 0.61],
 		"rockAmount": 1,
 		"rockSlope": 40,
 		"rockSoftness": 8,
 		"detail": 0.1,
 		"detailSize": 8
+	},
+	"materials": {
+		"metal": [0.95, 0.76, 0.42],
+		"metalMetallic": 1,
+		"metalRoughness": 0.3,
+		"gloss": [0.1, 0.1, 0.11],
+		"glossMetallic": 0,
+		"glossRoughness": 0.08,
+		"spare": [0.6, 0.6, 0.6],
+		"spareMetallic": 0,
+		"spareRoughness": 0.9,
+		"edge": 0.02
 	},
 	"water": {
 		"level": 0,

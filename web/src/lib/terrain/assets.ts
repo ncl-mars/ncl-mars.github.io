@@ -12,10 +12,16 @@ const farUrls = import.meta.glob<string>('../assets/terrain/farmap.bin', { eager
 const farJsons = import.meta.glob<unknown>('../assets/terrain/farmap.json', { eager: true, import: 'default' });
 const farUrl = Object.values(farUrls)[0];
 const farJson = Object.values(farJsons)[0];
-// The zones (three soft masks, doc/formats/terrain-maps.md) are optional too: without, no zone anywhere
-const zoneUrls = import.meta.glob<string>('../assets/terrain/zones.png', {
+// Optional too (doc/formats/terrain-maps.md): the materials' masks (without: ground everywhere), and the
+// ground's colour, lossy since it's colour rather than data (without: Shading → Tint, rock on steep slopes)
+const materialUrls = import.meta.glob<string>('../assets/terrain/materials.png', {
 	eager: true,
 	query: '?lossless&format=webp',
+	import: 'default'
+});
+const albedoUrls = import.meta.glob<string>('../assets/terrain/albedo.png', {
+	eager: true,
+	query: '?format=webp&quality=90',
 	import: 'default'
 });
 
@@ -26,7 +32,8 @@ export const terrainAssets = {
 	farMap: farUrl && farJson ? parseHeightmapMeta(farJson, 'farmap.json') : null,
 	mapsUrl,
 	maps: parseMapsMeta(mapsJson),
-	zonesUrl: Object.values(zoneUrls)[0] ?? null
+	materialsUrl: Object.values(materialUrls)[0] ?? null,
+	albedoUrl: Object.values(albedoUrls)[0] ?? null
 };
 
 export type TerrainAssets = typeof terrainAssets;

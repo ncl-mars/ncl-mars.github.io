@@ -64,17 +64,27 @@ export interface TerrainSettings {
 	};
 	mist: { density: number; height: number; falloff: number; banks: number; bankScale: number };
 	shafts: { samples: number; softness: number; darkness: number; glow: number; power: number; view: number };
-	zones: {
-		zone1: number[];
-		zone2: number[];
-		zone3: number[];
-		edge: number;
+	ground: {
+		albedoSaturation: number;
+		albedoTint: number[];
 		rock: number[];
 		rockAmount: number;
 		rockSlope: number;
 		rockSoftness: number;
 		detail: number;
 		detailSize: number;
+	};
+	materials: {
+		metal: number[];
+		metalMetallic: number;
+		metalRoughness: number;
+		gloss: number[];
+		glossMetallic: number;
+		glossRoughness: number;
+		spare: number[];
+		spareMetallic: number;
+		spareRoughness: number;
+		edge: number;
 	};
 	water: {
 		level: number;
@@ -132,8 +142,10 @@ export class Terrain implements Drawable {
 	/** The far map's heights, or null without one (the heightmap's then stands in, unused). */
 	private farTexture: WebGLTexture | null = null;
 	private mapsTexture: WebGLTexture | null = null;
-	/** The zones' masks, or a 1×1 black stand-in without a zones file. */
-	private zonesTexture: WebGLTexture | null = null;
+	/** The materials' masks, or a 1×1 black stand-in without a materials file (ground everywhere). */
+	private materialsTexture: WebGLTexture | null = null;
+	/** The ground's colour, or null without an albedo file (the tint and rock instead). */
+	private albedoTexture: WebGLTexture | null = null;
 	/** For the mist banks (/fog). */
 	private noiseTexture: WebGLTexture | null = null;
 	/** The terrain cache at `renderScale`, and at `renderScale × motionScale` for a moving camera. */
@@ -174,6 +186,10 @@ export class Terrain implements Drawable {
 	private readonly rockVector = new Float32Array(4);
 	private readonly rockSlopeVector = new Float32Array(2);
 	private readonly detailVector = new Float32Array(2);
+	private readonly albedoGradeVector = new Float32Array(2);
+	private readonly metalSurfaceVector = new Float32Array(2);
+	private readonly glossSurfaceVector = new Float32Array(2);
+	private readonly spareSurfaceVector = new Float32Array(2);
 	private readonly wavesVector = new Float32Array(4);
 	private readonly seaVector = new Float32Array(3);
 	private readonly marchUniforms: Record<string, unknown>;
@@ -217,7 +233,12 @@ export class Terrain implements Drawable {
 			uWater: this.waterVector,
 			uRock: this.rockVector,
 			uRockSlope: this.rockSlopeVector,
-			uDetail: this.detailVector
+			uDetail: this.detailVector,
+			uAlbedoGrade: this.albedoGradeVector,
+			uMetalSurface: this.metalSurfaceVector,
+			uGlossSurface: this.glossSurfaceVector,
+			uSpareSurface: this.spareSurfaceVector,
+			uSunGlow: this.sunGlowVector
 		};
 		this.compositeUniforms = {
 			uSunDir: assets.maps.sunDir,
@@ -264,7 +285,7 @@ export class Terrain implements Drawable {
 		}
 
 		const generation = ++this.generation;
-		const { heightmapUrl, heightmap, farMapUrl, farMap, mapsUrl, zonesUrl } = this.assets;
+		const { heightmapUrl, heightmap, farMapUrl, farMap, mapsUrl, materialsUrl, albedoUrl } = this.assets;
 		const heights = (url: string, meta: typeof heightmap) =>
 			renderer.resource(`height:${url}`, (gl) =>
 				loadHeightfield(url, meta).then((field) => ({
@@ -275,17 +296,21 @@ export class Terrain implements Drawable {
 		const height = heights(heightmapUrl, heightmap);
 		const far = farMapUrl && farMap ? heights(farMapUrl, farMap) : Promise.resolve(null);
 		const maps = renderer.resource(`maps:${mapsUrl}`, (gl) => loadDataTexture(gl, mapsUrl));
-		const zones = zonesUrl
-			? renderer.resource(`maps:${zonesUrl}`, (gl) => loadDataTexture(gl, zonesUrl))
-			: Promise.resolve(renderer.resource('zones:none', (gl) => blackTexture(gl)));
-		Promise.all([height, far, maps, zones])
-			.then(([h, f, mapsTexture, zonesTexture]) => {
+		const materials = materialsUrl
+			? renderer.resource(`maps:${materialsUrl}`, (gl) => loadDataTexture(gl, materialsUrl))
+			: Promise.resolve(renderer.resource('materials:none', (gl) => blackTexture(gl)));
+		const albedo = albedoUrl
+			? renderer.resource(`maps:${albedoUrl}`, (gl) => loadDataTexture(gl, albedoUrl))
+			: Promise.resolve(null);
+		Promise.all([height, far, maps, materials, albedo])
+			.then(([h, f, mapsTexture, materialsTexture, albedoTexture]) => {
 				if (generation !== this.generation) return; // disposed or re-initialised meanwhile
 				this.ground = new Ground(h.field, f?.field ?? null, this.settings.farField, this.settings.water, this.settings.fog);
 				this.heightTexture = h.texture;
 				this.farTexture = f?.texture ?? null;
 				this.mapsTexture = mapsTexture;
-				this.zonesTexture = zonesTexture;
+				this.materialsTexture = materialsTexture;
+				this.albedoTexture = albedoTexture;
 				this.shadowKey = '';
 				this.dirty = true;
 			})
@@ -383,7 +408,8 @@ export class Terrain implements Drawable {
 		this.shadow = null;
 		this.heightTexture = null; // textures stay in the renderer's per-context cache
 		this.farTexture = null;
-		this.zonesTexture = null;
+		this.materialsTexture = null;
+		this.albedoTexture = null;
 		this.mapsTexture = null;
 		this.noiseTexture = null;
 		this.fade = 0;
@@ -409,7 +435,7 @@ export class Terrain implements Drawable {
 	/** Raymarch the ground into the cache, then restore the renderer's target, viewport and scissor. */
 	private march(gl: WebGL2RenderingContext, ctx: DrawContext, ground: Ground, cache: ColorDepthTarget) {
 		const camera = this.camera;
-		const { march, shading, fog, farField, shafts, water, zones } = this.settings;
+		const { march, shading, fog, farField, shafts, water, ground: colours, materials } = this.settings;
 		const s = this.shadingVector;
 		s[0] = shading.shadowLight;
 		s[1] = shading.aoStrength;
@@ -451,14 +477,27 @@ export class Terrain implements Drawable {
 		this.waterVector[0] = water.depth;
 		this.waterVector[1] = water.foam;
 		this.waterVector[2] = water.foamWidth;
-		u.uZones = this.zonesTexture;
-		u.uZone1 = zones.zone1;
-		u.uZone2 = zones.zone2;
-		u.uZone3 = zones.zone3;
-		u.uZoneEdge = zones.edge;
-		this.rockVector.set([zones.rock[0], zones.rock[1], zones.rock[2], zones.rockAmount]);
-		this.rockSlopeVector.set([zones.rockSlope, Math.max(0.1, zones.rockSoftness)]);
-		this.detailVector.set([zones.detail, zones.detailSize]);
+		// The ground: the albedo map (without one, the stand-in is bound and ignored), else the tint and rock
+		u.uAlbedo = this.albedoTexture ?? this.materialsTexture;
+		this.albedoGradeVector.set([this.albedoTexture ? 1 : 0, colours.albedoSaturation]);
+		u.uAlbedoTint = colours.albedoTint;
+		this.rockVector.set([colours.rock[0], colours.rock[1], colours.rock[2], colours.rockAmount]);
+		this.rockSlopeVector.set([colours.rockSlope, Math.max(0.1, colours.rockSoftness)]);
+		this.detailVector.set([colours.detail, colours.detailSize]);
+		// The materials, and the sky they reflect (as the fog draws it)
+		u.uMaterials = this.materialsTexture;
+		u.uMaterialEdge = materials.edge;
+		u.uMetal = materials.metal;
+		this.metalSurfaceVector.set([materials.metalMetallic, materials.metalRoughness]);
+		u.uGloss = materials.gloss;
+		this.glossSurfaceVector.set([materials.glossMetallic, materials.glossRoughness]);
+		u.uSpare = materials.spare;
+		this.spareSurfaceVector.set([materials.spareMetallic, materials.spareRoughness]);
+		u.uFogColor = fog.color;
+		u.uSkyColor = fog.skyColor;
+		u.uSunColor = fog.sunColor;
+		this.sunGlowVector[0] = fog.sunGlow;
+		this.sunGlowVector[1] = fog.sunPower;
 		u.uNoise = this.noiseTexture;
 
 		gl.disable(gl.SCISSOR_TEST);
@@ -575,7 +614,7 @@ export class Terrain implements Drawable {
 	}
 }
 
-/** A 1×1 black texture: the zones without a zones file (no zone anywhere). */
+/** A 1×1 black texture: the materials without a materials file (ground everywhere). */
 function blackTexture(gl: WebGL2RenderingContext): WebGLTexture {
 	const texture = gl.createTexture()!;
 	gl.bindTexture(gl.TEXTURE_2D, texture);

@@ -1,6 +1,6 @@
 # Terrain maps format (v1)
 
-Grayscale lighting data baked in Houdini for the terrain. It is the companion to [heightmap.md](heightmap.md) and covers the same footprint. Contract between the Houdini exporter (`hou/snippets/export_maps.py`) and the web loader. Change it here first, then on both sides.
+Image data baked in Houdini for the terrain: the lighting maps (`maps.png`), and optionally its materials (`materials.png`) and the ground's colour (`albedo.png`). The companion to [heightmap.md](heightmap.md), over the same footprint. Contract between the Houdini exporters (`hou/snippets/export_maps.py`, `export_materials.py`, `export_albedo.py`) and the web loader. Change it here first, then on both sides.
 
 ## Houdini
 
@@ -58,17 +58,31 @@ All values are **linear data in 0–1**, not sRGB colour. Export without gamma a
 
 8 bits per channel. If banding shows in smooth dark gradients under the fog, first add dithering at export. If that isn't enough, move to a half-float `.bin` like the heightmap.
 
-## Zones: `zones.png` (optional)
+## Materials: `materials.png` (optional)
 
-What kind of ground each place is, for the shader to colour (palette in the dev panel), from `hou/snippets/export_zones.py`.
+What each place is made of, for the shader to light it, from `hou/snippets/export_materials.py`.
 
 - Lossless 8-bit **RGB** (no alpha: browsers may premultiply it, and WebP may rewrite the colour under transparent pixels), linear data, no gamma or ICC profile. Imported like `maps.png` (`?lossless&format=webp`).
-- Same footprint and orientation as `maps.png` (see above); its own resolution, ≤ 2048 per side.
-- **R, G, B: three zones' soft masks.** 1 inside the zone, 0 outside, **blurred over a few texels** (2 to 4): the shader thresholds each at 0.5, so the zone's edge stays crisp at any zoom, and the gradient gives it bands near the edge (a fringe, a darker rim). Where masks overlap, the later channel wins (B over G over R).
-- Where no mask is set: the base ground colour. The sea (altitude below 0: colour from the depth, foam at the shore) and rock on steep slopes need no mask: the shader derives them from the height.
-- Meaning is the palette's: zone 1, 2, 3 are coloured in the panel (Ground colours), over the base tint, under rock on steep slopes. Optional: without the file, no zone anywhere.
+- Same footprint and orientation as `maps.png` (see above); its own resolution, ≤ 2048 per side. 2048² matches the heights, so the materials' edges follow the objects' walls; masks that are mostly flat compress well.
+- **R metal, G gloss, B spare; the ground is the rest** (1 − R − G − B). Each mask is 1 inside its material and 0 outside, **all blurred the same, over 2 to 4 texels**, so together they add up to 1 at most. The shader picks the material with the largest weight, anti-aliased against the runner-up: the edges stay crisp at any zoom, and where three materials meet, none leaves a gap.
+- How each is lit is the panel's (Materials: a colour, how metallic, how rough). Metal reflects the sky and the sun in its own colour; gloss reflects them over its colour (glass, lacquer, polished stone); spare is free. The ground is matte (see `albedo.png`). The sea (altitude below 0: colour from the depth, foam at the shore) needs no mask, whatever the material: the shader derives it from the height.
+- Optional: without the file, ground everywhere; past the heightmap, ground.
 
-In Houdini: one heightfield layer per zone (`zone1`, `zone2`, `zone3` by default, `ZONES` at the top of the snippet; a missing one exports empty), blurred a few texels. The snippet refuses layers of different resolutions, over 2048 per side, and a footprint that differs from the exported `heightmap.json`.
+In Houdini (Copernicus): from your `material_index` (ground, metal, gloss, spare), one mask per material, the same blur for all. Grow the objects' masks by about a texel before the blur, so their walls take the object's material: masks are read by xz, and a vertical wall has a single xz, so its whole height takes the material at its foot. One heightfield layer per material (`metal`, `gloss`, `spare` by default, `LAYERS` at the top of the snippet; a missing one exports empty). The snippet only reads, checks and packs: it refuses layers of different resolutions, over 2048 per side, and a footprint that differs from the exported `heightmap.json`.
+
+## Ground colour: `albedo.png` (optional)
+
+The ground's colour inside the heightmap, from `hou/snippets/export_albedo.py`.
+
+- 8-bit **RGB** (no alpha), **display values (sRGB)**: the renderer has no colour management, and the panel's colours are display values too. No gamma or ICC chunk: the values are read as they are. Colour rather than data, so imported as lossy WebP (`?format=webp&quality=90`), a fraction of the lossless size.
+- **Albedo only**: no AO, cavity, shadow or light in it (they're in `maps.png`, so they'd count twice). The ground only: metal, gloss and spare take their colours from the panel. Under the sea it's unused (the water's colour comes from its depth).
+- Same footprint and orientation as `maps.png`; its own resolution, ≤ 2048 per side. 1024² is enough: the shader's variation (Ground colours → Variation) adds detail below the texel.
+- Rock is painted into it (slope, erosion: in Copernicus): the shader's rock on steep slopes only applies where there's no albedo (past the heightmap, or without the file).
+- Past the heightmap, the ground is Shading → Tint: match it to the map's edges.
+- Graded live in the panel (Ground colours → Albedo saturation, Albedo tint). Keep it near grey for the tone.
+- Optional: without the file, Shading → Tint under rock on steep slopes, as past the heightmap.
+
+In Houdini: three heightfield layers, R, G, B (`albedo_r`, `albedo_g`, `albedo_b` by default, `LAYERS` at the top of the snippet), already converted to display values in Copernicus. The snippet only reads, checks and packs, with the same checks as the materials.
 
 ## Versioning
 
