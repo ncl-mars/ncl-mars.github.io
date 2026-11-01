@@ -39,6 +39,7 @@ uniform vec4 uShading;        // x: light in full shadow, y: AO strength, z: cav
 uniform vec3 uShallow;        // the water's colour where it's shallow
 uniform vec3 uDeep;           // and where it's deep
 uniform vec3 uWater;          // x: depth over which it turns deep (world units), y: foam, z: foam width (depth, world units)
+uniform float uDebugView;     // dev (Light shafts → Debug view): 3 the materials in flat colours, 4 the ground's colour unlit
 
 const vec3 FOAM = vec3(0.9, 0.92, 0.93);
 
@@ -119,6 +120,14 @@ vec3 shadeSurface(Surface s, vec3 rd) {
 	}
 
 	vec4 share = materialShares(w, aa);
+	if (uDebugView > 2.5) {
+		// Dev views: 3 each material in a flat colour (ground grey, metal yellow, gloss blue, spare green), lit just
+		// enough to read the relief; 4 the ground's colour as the shader uses it, unlit, the materials and the sea
+		// ignored. The composite shows them without fog
+		if (uDebugView > 3.5) return ground;
+		vec3 swatch = share.x * vec3(0.5) + share.y * vec3(1.0, 0.8, 0.2) + share.z * vec3(0.2, 0.45, 1.0) + share.w * vec3(0.3, 0.8, 0.3);
+		return swatch * (0.4 + 0.6 * sun);
+	}
 	vec3 col = share.x * ground * (light * ao * cavity);
 	if (share.x < 1.0) {
 		vec3 v = -rd;

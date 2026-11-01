@@ -124,7 +124,7 @@ export const schema: Group[] = [
 			{ key: 'darkness', label: 'Shadow darkness', min: 0, max: 1, step: 0.01, hint: 'How much the air (mist and haze) darkens in the shadow of the ridges.' },
 			{ key: 'glow', label: 'Glow', min: 0, max: 2, step: 0.01, hint: 'Sunlit air brightening toward the sun, on top of the fog’s sun glow (which air in shadow loses).' },
 			{ key: 'power', label: 'Glow tightness', min: 1, max: 32, step: 0.5, hint: 'Lower: the glow spreads wider around the sun.' },
-			{ key: 'view', label: 'Debug view', kind: 'int', min: 0, max: 2, step: 1, hint: 'Dev. 1: how lit each ray is, in grey (white: all lit, darker: through the shadow of the ground). 2: the ground as the march found it, a dark line every metre of height (red every 10 m in x, blue in z): stairs in it show as jagged lines.' }
+			{ key: 'view', label: 'Debug view', kind: 'int', min: 0, max: 4, step: 1, hint: 'Dev. 1: how lit each ray is, in grey (white: all lit, darker: through the shadow of the ground). 2: the ground as the march found it, a dark line every metre of height (red every 10 m in x, blue in z): stairs in it show as jagged lines. 3: the materials in flat colours (ground grey, metal yellow, gloss blue, spare green), lit just enough to read the relief: the masks should cover the objects’ walls. 4: the ground’s colour, unlit and without fog, as the shader uses it (the albedo graded, else the tint): its colours and orientation (rock on the cliffs).' }
 		]
 	},
 	{

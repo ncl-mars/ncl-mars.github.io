@@ -477,6 +477,7 @@ export class Terrain implements Drawable {
 		// The materials, and the sky they reflect (as the fog draws it)
 		u.uMaterials = this.materialsTexture;
 		u.uMaterialEdge = materials.edge;
+		u.uDebugView = shafts.view; // 3 and 4 are drawn here (the shafts group re-marches the cache)
 		u.uMetal = materials.metal;
 		this.metalSurfaceVector.set([materials.metalMetallic, materials.metalRoughness]);
 		u.uGloss = materials.gloss;

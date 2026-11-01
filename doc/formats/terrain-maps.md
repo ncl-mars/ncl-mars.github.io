@@ -67,6 +67,7 @@ What each place is made of, for the shader to light it, from `hou/snippets/expor
 - **R metal, G gloss, B spare; the ground is the rest** (1 − R − G − B). Each mask is 1 inside its material and 0 outside, **all blurred the same, over 2 to 4 texels**, so together they add up to 1 at most. The shader picks the material with the largest weight, anti-aliased against the runner-up: the edges stay crisp at any zoom, and where three materials meet, none leaves a gap.
 - How each is lit is the panel's (Materials: a colour, how metallic, how rough). Metal reflects the sky and the sun in its own colour; gloss reflects them over its colour (glass, lacquer, polished stone); spare is free. The ground is matte (see `albedo.png`). The sea (altitude below 0: colour from the depth, foam at the shore) needs no mask, whatever the material: the shader derives it from the height.
 - Optional: without the file, ground everywhere; past the heightmap, ground.
+- Check it in the panel: Light shafts → Debug view 3 shows each material in a flat colour over the relief (ground grey, metal yellow, gloss blue, spare green): the objects' walls should be covered.
 
 In Houdini (Copernicus): from your `material_index` (ground, metal, gloss, spare), one mask per material, the same blur for all. Grow the objects' masks by about a texel before the blur, so their walls take the object's material: masks are read by xz, and a vertical wall has a single xz, so its whole height takes the material at its foot. One heightfield layer per material (`metal`, `gloss`, `spare` by default, `LAYERS` at the top of the snippet; a missing one exports empty). The snippet only reads, checks and packs: it refuses layers of different resolutions, over 2048 per side, and a footprint that differs from the exported `heightmap.json`.
 
@@ -81,6 +82,7 @@ The ground's colour inside the heightmap, from `hou/snippets/export_albedo.py`.
 - Past the heightmap, the ground is Shading → Tint: match it to the map's edges.
 - Graded live in the panel (Ground colours → Albedo saturation, Albedo tint). Keep it near grey for the tone.
 - Optional: without the file, Shading → Tint, as past the heightmap.
+- Check it in the panel: Light shafts → Debug view 4 shows the ground's colour as the shader uses it, unlit and without fog (colours, orientation: rock on the cliffs).
 
 In Houdini: three heightfield layers, R, G, B (`albedo_r`, `albedo_g`, `albedo_b` by default, `LAYERS` at the top of the snippet), already converted to display values in Copernicus. The snippet only reads, checks and packs, with the same checks as the materials.
 

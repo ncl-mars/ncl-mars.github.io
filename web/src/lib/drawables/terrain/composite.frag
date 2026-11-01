@@ -20,7 +20,7 @@ uniform highp sampler2D uDepth; // highp: samplers default to lowp, which would 
 uniform mat4 uInvViewProj;
 uniform vec3 uCamPos;
 uniform float uFade;            // 0 → 1 once the terrain is loaded
-uniform float uShaftView;       // dev views: 1 the light shafts' lit share in grey; 2 the march's ground, a line every metre
+uniform float uShaftView;       // dev views: 1 the light shafts' lit share in grey; 2 the march's ground, a line every metre; 3, 4 the march's own (shade.glsl), without fog
 uniform float uSeaLevel;
 uniform vec4 uWaves;            // x: size (world units), y: speed, z: strength (slope), w: distance they fade over
 uniform vec3 uSea;              // x: reflection, y: glint, z: glint tightness
@@ -94,7 +94,10 @@ void main() {
 	} else {
 		col = skyColor(rd);
 	}
-	if (uShaftView > 1.5) {
+	if (uShaftView > 2.5) {
+		// The march drew a debug view into the cache (3 the materials, 4 the ground's colour): as it is, no fog
+		col = depth < 1.0 ? texture(uColor, vUv).rgb : vec3(0.6, 0.7, 0.8);
+	} else if (uShaftView > 1.5) {
 		// The ground as the march found it (rebuilt from the cache's depth, as the passes after it do): a dark
 		// line every metre of height, a red one every 10 m in x, a blue one in z. Stairs in that surface show
 		// as jagged lines
