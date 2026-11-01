@@ -135,6 +135,7 @@
 			() =>
 				`terrain ${terrain.marchedLastFrame ? 'marching' : 'cached'}${terrain.roughShown ? ' · rough' : ''} · ${terrain.marches} marches · motion ${terrain.roughInMotion ? 'rough' : 'sharp'}`
 		);
+		readouts.set('legendShadows', () => legendShadows.airReadout);
 
 		readouts.set('camera', () => {
 			const deg = 180 / Math.PI;
@@ -213,6 +214,7 @@
 			window.removeEventListener('click', onClick, true);
 			window.removeEventListener('keydown', onKeyDown, true);
 			readouts.delete('terrain');
+			readouts.delete('legendShadows');
 			readouts.delete('camera');
 			readouts.delete('tour');
 			actions.delete('Free camera');

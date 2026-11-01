@@ -35,6 +35,10 @@ const ROW_HEIGHT = 96;
 export const MAX_LABEL_SHADOWS = Math.floor(2048 / ROW_HEIGHT);
 /** Texels kept empty under and right of each mask, so mipmaps don't bleed into the next row. */
 const PAD = 8;
+/** Browser storage key: this device's frames ran slow with the text's shadows in the air (see `degrade`), remembered. */
+const THIN_AIR_KEY = 'legend-shadows-thin-air';
+/** On such a device, the text's shadows in the air take at most this many samples (Text samples: 16). */
+const THIN_AIR_SAMPLES = 8;
 
 /** A unit box, 12 triangles: x and y from 0 to 1, z from `zMin` to 1. */
 function unitBox(zMin: number): Float32Array {
@@ -61,6 +65,8 @@ const LABEL_BOX = unitBox(0);
  * boxes depth-tested against the ground, never writing depth, darkening what is under them. Takes the
  * ground, the atmosphere and the shadow ceiling from the terrain (`sceneUniforms`). The labels move, so this
  * runs every frame, but only the pixels the boxes cover pay, and nothing is drawn while no label is shown.
+ * The text's shadows in the air cost the most (up to 16 samples for each pixel of a label's box: about 7 ms
+ * for a large one on the reference phone): on a slow device they take 8 samples instead (`degrade`).
  */
 export class LegendShadows implements Drawable {
 	private sheetProgram: Program | null = null;
@@ -75,6 +81,10 @@ export class LegendShadows implements Drawable {
 	/** The text revision each atlas row was drawn from (−1: not yet). */
 	private drawn = new Int32Array(0);
 	private rows = 0;
+	/** This device's frames ran slow with the text's shadows in the air: they take THIN_AIR_SAMPLES at most. */
+	private thinAir = false;
+	/** Text in the god rays and Text samples as last seen: editing them in the panel starts the detection again. */
+	private airSettings = '';
 	private readonly rowScale = new Float32Array(64);
 	private readonly atlas = new Float32Array(3);
 	private readonly sheet = new Float32Array(4);
@@ -133,12 +143,58 @@ export class LegendShadows implements Drawable {
 		canvas.width = ATLAS_WIDTH;
 		canvas.height = ROW_HEIGHT;
 		this.canvas = canvas.getContext('2d', { willReadFrequently: true });
+
+		try {
+			this.thinAir ||= localStorage.getItem(THIN_AIR_KEY) === '1';
+		} catch {
+			// storage unavailable (private mode): detected again on each visit
+		}
+	}
+
+	/**
+	 * The renderer's frames run long: before it lowers the resolution, the text's shadows in the air (the costly
+	 * part) take 8 samples instead of 16. Once, never fewer: the letters soften but stay. Only while labels cast
+	 * them. Remembered on the device, until Text in the god rays or Text samples change in the panel.
+	 */
+	degrade(): boolean {
+		if (this.thinAir || this.settings.textAir <= 0 || this.lines.labelCount === 0) return false;
+		if (this.airSamples <= THIN_AIR_SAMPLES) return false;
+		this.rememberThinAir(true);
+		return true;
+	}
+
+	/** Dev readout: the text's shadows in the air, as this device draws them. */
+	get airReadout(): string {
+		if (this.settings.textAir <= 0) return 'text in the air: off';
+		return `text in the air: ${this.airSamples} samples${this.thinAir ? ' (slow device)' : ''}`;
+	}
+
+	/** Text samples, at most THIN_AIR_SAMPLES on a device whose frames ran slow. */
+	private get airSamples(): number {
+		const samples = Math.min(16, Math.max(1, Math.round(this.settings.textSamples)));
+		return this.thinAir ? Math.min(samples, THIN_AIR_SAMPLES) : samples;
+	}
+
+	private rememberThinAir(thin: boolean) {
+		this.thinAir = thin;
+		try {
+			if (thin) localStorage.setItem(THIN_AIR_KEY, '1');
+			else localStorage.removeItem(THIN_AIR_KEY);
+		} catch {
+			// storage unavailable: this visit only
+		}
 	}
 
 	draw(gl: WebGL2RenderingContext, ctx: DrawContext) {
 		const scene = this.terrain.sceneUniforms;
 		const s = this.settings;
 		const lines = this.lines;
+		const airSettings = `${s.textAir} ${s.textSamples}`;
+		if (airSettings !== this.airSettings) {
+			// Edited in the panel (not the first draw): forget the detection, it starts again
+			if (this.airSettings !== '') this.rememberThinAir(false);
+			this.airSettings = airSettings;
+		}
 		const sheets = s.strength > 0 || s.ground > 0 ? lines.count : 0;
 		const labels = s.text > 0 || s.textAir > 0 ? Math.min(lines.labelCount, this.rows) : 0;
 		if (!scene.uHeightmap || !scene.uShadow || (sheets === 0 && labels === 0)) return;
@@ -151,7 +207,7 @@ export class LegendShadows implements Drawable {
 		this.text[0] = Math.min(1, Math.max(0, s.text));
 		this.text[1] = Math.max(0, s.textSoftness);
 		this.text[2] = Math.max(0, s.textAir);
-		this.text[3] = Math.min(16, Math.max(1, Math.round(s.textSamples)));
+		this.text[3] = this.airSamples;
 		this.atlas[0] = Math.max(1, this.rows);
 		this.atlas[1] = ATLAS_WIDTH;
 		this.atlas[2] = ROW_HEIGHT;
