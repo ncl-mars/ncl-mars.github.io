@@ -5,8 +5,8 @@ import { allProjects } from './projects';
 
 /**
  * The points of interest, one per project, all alike. Where they are comes from pois.json, exported from
- * Houdini (hou/snippets/export_pois.py, format: doc/formats/pois.md): an id and x, z per point, in menu
- * order. The rest comes from the project's folder (content/projects.ts): its title, and its framing.
+ * Houdini (hou/snippets/python/export_pois.py, format: doc/formats/pois.md): an id and x, z per point, in
+ * menu order. The rest comes from the project's folder (content/projects.ts): its title, and its framing.
  * Home is not one of them: it is the overview the site opens on, framed by the start view (tuning.start,
  * set in the dev panel). The POIs are framed relative to it, so retuning it (its heading, say) carries
  * every POI with it. Frame a view with the dev panel's free camera, then "Copy pose" and paste the line

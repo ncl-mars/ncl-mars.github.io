@@ -1,12 +1,12 @@
-# Terrain maps format (v1)
+# Terrain maps format (v2)
 
-Image data baked in Houdini for the terrain: the lighting maps (`maps.png`), and optionally its materials (`materials.png`) and the ground's colour (`albedo.png`). The companion to [heightmap.md](heightmap.md), over the same footprint. Contract between the Houdini exporters (`hou/snippets/export_maps.py`, `export_materials.py`, `export_albedo.py`) and the web loader. Change it here first, then on both sides.
+Image data baked in Houdini for the terrain: the lighting maps (`maps.png`), and optionally its materials (`materials.png`) and the ground's colour (`albedo.png`). The companion to [heightmap.md](heightmap.md), over the same footprint. Contract between the Houdini exporters (`hou/snippets/python/export_maps.py`, `export_materials.py`, `export_albedo.py`) and the web loader. Change it here first, then on both sides.
 
 ## Houdini
 
 The Python SOP `export_maps.py` reads three heightfield layers (`shadow`, `occlusion`, `cavity` by default, `LAYERS` at its top), values 0–1, and a detail vector attribute `v@sun_dir` pointing **toward** the sun: the same vector the bake used, so the web's sun (its light on the slopes, fog glow, god rays, legend shadows) matches the baked shadows. It writes `maps.png` (no colour chunks, a hint of dither) and `maps.json`, refuses layers of different resolutions, over 2048 per side, a `sun_dir` below the horizon, and a footprint that differs from the exported `heightmap.json`. Pass-through, writes on every cook: bypass it when not exporting.
 
-The layers are baked in Copernicus on the height flattened at the sea (`max(height, 0)`), then imported into SOPs: `shadow` by the OpenCL COP `hou/snippets/bake_shadow.cl` (the sun's soft cast shadow, from its `sun_dir` parameter, which `v@sun_dir` references with `chv`; baked on the heights at full resolution, then downsampled to the maps' resolution, so small occluders keep their shadows), `occlusion` by Height to Ambient Occlusion (1 = open sky), `cavity` by Curvature remapped around 0.5 (crests above). Those two nodes must read the heights at the ground's scale (metres over the image's width), or slopes come out far too steep. Keep Height to Ambient Occlusion's radius around 10 to 20 m (20 to 40 pixels at 2048²): larger, every low area sees distant hills as walls, and open water and plains go dark; detail finer than about 5 m is the cavity's job.
+The layers are baked in Copernicus on the height flattened at the sea (`max(height, 0)`), then imported into SOPs: `shadow` by the OpenCL COP `hou/snippets/ocl/bake_shadow.cl` (the sun's soft cast shadow, from its `sun_dir` parameter, which `v@sun_dir` references with `chv`; baked on the heights at full resolution, then downsampled to the maps' resolution, so small occluders keep their shadows), `occlusion` by Height to Ambient Occlusion (1 = open sky), `cavity` by Curvature remapped around 0.5 (crests above). Those two nodes must read the heights at the ground's scale (metres over the image's width), or slopes come out far too steep. Keep Height to Ambient Occlusion's radius around 10 to 20 m (20 to 40 pixels at 2048²): larger, every low area sees distant hills as walls, and open water and plains go dark; detail finer than about 5 m is the cavity's job.
 
 ## Files
 
@@ -60,7 +60,7 @@ All values are **linear data in 0–1**, not sRGB colour. Export without gamma a
 
 ## Materials: `materials.png` (optional)
 
-What each place is made of, for the shader to light it, from `hou/snippets/export_materials.py`.
+What each place is made of, for the shader to light it, from `hou/snippets/python/export_materials.py`.
 
 - Lossless 8-bit **RGB** (no alpha: browsers may premultiply it, and WebP may rewrite the colour under transparent pixels), linear data, no gamma or ICC profile. Imported like `maps.png` (`?lossless&format=webp`).
 - Same footprint and orientation as `maps.png` (see above); its own resolution, ≤ 2048 per side. 2048² matches the heights, so the materials' edges follow the objects' walls; masks that are mostly flat compress well.
@@ -73,7 +73,7 @@ In Houdini (Copernicus): from your `material_index` (ground, metal, gloss, spare
 
 ## Ground colour: `albedo.png` (optional)
 
-The ground's colour inside the heightmap, from `hou/snippets/export_albedo.py`.
+The ground's colour inside the heightmap, from `hou/snippets/python/export_albedo.py`.
 
 - 8-bit **RGB** (no alpha), **display values (sRGB)**: the renderer has no colour management, and the panel's colours are display values too. No gamma or ICC chunk: the values are read as they are. Colour rather than data, so imported as lossy WebP (`?format=webp&quality=90`), a fraction of the lossless size.
 - **Albedo only**: no AO, cavity, shadow or light in it (they're in `maps.png`, so they'd count twice). The ground only: metal, gloss and spare take their colours from the panel. Under the sea it's unused (the water's colour comes from its depth).

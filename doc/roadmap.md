@@ -6,8 +6,8 @@ Living work plan. Tick boxes as we go, add notes inline, and log decisions at th
 
 **Next: your real terrain and first content (M6), on `feature/real-terrain`:**
 1. Commit the tuned `defaults.json`, merge `feature/legend-shadows` into `develop`, branch `feature/real-terrain` (the commands are in the chat of 2026-10-29).
-2. Export the heightmap (`hou/snippets/export_heightmap.py`) and check its orientation (a ramp along +X, a bump near the +X/+Z corner renders the same in Houdini and in the browser).
-3. Bake the maps in Copernicus on the same height, flattened at the sea (`max(height, 0)`): `shadow` with `hou/snippets/bake_shadow.cl` (the sun 20° up, the placeholder's azimuth: `sun_dir = {-0.8609, 0.3420, 0.3766}`; on the full-resolution heights, then downsampled to the maps' resolution), `occlusion` with Height to Ambient Occlusion, `cavity` with Curvature remapped around 0.5. Import them into SOPs as layers, with `v@sun_dir` referencing the kernel's (`chv`), and export them with `export_maps.py` (`maps.png` + `maps.json`: the web's sun comes from it; [formats/terrain-maps.md](formats/terrain-maps.md)). Check that the baked shadows fall the same way as the legend shadows.
+2. Export the heightmap (`hou/snippets/python/export_heightmap.py`) and check its orientation (a ramp along +X, a bump near the +X/+Z corner renders the same in Houdini and in the browser).
+3. Bake the maps in Copernicus on the same height, flattened at the sea (`max(height, 0)`): `shadow` with `hou/snippets/ocl/bake_shadow.cl` (the sun 20° up, the placeholder's azimuth: `sun_dir = {-0.8609, 0.3420, 0.3766}`; on the full-resolution heights, then downsampled to the maps' resolution), `occlusion` with Height to Ambient Occlusion, `cavity` with Curvature remapped around 0.5. Import them into SOPs as layers, with `v@sun_dir` referencing the kernel's (`chv`), and export them with `export_maps.py` (`maps.png` + `maps.json`: the web's sun comes from it; [formats/terrain-maps.md](formats/terrain-maps.md)). Check that the baked shadows fall the same way as the legend shadows.
 4. Place the POIs in Houdini (`s@name` per point) and export them (`export_pois.py`): the placeholder ones will likely fall outside the new bounds, and the page says so.
 5. One folder per project in `web/src/lib/assets/projects/<name>/`: `project.md` (title at least) and the media ([formats/projects.md](formats/projects.md)).
 6. In the dev panel: frame the overview (Free camera, "Use view as start", Save defaults), then each POI ("Copy pose" → `view:` in its `project.md`).
@@ -89,7 +89,7 @@ See [home-concept.md](home-concept.md) § Camera, § Terrain.
 - [x] Surface/shading split: `surface.glsl` (the `Surface` struct), `march.glsl` (surface stage), `shade.glsl` (shading stage)
 - [x] Shading from the maps (light, AO, cavity → near-gray, light distance fog for now); `terrainHeight()` / `height()` / `terrainNormal()` in `gl/chunks/terrain.glsl`
 - [x] Fade-in once loaded; tuning from the URL: `?steps=48`, `?dpr=1`
-- [x] Houdini heightmap export snippet: `hou/snippets/export_heightmap.py` (detects axis flips/swaps)
+- [x] Houdini heightmap export snippet: `hou/snippets/python/export_heightmap.py` (detects axis flips/swaps)
 - [ ] Orientation check with the test pattern (yours, after a first export)
 - [ ] **Performance gate** on the Q4 device: ≥ 60 fps desktop, ≥ 30 fps on the device at the DPR cap. If it misses, the surface stage becomes the displaced mesh (plan B), possibly per device. To test a phone on the same Wi-Fi: `npm run dev -- --host`.
 
@@ -269,7 +269,7 @@ Dropped (2026-10-29): simpler, faster without.
 
 ## M11 — Content pipeline (`feature/content-pipeline`)
 
-- [x] `lib/assets/terrain/pois.json`: where the POIs stand (id, x, z, menu order), exported from Houdini by `hou/snippets/export_pois.py` (one point per POI, `s@name` = id). Contract: [formats/pois.md](formats/pois.md)
+- [x] `lib/assets/terrain/pois.json`: where the POIs stand (id, x, z, menu order), exported from Houdini by `hou/snippets/python/export_pois.py` (one point per POI, `s@name` = id). Contract: [formats/pois.md](formats/pois.md)
 - [x] `lib/assets/projects/<id>/project.md`: title, framing (`view`, from "Copy pose"), credits, media list in a YAML header, the paragraphs under it; media files beside it, a video's poster by name. Contract: [formats/projects.md](formats/projects.md)
 - [x] Read at build time (`vite.config.ts`, `yaml` package, nothing shipped), checked in `content/pois.ts` and `content/projects.ts` with messages naming the file. A POI without a folder gets a label from its id; a folder without a POI is left out (console warnings). No text and no media: no card
 - [x] The four placeholders moved to the new files

@@ -5,7 +5,7 @@ metadata:
   type: feedback
 ---
 
-Image work on the terrain layers (material masks, masks from an index, blurs, remaps) is done by the user in Copernicus. The Python export snippets (`hou/snippets/export_*.py`) only read the layers, check them (resolution, footprint) and pack them into files.
+Image work on the terrain layers (material masks, masks from an index, blurs, remaps) is done by the user in Copernicus. The Python export snippets (`hou/snippets/python/export_*.py`) only read the layers, check them (resolution, footprint) and pack them into files.
 
 **Why:** when Claude suggested the exporter could build the material masks from `material_index` with numpy, the user answered "masks IN COPERNICUS, MYSELF. never this kind of op in python scripts" (2026-11-01).
 

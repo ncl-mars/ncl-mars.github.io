@@ -1,6 +1,6 @@
 # Heightmap format (v1)
 
-Contract between the exporters (Houdini Python SOP `hou/snippets/export_heightmap.py`, placeholder generator `web/scripts/gen-terrain.mjs`) and the web loader. Change it here first, then on both sides.
+Contract between the exporters (Houdini Python SOP `hou/snippets/python/export_heightmap.py`, placeholder generator `web/scripts/gen-terrain.mjs`) and the web loader. Change it here first, then on both sides.
 
 ## Files
 

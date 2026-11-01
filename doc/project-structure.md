@@ -28,6 +28,9 @@ portfolio/
 ├─ hou/                          Houdini ($JOB)
 │  ├─ *.hip*, hda/               tracked
 │  ├─ snippets/                  tracking copies of node code (the .hip is canonical)
+│  │  ├─ python/                 Python SOPs: the exporters
+│  │  ├─ ocl/                    OpenCL kernels
+│  │  └─ vex/                    wrangles
 │  └─ backup/ geo/ cache/ render/   gitignored
 ├─ tools/                        standalone pipeline scripts, added when needed
 ├─ doc/

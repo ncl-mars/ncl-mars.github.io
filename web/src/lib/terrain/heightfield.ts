@@ -136,7 +136,7 @@ function clamp(v: number, lo: number, hi: number) {
  * 'r16-med' once inflated (doc/formats/heightmap.md): each sample is its difference from a guess made from the
  * samples already decoded (MED, as in lossless JPEG-LS: the left, top or planar guess depending on the local
  * edge), modulo 65536 and zigzagged, all the high bytes first, then the low bytes. Exact: the same integers
- * as 'r16'. Mirrors pack_med() in hou/snippets/export_heightmap.py.
+ * as 'r16'. Mirrors pack_med() in hou/snippets/python/export_heightmap.py.
  */
 function unpackMed(bytes: Uint8Array, width: number, height: number): Uint16Array {
 	const n = width * height;

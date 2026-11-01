@@ -1,6 +1,6 @@
 # Points of interest format (v1)
 
-Where the POIs stand on the terrain. One POI per project. Contract between the Houdini exporter (`hou/snippets/export_pois.py`) and the web loader (`web/src/lib/content/pois.ts`). Change it here first, then on both sides.
+Where the POIs stand on the terrain. One POI per project. Contract between the Houdini exporter (`hou/snippets/python/export_pois.py`) and the web loader (`web/src/lib/content/pois.ts`). Change it here first, then on both sides.
 
 What each project shows (title, camera framing, text, media) is not in this file. It lives in the project's folder: [projects.md](projects.md). A re-export never overwrites it.
 
