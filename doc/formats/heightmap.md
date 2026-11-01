@@ -8,7 +8,7 @@ Two files with the same base name (`heightmap`, and `farmap` for the optional fa
 
 | File | Content |
 |------|---------|
-| `heightmap.bin` | raw height samples, no header |
+| `heightmap.bin` | height samples, no header: packed losslessly (`r16-med`, the exporter's) or raw (`r16`) |
 | `heightmap.json` | metadata |
 
 The baked lighting maps share the same footprint: [terrain-maps.md](terrain-maps.md).
@@ -23,13 +23,25 @@ Heights are altitudes in world units, and **the sea is at 0**: the web ground is
 
 ## `heightmap.bin`
 
-- **16-bit unsigned integers, little-endian** (`"format": "r16"`, what the exporter writes). In numpy: `np.rint(normalized * 65535).astype('<u2').tofile(path)`.
+- **16-bit unsigned integers**, packed losslessly (`"format": "r16-med"`, what the exporter writes; see Packed below) or raw, little-endian (`"format": "r16"`, the exporter with `PACKED` off; in numpy: `np.rint(normalized * 65535).astype('<u2').tofile(path)`).
   - Older files, the placeholder among them: IEEE 754 half floats (`"format": "r16f"`, `astype('<f2')`), still read: rounded to 16-bit integers at load. Half floats aren't evenly spaced (see Precision).
 - `width × height` values, row-major: `index = j * width + i`.
   - `i` runs along world **+X**, `j` along world **+Z**.
   - Row 0 becomes texture row 0, so texture `u` follows +X and `v` follows +Z.
 - Values are **normalized to [0, 1]** (`r16`: the integer / 65535): `worldY = bounds.min[1] + v * (bounds.max[1] - bounds.min[1])`. Normalized storage spends every level on the terrain's own height range: 65,536 even steps, 1.5 cm over 1000 m.
-- File size must be exactly `width * height * 2` bytes.
+- File size must be exactly `width * height * 2` bytes (for `r16-med`, once inflated).
+
+### Packed: `r16-med`
+
+The same integers in less than half the download (the 2048² terrain: 8 MB → 3.7 MB), exact. GitHub Pages doesn't compress `.bin` files, so the exporter does (`pack_med` in `export_heightmap.py`; the loader's `unpackMed` in `heightfield.ts` mirrors it: change both together):
+
+1. A guess for each sample, from the samples before it (MED, as in lossless JPEG-LS). With `a` the sample on the left, `b` the one above, `c` the one above-left: `min(a, b)` if `c ≥ max(a, b)`, `max(a, b)` if `c ≤ min(a, b)`, else `a + b − c`. The first sample: 0; the rest of the first row: `a`; the first column: `b`.
+2. The difference, sample minus guess, modulo 65536 (a wall can jump the whole range), read as a signed 16-bit number `d`.
+3. Zigzagged, `z = (d << 1) ^ (d >> 15)`: small differences give small numbers.
+4. All the high bytes of `z` (row-major), then all the low bytes.
+5. Deflated, zlib format (Python's `zlib.compress`, the browser's `DecompressionStream('deflate')`).
+
+Decoding runs it backwards, sample by sample in the same order. Checked exact on the 2048² terrain, and on noise with full-range jumps. The prediction carries it: plain deflate keeps 95 % of the raw size (the low bytes look like noise at 1.3 mm steps).
 
 ## `heightmap.json`
 
@@ -38,7 +50,7 @@ Heights are altitudes in world units, and **the sea is at 0**: the web ground is
   "version": 1,
   "width": 1024,
   "height": 1024,
-  "format": "r16",
+  "format": "r16-med",
   "bounds": { "min": [-500, -40, -500], "max": [500, 120, 500] }
 }
 ```
@@ -47,7 +59,7 @@ Heights are altitudes in world units, and **the sea is at 0**: the web ground is
 |-------|---------|
 | `version` | format version (see Versioning) |
 | `width`, `height` | sample counts along X and Z |
-| `format` | `"r16"`: 16-bit unsigned integers (the exporter's); `"r16f"`: half floats (older files) |
+| `format` | `"r16-med"`: 16-bit unsigned integers, packed losslessly (the exporter's); `"r16"`: the same, raw; `"r16f"`: half floats (older files) |
 | `bounds.min/max` | world box `[x, y, z]`. X/Z are the **outer edges** of the sample grid, so sample centers sit at `min.x + (i + 0.5) * (max.x - min.x) / width` (same for Z with `j`, `height`). This matches GL texel centers. Y is the height range used to denormalize. |
 
 ## Coordinate system
@@ -57,7 +69,8 @@ Y-up, right-handed, with the same axes in Houdini and WebGL. The exporter does a
 ## Loader (web)
 
 - Import: `heightmap.bin?url` and `heightmap.json` directly (the far map through an optional glob).
-- Check `version`, `format` and byte length; fail loudly on a mismatch.
+- Check `version`, `format` and byte length (once inflated, for `r16-med`); fail loudly on a mismatch.
+- `r16-med`: inflated by the browser as it downloads (`DecompressionStream`), then unpacked in one pass (75 ms for 2048² on a desktop, a few times that on a phone, once).
 - CPU copy (`terrain/heightfield.ts`): decoded to `Float32Array` world heights, for picking and camera collision.
 - GPU copy: one **RG8** texture, the 16-bit integers' two bytes as they are, R the low byte, G the high one (no conversion at load). A texel's normalized value is the integer / 65535, which with the bytes read as 0..1 is `(256 g + r) / 257` (65535 = 255 × 257; `heightTexel` in `terrain.glsl`; fetched texels have their bytes rounded back to integers first, `heightTexelExact`). `LINEAR` min/mag, `CLAMP_TO_EDGE`, no mipmaps. Near the ground the shaders filter it themselves (see Precision).
 
@@ -72,7 +85,7 @@ That alone didn't remove the steps: **hardware bilinear filtering isn't exact** 
 ## Size guidance
 
 - WebGL2 guarantees `MAX_TEXTURE_SIZE ≥ 2048`. Stay at **≤ 2048** per side; non-power-of-two is fine.
-- The download is the raw size (1024² = 2 MB, 2048² = 8 MB). Don't count on GitHub Pages compressing `.bin`.
+- The download: raw, 1024² = 2 MB and 2048² = 8 MB; packed (`r16-med`), less than half that (the 2048² terrain: 3.7 MB). GitHub Pages doesn't compress `.bin` itself.
 
 ## Orientation check
 

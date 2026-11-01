@@ -12,8 +12,11 @@ export interface HeightmapMeta {
 	version: 1;
 	width: number;
 	height: number;
-	/** 'r16': 16-bit unsigned integers (evenly spaced, the exporters' format); 'r16f': half floats (older files). */
-	format: 'r16' | 'r16f';
+	/**
+	 * 'r16': 16-bit unsigned integers (evenly spaced); 'r16-med': the same integers packed losslessly (the
+	 * exporter's); 'r16f': half floats (older files).
+	 */
+	format: 'r16' | 'r16-med' | 'r16f';
 	bounds: { min: Vec3; max: Vec3 };
 }
 
@@ -34,7 +37,7 @@ export class Heightfield {
 
 	constructor(
 		readonly meta: HeightmapMeta,
-		/** The file's samples: 16-bit integers ('r16') or half floats ('r16f'), normalized 0..1. */
+		/** The file's samples: 16-bit integers ('r16', and 'r16-med' once unpacked) or half floats ('r16f'), normalized 0..1. */
 		raw: Uint16Array
 	) {
 		const { min, max } = meta.bounds;
@@ -78,14 +81,18 @@ export function loadHeightfield(url: string, meta: HeightmapMeta): Promise<Heigh
 		promise = fetch(url)
 			.then((response) => {
 				if (!response.ok) throw new Error(`${url}: HTTP ${response.status}`);
-				return response.arrayBuffer();
+				if (meta.format !== 'r16-med') return response.arrayBuffer();
+				// Deflated (zlib): the browser inflates it as it downloads
+				return new Response(response.body!.pipeThrough(new DecompressionStream('deflate'))).arrayBuffer();
 			})
 			.then((buffer) => {
 				const expected = meta.width * meta.height * 2;
 				if (buffer.byteLength !== expected) {
 					throw new Error(`${url}: ${buffer.byteLength} bytes, expected ${expected}`);
 				}
-				return new Heightfield(meta, new Uint16Array(buffer));
+				const samples =
+					meta.format === 'r16-med' ? unpackMed(new Uint8Array(buffer), meta.width, meta.height) : new Uint16Array(buffer);
+				return new Heightfield(meta, samples);
 			});
 		promise.catch(() => cache.delete(url)); // allow a retry
 		cache.set(url, promise);
@@ -97,7 +104,9 @@ export function loadHeightfield(url: string, meta: HeightmapMeta): Promise<Heigh
 export function parseHeightmapMeta(json: unknown, name = 'heightmap.json'): HeightmapMeta {
 	const m = json as Partial<HeightmapMeta>;
 	if (m?.version !== 1) throw new Error(`${name}: unsupported version ${m?.version}`);
-	if (m.format !== 'r16' && m.format !== 'r16f') throw new Error(`${name}: unsupported format ${m.format}`);
+	if (m.format !== 'r16' && m.format !== 'r16-med' && m.format !== 'r16f') {
+		throw new Error(`${name}: unsupported format ${m.format}`);
+	}
 	if (!(Number(m.width) > 0 && Number(m.height) > 0)) throw new Error(`${name}: bad width/height`);
 	if (!isVec3(m.bounds?.min) || !isVec3(m.bounds?.max)) throw new Error(`${name}: bad bounds`);
 	return m as HeightmapMeta;
@@ -121,6 +130,35 @@ function isVec3(v: unknown): v is Vec3 {
 
 function clamp(v: number, lo: number, hi: number) {
 	return v < lo ? lo : v > hi ? hi : v;
+}
+
+/**
+ * 'r16-med' once inflated (doc/formats/heightmap.md): each sample is its difference from a guess made from the
+ * samples already decoded (MED, as in lossless JPEG-LS: the left, top or planar guess depending on the local
+ * edge), modulo 65536 and zigzagged, all the high bytes first, then the low bytes. Exact: the same integers
+ * as 'r16'. Mirrors pack_med() in hou/snippets/export_heightmap.py.
+ */
+function unpackMed(bytes: Uint8Array, width: number, height: number): Uint16Array {
+	const n = width * height;
+	const out = new Uint16Array(n);
+	for (let j = 0, k = 0; j < height; j++) {
+		for (let i = 0; i < width; i++, k++) {
+			const z = (bytes[k] << 8) | bytes[n + k];
+			let guess: number;
+			if (j === 0) guess = i === 0 ? 0 : out[k - 1];
+			else if (i === 0) guess = out[k - width];
+			else {
+				const a = out[k - 1];
+				const b = out[k - width];
+				const c = out[k - width - 1];
+				const low = a < b ? a : b;
+				const high = a < b ? b : a;
+				guess = c >= high ? low : c <= low ? high : a + b - c;
+			}
+			out[k] = guess + ((z >>> 1) ^ -(z & 1)); // un-zigzagged; the array keeps it modulo 65536
+		}
+	}
+	return out;
 }
 
 /**
