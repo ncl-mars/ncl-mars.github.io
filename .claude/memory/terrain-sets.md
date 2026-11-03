@@ -13,6 +13,6 @@ Terrain sets the user wants to keep (but not commit) are copied to `hou/geo/terr
 
 First set: `canterbury` (2026-11-03), LINZ 1 m DEM at half scale, 2 km site centred NZTM 1,513,011 / 5,214,146, 16 km far map; the tiles are in `D:\tmp\lds-new-zealand-lidar-1m-dem-GTiff`.
 
-**Why:** the user tries several real terrains and doesn't want each one's binaries in the git history ([[commit-workflow]]).
+**Why:** the user tries several real terrains. The one in use is committed as usual (`git add -A`, exports and `.hiplc` included); the others are kept as copies in `hou/geo/terrains/`, outside git, like the DEM data (hundreds of MB), which never goes in ([[commit-workflow]]).
 
 **How to apply:** to switch, copy a set's `web/` files back into `web/src/lib/assets/terrain/` (and `defaults.json` into `web/src/lib/tuning/`), then hard reload ([[dev-stale-terrain]]). Save the current set first if it isn't saved yet.

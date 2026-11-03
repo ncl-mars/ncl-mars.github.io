@@ -5,12 +5,12 @@
 		"tiltCurve": 3.05,
 		"fov": 90,
 		"minDistance": 92,
-		"maxDistance": 480
+		"maxDistance": 1500
 	},
 	"start": {
 		"x": 0,
 		"z": 0,
-		"distance": 350,
+		"distance": 850,
 		"heading": 265
 	},
 	"controls": {
@@ -55,14 +55,14 @@
 		"sunPower": 6
 	},
 	"mist": {
-		"density": 0.006,
-		"height": 12.5,
-		"falloff": 10,
-		"banks": 0.7,
-		"bankScale": 260
+		"density": 0.0135,
+		"height": 71,
+		"falloff": 52.5,
+		"banks": 0.36,
+		"bankScale": 540
 	},
 	"shafts": {
-		"samples": 24,
+		"samples": 32,
 		"softness": 1.5,
 		"darkness": 0.5,
 		"glow": 0.3,
