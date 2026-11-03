@@ -28,14 +28,15 @@ portfolio/
 ├─ hou/                          Houdini ($JOB)
 │  ├─ *.hip*, hda/               tracked
 │  ├─ snippets/                  tracking copies of node code (the .hip is canonical)
-│  │  ├─ python/                 Python SOPs: the exporters
+│  │  ├─ python/                 the exporters (Python SOPs), the DEM cut (shelf tool)
 │  │  ├─ ocl/                    OpenCL kernels
 │  │  └─ vex/                    wrangles
 │  └─ backup/ geo/ cache/ render/   gitignored
-├─ tools/                        standalone pipeline scripts, added when needed
+├─ tools/                        standalone pipeline scripts: dem.mjs (cuts a DEM's tiles)
 ├─ doc/
 │  ├─ roadmap.md
 │  ├─ project-structure.md
+│  ├─ dem.md                     real terrain from a DEM: download, preview, frame, cut, scale, export
 │  └─ formats/                   heightmap.md, terrain-maps.md, pois.md: layouts shared by exporters and loaders; projects.md, portfolio.md: the content files
 ├─ .github/workflows/deploy.yml
 ├─ .claude/memory/               Claude's project notes (tracked)
