@@ -55,10 +55,9 @@ The tool prints the centre in NZTM (for the credits) and any missing data (-9999
 
 ## 6. Stamp, bake, export
 
+- Inland, choose a water level: the panel's Water → Sea level (world metres, so on the halved heights). Subtract it from both maps, and put the slider back to 0: the bake flattens the water at 0.
 - Stamp the objects on the site: at their own heights, on the halved ground.
-- `bake_shadow.cl`: `size` 2000, `top` just above the site's highest point.
-- Export the site first (`export_heightmap.py`, `NAME = "heightmap"`: the other exporters check their footprint against it), then the far map (`NAME = "farmap"`, no objects), then `export_maps.py`, `export_albedo.py` and `export_materials.py` if used, and `export_pois.py`.
-- In the web: retune the start view, the POI framings and anything tuned in metres, on the new ground.
+- Then bake and export, in order: [terrain-export.md](terrain-export.md).
 
 ## Credits
 

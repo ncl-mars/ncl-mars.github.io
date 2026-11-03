@@ -157,7 +157,7 @@ export const schema: Group[] = [
 		key: 'water',
 		label: 'Water',
 		params: [
-			{ key: 'level', label: 'Sea level', min: -50, max: 80, step: 0.5, hint: 'The sea’s altitude. 0 is the contract (the exports’ altitude 0, the bake’s flat sea): change it only to test, it floods or drains the terrain.' },
+			{ key: 'level', label: 'Sea level', min: -50, max: 500, step: 0.5, hint: 'The sea’s altitude. 0 is the contract (the exports’ altitude 0, the bake’s flat sea): change it only to test, it floods or drains the terrain.' },
 			{ key: 'shallow', label: 'Shallow', kind: 'color', hint: 'The water’s colour where it’s shallow.' },
 			{ key: 'deep', label: 'Deep', kind: 'color', hint: 'And where it’s deep.' },
 			{ key: 'depth', label: 'Depth (m)', min: 0.5, max: 60, step: 0.5, hint: 'Depth over which it turns from shallow to deep (about two thirds of the way).' },

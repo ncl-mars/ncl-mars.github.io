@@ -37,6 +37,7 @@ portfolio/
 │  ├─ roadmap.md
 │  ├─ project-structure.md
 │  ├─ dem.md                     real terrain from a DEM: download, preview, frame, cut, scale, export
+│  ├─ terrain-export.md          checklist of every terrain export from Houdini
 │  └─ formats/                   heightmap.md, terrain-maps.md, pois.md: layouts shared by exporters and loaders; projects.md, portfolio.md: the content files
 ├─ .github/workflows/deploy.yml
 ├─ .claude/memory/               Claude's project notes (tracked)

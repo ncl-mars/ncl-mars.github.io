@@ -23,6 +23,7 @@ Notes live in `.claude/memory/`, **not** in the global `~/.claude/projects/.../m
 - `doc/project-structure.md`: folder layout
 - `doc/formats/`: format contracts (heightmap, terrain maps, POIs) and the content files (project folders, portfolio.yaml)
 - `doc/dem.md`: real terrain from a DEM (LINZ lidar): download, preview, frame, cut, scale, export
+- `doc/terrain-export.md`: checklist of every terrain export from Houdini (order, layers, resolutions, bake settings)
 
 ## Layout
 
