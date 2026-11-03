@@ -8,4 +8,5 @@
 - [Baked lighting](baked-lighting.md) — shadows stay baked, sun fixed; only n·L is computed in the shader; to change where the sun shows, aim the camera
 - [Copernicus image ops](copernicus-image-ops.md) — masks, blurs, remaps are the user's, in Copernicus; export scripts only read, check, pack
 - [Stale terrain in dev](dev-stale-terrain.md) — after a re-export with the dev server running, hard reload before diagnosing terrain oddities
-- [Terrain sets](terrain-sets.md) — saved terrains live in hou/geo/terrains/<name>/ (gitignored), not in commits; switch by copying back
+- [Terrain sets](terrain-sets.md) — saved terrains live in hou/geo/terrains/<name>/ (gitignored); the one in use is committed as usual; switch by copying back
+- [Hosting assets](hosting-assets.md) — no Git LFS; everything the site serves is in the repo; GitHub limits are per file (100 MiB) and 1 GB per site, no 50 MB ceiling
