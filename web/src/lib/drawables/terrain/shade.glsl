@@ -5,8 +5,9 @@
 // Houdini (doc/formats/terrain-maps.md); beyond (far map, noise), the shadow ceiling's shadows (ridges, far
 // mountains), blended with the maps across the band.
 // Materials (materials.png: three soft masks from Houdini, R metal, G gloss, B spare, the ground the rest):
-// the largest weight wins, anti-aliased against the runner-up, so the edges stay crisp at any zoom. Metal,
-// gloss and spare reflect the sky and the sun's highlight (a colour, how metallic, how rough: the panel's
+// where the masks are steep (an edge, blurred over a few texels), the largest weight wins, anti-aliased, so the
+// edges stay crisp at any zoom; where they ramp gently (sand drifting over a ring), they blend by their values.
+// Metal, gloss and spare reflect the sky and the sun's highlight (a colour, how metallic, how rough: the panel's
 // Materials); they depend on the view, which re-marches the cache anyway. The ground is matte: albedo.png
 // inside the heightmap (rock painted in), else the tint, with a light variation from the noise texture.
 // Near-gray on purpose: the mood is desaturated, colour is kept for meaning.
@@ -25,6 +26,7 @@ uniform vec2 uDetail;         // x: colour variation, y: its size (world units)
 uniform highp sampler3D uNoise; // gl/noise.ts: tileable gradient noise, sample with p / 8
 uniform sampler2D uMaterials; // R metal, G gloss, B spare: soft masks (doc/formats/terrain-maps.md); black without
 uniform float uMaterialEdge;  // their edges' softness, in mask units (at least a pixel, for anti-aliasing)
+uniform float uMaterialBlend; // a ramp in the masks this many texels wide is half an edge, half a blend
 uniform vec3 uMetal;          // each material's colour, then x: how metallic, y: how rough
 uniform vec2 uMetalSurface;
 uniform vec3 uGloss;
@@ -43,17 +45,36 @@ uniform float uDebugView;     // dev (Light shafts → Debug view): 3 the materi
 
 const vec3 FOAM = vec3(0.9, 0.92, 0.93);
 
-// Each material's share, from its weight (ground, metal, gloss, spare): the largest wins, anti-aliased against
-// the runner-up over `aa`, so where three materials meet, none leaves a gap
-vec4 materialShares(vec4 w, float aa) {
-	vec4 others = vec4(
-		max(w.y, max(w.z, w.w)),
-		max(w.x, max(w.z, w.w)),
-		max(w.x, max(w.y, w.w)),
-		max(w.x, max(w.y, w.z))
-	);
-	vec4 share = smoothstep(-aa, aa, w - others);
-	return share / max(dot(share, vec4(1.0)), 1e-4);
+// The largest of three weights wins, anti-aliased against the runner-up over `aa`, so where three materials meet,
+// none leaves a gap
+vec3 largestWins(vec3 w, float aa) {
+	vec3 share = smoothstep(-aa, aa, w - vec3(max(w.y, w.z), max(w.x, w.z), max(w.x, w.y)));
+	return share / max(share.x + share.y + share.z, 1e-4);
+}
+
+// Each material's share (ground, metal, gloss, spare) from the masks m at uv, on two levels: the objects (metal,
+// gloss and spare together, so an object's outline is their union) against the ground, then each material within
+// the objects (a gem in a ring, under the same sand). On each, where the values are steep (an edge, blurred over
+// a few texels), the largest wins, anti-aliased, crisp at any zoom; where they ramp gently, they blend by their
+// values, as painted. Takes derivatives: call it before branching
+vec4 materialShares(vec2 uv, vec3 m) {
+	float objects = m.r + m.g + m.b;
+	vec4 v = vec4(objects, m / max(objects, 1e-4)); // the objects, then each material's share of them
+	// Their slopes in texels: their gradients on screen, back through uv's (tx, ty: texels per pixel along the
+	// screen's x and y)
+	vec2 size = vec2(textureSize(uMaterials, 0));
+	vec2 tx = dFdx(uv) * size, ty = dFdy(uv) * size;
+	vec4 dx = dFdx(v), dy = dFdy(v);
+	vec4 gu = ty.y * dx - tx.y * dy, gv = tx.x * dy - ty.x * dx;
+	vec4 slope = sqrt(gu * gu + gv * gv) / max(abs(tx.x * ty.y - tx.y * ty.x), 1e-20);
+	// 0: a gentle ramp, blended; 1: an edge, the largest wins. A ramp uMaterialBlend texels wide is half of each
+	vec2 steep = smoothstep(0.5, 1.5, vec2(slope.x, max(slope.y, max(slope.z, slope.w))) * uMaterialBlend);
+	// An edge is at least this soft: a pixel and a half, anti-aliased at any zoom
+	vec4 fw = fwidth(v);
+	float aaObjects = max(max(fw.x * 1.5, uMaterialEdge), 1e-4);
+	float aaWithin = max(max(max(fw.y, max(fw.z, fw.w)) * 1.5, uMaterialEdge), 1e-4);
+	float shown = mix(objects, smoothstep(-aaObjects, aaObjects, 2.0 * objects - 1.0), steep.x);
+	return vec4(1.0 - shown, shown * mix(v.yzw, largestWins(v.yzw, aaWithin), steep.y));
 }
 
 // What metal and gloss reflect: the sky as /fog's skyColor draws it (the horizon's fog, brighter toward the
@@ -83,16 +104,13 @@ vec3 shadeMaterial(vec3 colour, vec2 surface, vec3 n, vec3 v, float sun, float l
 }
 
 vec3 shadeSurface(Surface s, vec3 rd) {
-	// Sampled before branching: mipmapped lookups and fwidth need the neighbouring pixels
+	// Sampled before branching: mipmapped lookups and derivatives need the neighbouring pixels
 	vec2 uv = terrainUv(s.position.xz);
 	float mask = coreMask(s.position.xz);
 	vec3 maps = texture(uMaps, uv).rgb;
 	vec3 albedo = texture(uAlbedo, uv).rgb;
-	vec3 m = texture(uMaterials, uv).rgb * mask; // faded out with the heightmap: ground past its edges
-	vec4 w = vec4(1.0 - m.r - m.g - m.b, m);     // ground, metal, gloss, spare
-	vec4 fw = fwidth(w);
-	// An edge is at least this soft: a pixel and a half, anti-aliased at any zoom
-	float aa = max(max(max(max(fw.x, fw.y), max(fw.z, fw.w)) * 1.5, uMaterialEdge), 1e-4);
+	// Ground, metal, gloss, spare; the masks faded out with the heightmap: ground past its edges
+	vec4 share = materialShares(uv, texture(uMaterials, uv).rgb * mask);
 	if (!s.hit) return vec3(0.0);
 
 	vec3 p = s.position;
@@ -119,7 +137,6 @@ vec3 shadeSurface(Surface s, vec3 rd) {
 		ground *= 1.0 + (n - 0.5) * 2.0 * uDetail.x;
 	}
 
-	vec4 share = materialShares(w, aa);
 	if (uDebugView > 2.5) {
 		// Dev views: 3 each material in a flat colour (ground grey, metal yellow, gloss blue, spare green), lit just
 		// enough to read the relief; 4 the ground's colour as the shader uses it, unlit, the materials and the sea

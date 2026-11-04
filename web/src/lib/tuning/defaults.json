@@ -29,7 +29,7 @@
 		"ease": 2.5
 	},
 	"march": {
-		"stepScale": 0.51,
+		"stepScale": 0.25,
 		"precision": 0.0049,
 		"steps": 128,
 		"refineSteps": 6,
@@ -85,7 +85,8 @@
 		"spare": [0.6, 0.6, 0.6],
 		"spareMetallic": 0,
 		"spareRoughness": 0.9,
-		"edge": 0.02
+		"edge": 0.02,
+		"blend": 8
 	},
 	"water": {
 		"level": 0,

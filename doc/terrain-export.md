@@ -33,10 +33,12 @@ The heightmap goes first: the others check their footprint against its `heightma
 ## Materials (4)
 
 - [ ] One mask per material from `material_index`, each grown by about a texel, then all blurred the same, over 2 to 4 texels.
+- [ ] Gradients after the blur (sand over an object): the objects' masks × (1 − the cover), ramping over 16 texels or more to blend fully.
 
 ## Albedo (5)
 
 - [ ] Display values (sRGB), the ground's colour only: no AO, shadow or light in it.
+- [ ] The sand painted under the objects too, wherever it covers them: the ground's colour shows where their masks thin out.
 
 ## POIs (6)
 

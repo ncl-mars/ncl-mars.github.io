@@ -150,7 +150,8 @@ export const schema: Group[] = [
 			{ key: 'spare', label: 'Spare (B)', kind: 'color', hint: 'The blue mask, free.' },
 			{ key: 'spareMetallic', label: 'Spare: metallic', min: 0, max: 1, step: 0.01 },
 			{ key: 'spareRoughness', label: 'Spare: roughness', min: 0.05, max: 1, step: 0.01 },
-			{ key: 'edge', label: 'Edge softness', min: 0, max: 0.5, step: 0.005, hint: 'How soft the edges between materials are, in mask units. 0: as crisp as a pixel at any zoom.' }
+			{ key: 'edge', label: 'Edge softness', min: 0, max: 0.5, step: 0.005, hint: 'How soft the edges between materials are, in mask units. 0: as crisp as a pixel at any zoom.' },
+			{ key: 'blend', label: 'Blend width', min: 1, max: 32, step: 0.5, hint: 'Ramps in the masks wider than about this, in materials.png pixels, blend the materials by their values (sand drifting over metal), fully from twice as wide. Steeper ones are edges and stay crisp: blur them over 2 to 4 pixels.' }
 		]
 	},
 	{
