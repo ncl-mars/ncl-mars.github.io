@@ -43,7 +43,7 @@
 		"shadowLight": 0.11,
 		"aoStrength": 0.81,
 		"cavityStrength": 0.32,
-		"exposure": 1.05
+		"exposure": 2
 	},
 	"fog": {
 		"color": [0.459, 0.561, 0.663],
@@ -70,7 +70,7 @@
 		"view": 0
 	},
 	"ground": {
-		"albedoSaturation": 0.76,
+		"albedoSaturation": 1,
 		"albedoTint": [1, 1, 1],
 		"detail": 0.1,
 		"detailSize": 8

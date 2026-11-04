@@ -9,7 +9,8 @@
 // edges stay crisp at any zoom; where they ramp gently (sand drifting over a ring), they blend by their values.
 // Metal, gloss and spare reflect the sky and the sun's highlight (a colour, how metallic, how rough: the panel's
 // Materials); they depend on the view, which re-marches the cache anyway. The ground is matte: albedo.png
-// inside the heightmap (rock painted in), else the tint, with a light variation from the noise texture.
+// inside the heightmap (rock painted in), faralbedo.png over the far map, else the tint, with a light
+// variation from the noise texture.
 // Near-gray on purpose: the mood is desaturated, colour is kept for meaning.
 // Under the sea (terrainHeight below uSeaLevel), the water's own colour, whatever the material: shallow to
 // deep with its depth, foam where it thins out at the shore; lit the same way (the maps are baked on the
@@ -18,10 +19,11 @@
 uniform sampler2D uMaps;      // R the sun's cast shadow (1: lit), G AO, B cavity: linear data
 uniform vec3 uSunDir;         // toward the sun, the one used for the bake
 uniform float uPixel;         // a pixel's angle in the cache (radians): the normal's footprint with distance
-uniform vec3 uTint;           // the ground's colour without an albedo map, and past the heightmap
+uniform vec3 uTint;           // the ground's colour without albedo maps, and past them
 uniform sampler2D uAlbedo;    // the ground's colour inside the heightmap (display values), used if uAlbedoGrade.x
-uniform vec2 uAlbedoGrade;    // x: 1 with an albedo map, 0 without; y: its saturation
-uniform vec3 uAlbedoTint;     // multiplies it (white: as exported)
+uniform sampler2D uFarAlbedo; // and over the far map, used if uAlbedoGrade.z
+uniform vec3 uAlbedoGrade;    // x: 1 with an albedo map, 0 without; y: their saturation; z: 1 with a far albedo map
+uniform vec3 uAlbedoTint;     // multiplies them (white: as exported)
 uniform vec2 uDetail;         // x: colour variation, y: its size (world units)
 uniform highp sampler3D uNoise; // gl/noise.ts: tileable gradient noise, sample with p / 8
 uniform sampler2D uMaterials; // R metal, G gloss, B spare: soft masks (doc/formats/terrain-maps.md); black without
@@ -77,6 +79,11 @@ vec4 materialShares(vec2 uv, vec3 m) {
 	return vec4(1.0 - shown, shown * mix(v.yzw, largestWins(v.yzw, aaWithin), steep.y));
 }
 
+// An albedo map's colour as the panel grades it (Ground colours → Albedo saturation, Albedo tint)
+vec3 gradeAlbedo(vec3 albedo) {
+	return mix(vec3(dot(albedo, vec3(0.2126, 0.7152, 0.0722))), albedo, uAlbedoGrade.y) * uAlbedoTint;
+}
+
 // What metal and gloss reflect: the sky as /fog's skyColor draws it (the horizon's fog, brighter toward the
 // sun, the sky overhead; mirror it), and below the horizon the ground, as a dim average (no reflection march)
 vec3 environment(vec3 r) {
@@ -109,6 +116,7 @@ vec3 shadeSurface(Surface s, vec3 rd) {
 	float mask = coreMask(s.position.xz);
 	vec3 maps = texture(uMaps, uv).rgb;
 	vec3 albedo = texture(uAlbedo, uv).rgb;
+	vec3 farAlbedo = texture(uFarAlbedo, farUv(s.position.xz)).rgb;
 	// Ground, metal, gloss, spare; the masks faded out with the heightmap: ground past its edges
 	vec4 share = materialShares(uv, texture(uMaterials, uv).rgb * mask);
 	if (!s.hit) return vec3(0.0);
@@ -124,12 +132,11 @@ vec3 shadeSurface(Surface s, vec3 rd) {
 	float ao = mix(1.0, maps.g, uShading.y);
 	float cavity = 1.0 + (maps.b - 0.5) * uShading.z;
 
-	// The ground: the albedo map inside the heightmap, else the tint; then a light variation
+	// The ground: the albedo map inside the heightmap, the far albedo map over the far map, else the tint, each
+	// map fading out over its band; then a light variation
 	vec3 ground = uTint;
-	if (uAlbedoGrade.x > 0.0) {
-		vec3 graded = mix(vec3(dot(albedo, vec3(0.2126, 0.7152, 0.0722))), albedo, uAlbedoGrade.y) * uAlbedoTint;
-		ground = mix(ground, graded, mask);
-	}
+	if (uAlbedoGrade.z > 0.0) ground = mix(ground, gradeAlbedo(farAlbedo), farMask(p.xz));
+	if (uAlbedoGrade.x > 0.0) ground = mix(ground, gradeAlbedo(albedo), mask);
 	if (uDetail.x > 0.0) {
 		float size = max(uDetail.y, 0.1);
 		float lod = log2(max(1.0, s.t * uPrecision * 8.0 / size)); // 8 texels per noise cell

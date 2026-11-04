@@ -1,15 +1,15 @@
-# Python SOP: exports the ground's colour for the web terrain. Format: doc/formats/terrain-maps.md (albedo.png)
-# -> albedo.png (8-bit RGB, display values).
+# Python SOP: exports the ground's colour for the web terrain. Format: doc/formats/terrain-maps.md (albedo.png,
+# faralbedo.png) -> <NAME>.png (8-bit RGB, display values).
 # Tracking copy: the node snippet in the .hip is canonical.
 #
 # Pass-through (the geometry isn't modified). It writes on every cook: bypass the node when not exporting.
 # Expects the RGB layer named in LAYER, made in Copernicus and imported into SOPs (there one volume with three
 # channels, R, G, B; an RGBA layer's alpha is ignored), values 0..1: the ground's albedo only (no AO, cavity,
 # shadow or light: maps.png has them), already converted to display values (sRGB), since the web reads them
-# as they are. Lying
-# in XZ like the height (no rotation; axis flips and swaps are handled), covering the same footprint as the
-# exported heightmap. Under the sea it's unused (the water's colour comes from its depth). Reads, checks,
-# packs: the colour is made in Copernicus.
+# as they are. Lying in XZ like the height (no rotation; axis flips and swaps are handled). Under the sea it's
+# unused (the water's colour comes from its depth). Reads, checks, packs: the colour is made in Copernicus.
+# Two exports, two nodes: NAME = "albedo" (over the heightmap, its footprint), "faralbedo" (over the far map,
+# its footprint).
 
 import json
 import os
@@ -20,11 +20,16 @@ import hou
 import numpy as np
 
 OUT_DIR = hou.text.expandString("$HIP/../web/src/lib/assets/terrain")
+NAME = "albedo"
 # The RGB layer from Copernicus
 LAYER = "albedo"
 MAX_SIZE = 2048
+# Each export's footprint: the exported heights it lies on
+FOOTPRINTS = {"albedo": "heightmap.json", "faralbedo": "farmap.json"}
 
 geo = hou.pwd().geometry()
+if NAME not in FOOTPRINTS:
+    raise hou.NodeError(f"NAME must be one of {tuple(FOOTPRINTS)}")
 
 
 def rgb_layer(name):
@@ -100,7 +105,7 @@ shape = channels[0].shape
 if max(shape) > MAX_SIZE:
     raise hou.NodeError(f"{shape[1]} x {shape[0]}: stay at {MAX_SIZE} per side or less (WebGL2's guaranteed texture size)")
 
-meta_path = os.path.join(OUT_DIR, "heightmap.json")
+meta_path = os.path.join(OUT_DIR, FOOTPRINTS[NAME])
 if os.path.exists(meta_path):
     with open(meta_path) as f:
         bounds = json.load(f)["bounds"]
@@ -109,9 +114,9 @@ if os.path.exists(meta_path):
     size = max(expected[2] - expected[0], expected[3] - expected[1])
     if max(abs(a - e) for a, e in zip(actual, expected)) > 1e-3 * size:
         raise hou.NodeError(
-            f"The albedo covers x/z {actual}, the exported heightmap {expected}: export both from the same heightfield"
+            f"'{LAYER}' covers x/z {actual}, the exported {FOOTPRINTS[NAME]} {expected}: they must cover the same ground"
         )
 
 pixels = np.ascontiguousarray(np.clip(np.rint(np.stack(channels, axis=-1) * 255.0), 0, 255).astype(np.uint8))
 os.makedirs(OUT_DIR, exist_ok=True)
-write_png(os.path.join(OUT_DIR, "albedo.png"), pixels)  # file row 0 = min Z, as the format expects
+write_png(os.path.join(OUT_DIR, f"{NAME}.png"), pixels)  # file row 0 = min Z, as the format expects

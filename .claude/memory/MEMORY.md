@@ -10,3 +10,4 @@
 - [Stale terrain in dev](dev-stale-terrain.md) — after a re-export with the dev server running, hard reload before diagnosing terrain oddities
 - [Terrain sets](terrain-sets.md) — saved terrains live in hou/geo/terrains/<name>/ (gitignored); the one in use is committed as usual; switch by copying back
 - [Hosting assets](hosting-assets.md) — no Git LFS; everything the site serves is in the repo; GitHub limits are per file (100 MiB) and 1 GB per site, no 50 MB ceiling
+- [Materials dormant](materials-dormant.md) — no materials.png: the look is the albedo maps; the material code stays unused, may be removed later

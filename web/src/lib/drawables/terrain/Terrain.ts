@@ -143,6 +143,8 @@ export class Terrain implements Drawable {
 	private materialsTexture: WebGLTexture | null = null;
 	/** The ground's colour, or null without an albedo file (the tint instead). */
 	private albedoTexture: WebGLTexture | null = null;
+	/** The same over the far map, or null without a far albedo file. */
+	private farAlbedoTexture: WebGLTexture | null = null;
 	/** For the mist banks (/fog). */
 	private noiseTexture: WebGLTexture | null = null;
 	/** The terrain cache at `renderScale`, and at `renderScale × motionScale` for a moving camera. */
@@ -181,7 +183,7 @@ export class Terrain implements Drawable {
 	private readonly shaftsVector = new Float32Array(3);
 	private readonly waterVector = new Float32Array(3);
 	private readonly detailVector = new Float32Array(2);
-	private readonly albedoGradeVector = new Float32Array(2);
+	private readonly albedoGradeVector = new Float32Array(3);
 	private readonly metalSurfaceVector = new Float32Array(2);
 	private readonly glossSurfaceVector = new Float32Array(2);
 	private readonly spareSurfaceVector = new Float32Array(2);
@@ -278,7 +280,7 @@ export class Terrain implements Drawable {
 		}
 
 		const generation = ++this.generation;
-		const { heightmapUrl, heightmap, farMapUrl, farMap, mapsUrl, materialsUrl, albedoUrl } = this.assets;
+		const { heightmapUrl, heightmap, farMapUrl, farMap, mapsUrl, materialsUrl, albedoUrl, farAlbedoUrl } = this.assets;
 		const heights = (url: string, meta: typeof heightmap) =>
 			renderer.resource(`height:${url}`, (gl) =>
 				loadHeightfield(url, meta).then((field) => ({
@@ -295,8 +297,11 @@ export class Terrain implements Drawable {
 		const albedo = albedoUrl
 			? renderer.resource(`maps:${albedoUrl}`, (gl) => loadDataTexture(gl, albedoUrl))
 			: Promise.resolve(null);
-		Promise.all([height, far, maps, materials, albedo])
-			.then(([h, f, mapsTexture, materialsTexture, albedoTexture]) => {
+		const farAlbedo = farAlbedoUrl
+			? renderer.resource(`maps:${farAlbedoUrl}`, (gl) => loadDataTexture(gl, farAlbedoUrl))
+			: Promise.resolve(null);
+		Promise.all([height, far, maps, materials, albedo, farAlbedo])
+			.then(([h, f, mapsTexture, materialsTexture, albedoTexture, farAlbedoTexture]) => {
 				if (generation !== this.generation) return; // disposed or re-initialised meanwhile
 				this.ground = new Ground(h.field, f?.field ?? null, this.settings.farField, this.settings.water, this.settings.fog);
 				this.heightTexture = h.texture;
@@ -304,6 +309,7 @@ export class Terrain implements Drawable {
 				this.mapsTexture = mapsTexture;
 				this.materialsTexture = materialsTexture;
 				this.albedoTexture = albedoTexture;
+				this.farAlbedoTexture = farAlbedoTexture;
 				this.shadowKey = '';
 				this.dirty = true;
 			})
@@ -403,6 +409,7 @@ export class Terrain implements Drawable {
 		this.farTexture = null;
 		this.materialsTexture = null;
 		this.albedoTexture = null;
+		this.farAlbedoTexture = null;
 		this.mapsTexture = null;
 		this.noiseTexture = null;
 		this.fade = 0;
@@ -470,9 +477,12 @@ export class Terrain implements Drawable {
 		this.waterVector[0] = water.depth;
 		this.waterVector[1] = water.foam;
 		this.waterVector[2] = water.foamWidth;
-		// The ground: the albedo map (without one, the stand-in is bound and ignored), else the tint
+		// The ground: the albedo maps (without one, the stand-in is bound and ignored; the far one only with a far
+		// map, whose box it covers), else the tint
 		u.uAlbedo = this.albedoTexture ?? this.materialsTexture;
-		this.albedoGradeVector.set([this.albedoTexture ? 1 : 0, colours.albedoSaturation]);
+		u.uFarAlbedo = this.farAlbedoTexture ?? this.materialsTexture;
+		const farAlbedo = this.farAlbedoTexture && this.farTexture ? 1 : 0;
+		this.albedoGradeVector.set([this.albedoTexture ? 1 : 0, colours.albedoSaturation, farAlbedo]);
 		u.uAlbedoTint = colours.albedoTint;
 		this.detailVector.set([colours.detail, colours.detailSize]);
 		// The materials, and the sky they reflect (as the fog draws it)

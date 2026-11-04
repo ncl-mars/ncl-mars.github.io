@@ -50,6 +50,17 @@ float coreMask(vec2 xz) {
 	return smoothstep(0.0, uFarField.w, min(d.x, d.y));
 }
 
+vec2 farUv(vec2 xz) {
+	return (xz - uFarBounds.xy) / max(uFarBounds.zw - uFarBounds.xy, vec2(1e-3));
+}
+
+// The same for the far map, fading into the noise over its own band; 0 without a far map
+float farMask(vec2 xz) {
+	if (uFarRange.z <= 0.0) return 0.0;
+	vec2 d = min(xz - uFarBounds.xy, uFarBounds.zw - xz);
+	return smoothstep(0.0, uFarRange.z, min(d.x, d.y));
+}
+
 // A height texel's normalized value from its two bytes read as 0..1 (R low, G high): the 16-bit integer
 // / 65535, which is (256 high + low) / 257 (65535 = 255 × 257). Filtering is linear, so filtered bytes give
 // the filtered height.
@@ -110,18 +121,14 @@ float farHeight(vec2 xz) {
 }
 
 float farMapHeight(vec2 xz, bool exact) {
-	vec2 uv = (xz - uFarBounds.xy) / (uFarBounds.zw - uFarBounds.xy);
-	return mix(uFarRange.x, uFarRange.y, farMapValue(uv, exact));
+	return mix(uFarRange.x, uFarRange.y, farMapValue(farUv(xz), exact));
 }
 
 // Around the heightmap: the far map where there is one, fading into the noise at its edges
 float surroundings(vec2 xz, bool exact) {
-	if (uFarRange.z > 0.0) {
-		vec2 d = min(xz - uFarBounds.xy, uFarBounds.zw - xz);
-		float m = smoothstep(0.0, uFarRange.z, min(d.x, d.y));
-		if (m >= 1.0) return farMapHeight(xz, exact);
-		if (m > 0.0) return mix(farHeight(xz), farMapHeight(xz, exact), m);
-	}
+	float m = farMask(xz);
+	if (m >= 1.0) return farMapHeight(xz, exact);
+	if (m > 0.0) return mix(farHeight(xz), farMapHeight(xz, exact), m);
 	return farHeight(xz);
 }
 

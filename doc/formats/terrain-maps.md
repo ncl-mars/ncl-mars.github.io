@@ -1,6 +1,6 @@
 # Terrain maps format (v2)
 
-Image data baked in Houdini for the terrain: the lighting maps (`maps.png`), and optionally its materials (`materials.png`) and the ground's colour (`albedo.png`). The companion to [heightmap.md](heightmap.md), over the same footprint. Contract between the Houdini exporters (`hou/snippets/python/export_maps.py`, `export_materials.py`, `export_albedo.py`) and the web loader. Change it here first, then on both sides.
+Image data baked in Houdini for the terrain: the lighting maps (`maps.png`), and optionally its materials (`materials.png`) and the ground's colour (`albedo.png`, and `faralbedo.png` over the far map). The companion to [heightmap.md](heightmap.md), over the same footprints. Contract between the Houdini exporters (`hou/snippets/python/export_maps.py`, `export_materials.py`, `export_albedo.py`) and the web loader. Change it here first, then on both sides.
 
 ## Houdini
 
@@ -77,15 +77,24 @@ In Houdini (Copernicus): from your `material_index` (ground, metal, gloss, spare
 The ground's colour inside the heightmap, from `hou/snippets/python/export_albedo.py`.
 
 - 8-bit **RGB** (no alpha), **display values (sRGB)**: the renderer has no colour management, and the panel's colours are display values too. No gamma or ICC chunk: the values are read as they are. Colour rather than data, so imported as lossy WebP (`?format=webp&quality=90`), a fraction of the lossless size.
-- **Albedo only**: no AO, cavity, shadow or light in it (they're in `maps.png`, so they'd count twice). The ground only: metal, gloss and spare take their colours from the panel. Under the sea it's unused (the water's colour comes from its depth).
+- **Albedo only**: no AO, cavity, shadow or light in it (they're in `maps.png`, so they'd count twice). From a photo, take its light out first: `hou/snippets/ocl/delight.cl` divides out the slopes' shading under the photo's own sun. The ground only: metal, gloss and spare take their colours from the panel. Under the sea it's unused (the water's colour comes from its depth).
 - Same footprint and orientation as `maps.png`; its own resolution, ≤ 2048 per side: 2048² over the 2 km site (1 m texels). The shader's variation (Ground colours → Variation) adds detail below the texel.
 - Rock is painted into it (slope, erosion: in Copernicus): the shader has no rock rule.
-- Past the heightmap, the ground is Shading → Tint: match it to the map's edges.
+- Past the heightmap, the ground is the far albedo where there is one (below), else Shading → Tint: match it to the map's edges.
 - Graded live in the panel (Ground colours → Albedo saturation, Albedo tint). Keep it near grey for the tone.
 - Optional: without the file, Shading → Tint, as past the heightmap.
 - Check it in the panel: Light shafts → Debug view 4 shows the ground's colour as the shader uses it, unlit and without fog (colours, orientation: rock on the cliffs).
 
-In Houdini: one RGB layer made in Copernicus (`albedo` by default, `LAYER` at the top of the snippet), already converted to display values, imported into SOPs for the export (there one volume of that name, with three channels). The snippet only reads, checks and packs, with the same checks as the materials.
+In Houdini: one RGB layer made in Copernicus (`albedo` by default, `LAYER` at the top of the snippet), already converted to display values, imported into SOPs for the export (there one volume of that name, with three channels), with `NAME = "albedo"`. The snippet only reads, checks and packs, with the same checks as the materials.
+
+## Far ground colour: `faralbedo.png` (optional)
+
+The ground's colour over the far map, from the same snippet with `NAME = "faralbedo"`.
+
+- The same format as `albedo.png` (8-bit RGB, display values, the albedo only, lossy WebP), with the far map's footprint (the `bounds` from `farmap.json`) and orientation: 1024² over its 16 km (16 m texels, like its heights).
+- It fades into Shading → Tint with the far map's band into the noise, and over the heightmap's band `albedo.png` takes over. Both cover the site: match their colours there, or the site's edge shows.
+- Graded by the same panel controls as `albedo.png`. Used only with a far map.
+- The snippet checks its footprint against `farmap.json`.
 
 ## Versioning
 

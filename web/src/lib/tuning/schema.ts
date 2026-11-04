@@ -84,7 +84,7 @@ export const schema: Group[] = [
 		key: 'shading',
 		label: 'Shading',
 		params: [
-			{ key: 'tint', label: 'Tint', kind: 'color', hint: 'The ground’s colour without an albedo file, and past the heightmap.' },
+			{ key: 'tint', label: 'Tint', kind: 'color', hint: 'The ground’s colour without albedo files, and past them (the heightmap’s, the far map’s).' },
 			{ key: 'shadowLight', label: 'Light in shadow', min: 0, max: 1, step: 0.01 },
 			{ key: 'aoStrength', label: 'AO strength', min: 0, max: 1, step: 0.01 },
 			{ key: 'cavityStrength', label: 'Cavity strength', min: 0, max: 2, step: 0.01 },
@@ -131,8 +131,8 @@ export const schema: Group[] = [
 		key: 'ground',
 		label: 'Ground colours',
 		params: [
-			{ key: 'albedoSaturation', label: 'Albedo saturation', min: 0, max: 2, step: 0.01, hint: 'Of albedo.png (export_albedo.py), the ground’s colour inside the heightmap. 1: as exported, 0: grey.' },
-			{ key: 'albedoTint', label: 'Albedo tint', kind: 'color', hint: 'Multiplies it. White: as exported. Without an albedo file, and past the heightmap: Shading → Tint.' },
+			{ key: 'albedoSaturation', label: 'Albedo saturation', min: 0, max: 2, step: 0.01, hint: 'Of albedo.png and faralbedo.png (export_albedo.py), the ground’s colour over the heightmap and the far map. 1: as exported, 0: grey.' },
+			{ key: 'albedoTint', label: 'Albedo tint', kind: 'color', hint: 'Multiplies them. White: as exported. Without albedo files, and past them: Shading → Tint.' },
 			{ key: 'detail', label: 'Variation', min: 0, max: 0.5, step: 0.01, hint: 'A light colour variation on the ground: finer than the albedo’s texels, and over large flat areas. 0: none.' },
 			{ key: 'detailSize', label: 'Variation size (m)', min: 1, max: 100, step: 0.5, hint: 'Size of its patches.' }
 		]

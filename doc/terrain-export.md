@@ -17,10 +17,11 @@ Everything Houdini exports for the web terrain, in order: the 2 km site (2048²)
 | 2 | `farmap.bin` / `.json` | `export_heightmap.py`, `NAME = "farmap"` | `height`: the far map, no objects | 1024² |
 | 3 | `maps.png` / `.json` | `export_maps.py` | `shadow`, `occlusion`, `cavity`, and `v@sun_dir` | 2048² (1024²: 2 m texels) |
 | 4 | `materials.png` (optional) | `export_materials.py` | `metal`, `gloss`, `spare` | 2048² |
-| 5 | `albedo.png` (optional) | `export_albedo.py` | `albedo`: one RGB layer | 2048² |
-| 6 | `pois.json` | `export_pois.py` | one point per POI, `s@name` | |
+| 5 | `albedo.png` (optional) | `export_albedo.py`, `NAME = "albedo"` | `albedo`: one RGB layer over the site | 2048² |
+| 6 | `faralbedo.png` (optional) | `export_albedo.py`, `NAME = "faralbedo"` | `albedo`: one RGB layer over the far map | 1024² |
+| 7 | `pois.json` | `export_pois.py` | one point per POI, `s@name` | |
 
-The heightmap goes first: the others check their footprint against its `heightmap.json`. All of them cover the site's 2,000 m, and none goes over 2048 per side.
+The heightmap goes first and the far map second: the others check their footprint against the `.json` of the heights they lie on. All of them cover the site's 2,000 m, except the far albedo (the far map's 16,000 m), and none goes over 2048 per side.
 
 ## Maps (3)
 
@@ -38,9 +39,15 @@ The heightmap goes first: the others check their footprint against its `heightma
 ## Albedo (5)
 
 - [ ] Display values (sRGB), the ground's colour only: no AO, shadow or light in it.
+- [ ] From a photo: its light taken out in linear light (`delight.cl`, at the photo's sun, on the heights before the stamps), then back to sRGB.
 - [ ] The sand painted under the objects too, wherever it covers them: the ground's colour shows where their masks thin out.
 
-## POIs (6)
+## Far albedo (6)
+
+- [ ] Over the far map's 16,000 m, 1024², made like the site's albedo (display values, no light in it).
+- [ ] Its colours matched to the site's albedo where they overlap (both cover the site), or the site's edge shows.
+
+## POIs (7)
 
 - [ ] One point per POI on the new ground, `s@name` its project folder's id, inside the site (±1,000).
 
