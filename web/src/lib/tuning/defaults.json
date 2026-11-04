@@ -48,16 +48,16 @@
 	"fog": {
 		"color": [0.459, 0.561, 0.663],
 		"skyColor": [0.56, 0.64, 0.73],
-		"density": 0.0007,
+		"density": 0.00095,
 		"end": 3480,
 		"sunColor": [0.95, 0.86, 0.72],
-		"sunGlow": 0.35,
-		"sunPower": 6
+		"sunGlow": 0.49,
+		"sunPower": 18
 	},
 	"mist": {
-		"density": 0.0125,
-		"height": 18,
-		"falloff": 34.5,
+		"density": 0.007,
+		"height": 7.5,
+		"falloff": 69.5,
 		"banks": 0.36,
 		"bankScale": 540
 	},

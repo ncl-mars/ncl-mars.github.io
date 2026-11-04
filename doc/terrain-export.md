@@ -17,7 +17,7 @@ Everything Houdini exports for the web terrain, in order: the 2 km site (2048²)
 | 2 | `farmap.bin` / `.json` | `export_heightmap.py`, `NAME = "farmap"` | `height`: the far map, no objects | 1024² |
 | 3 | `maps.png` / `.json` | `export_maps.py` | `shadow`, `occlusion`, `cavity`, and `v@sun_dir` | 2048² (1024²: 2 m texels) |
 | 4 | `materials.png` (optional) | `export_materials.py` | `metal`, `gloss`, `spare` | 2048² |
-| 5 | `albedo.png` (optional) | `export_albedo.py` | `albedo_r`, `albedo_g`, `albedo_b` | 2048² |
+| 5 | `albedo.png` (optional) | `export_albedo.py` | `albedo`: one RGB layer | 2048² |
 | 6 | `pois.json` | `export_pois.py` | one point per POI, `s@name` | |
 
 The heightmap goes first: the others check their footprint against its `heightmap.json`. All of them cover the site's 2,000 m, and none goes over 2048 per side.

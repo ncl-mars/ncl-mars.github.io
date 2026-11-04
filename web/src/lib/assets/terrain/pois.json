@@ -2,22 +2,22 @@
 	"version": 1,
 	"pois": [
 		{
-			"id": "cbs-lacoste",
+			"id": "lacoste",
 			"x": 204.306,
 			"z": 429.139
 		},
 		{
-			"id": "cbs-dior",
+			"id": "dior-bonjour",
 			"x": 373.608,
 			"z": -377.398
 		},
 		{
-			"id": "cbs-boucheron",
+			"id": "boucheron-4-rings",
 			"x": 100.61,
 			"z": -204.78
 		},
 		{
-			"id": "cbs-lotchi",
+			"id": "lotchi-meshprep",
 			"x": -608.097,
 			"z": -52.818
 		}

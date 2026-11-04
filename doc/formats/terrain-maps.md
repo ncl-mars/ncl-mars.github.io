@@ -85,7 +85,7 @@ The ground's colour inside the heightmap, from `hou/snippets/python/export_albed
 - Optional: without the file, Shading → Tint, as past the heightmap.
 - Check it in the panel: Light shafts → Debug view 4 shows the ground's colour as the shader uses it, unlit and without fog (colours, orientation: rock on the cliffs).
 
-In Houdini: three heightfield layers, R, G, B (`albedo_r`, `albedo_g`, `albedo_b` by default, `LAYERS` at the top of the snippet), already converted to display values in Copernicus. The snippet only reads, checks and packs, with the same checks as the materials.
+In Houdini: one RGB layer made in Copernicus (`albedo` by default, `LAYER` at the top of the snippet), already converted to display values, imported into SOPs for the export (there one volume of that name, with three channels). The snippet only reads, checks and packs, with the same checks as the materials.
 
 ## Versioning
 

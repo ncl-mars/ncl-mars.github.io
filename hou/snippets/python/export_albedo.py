@@ -3,11 +3,13 @@
 # Tracking copy: the node snippet in the .hip is canonical.
 #
 # Pass-through (the geometry isn't modified). It writes on every cook: bypass the node when not exporting.
-# Expects the heightfield layers named in LAYERS, one per channel (R, G, B), values 0..1: the ground's albedo
-# only (no AO, cavity, shadow or light: maps.png has them), already converted to display values (sRGB) in
-# Copernicus, since the web reads them as they are. Lying in XZ like the height (no rotation; axis flips and
-# swaps are handled), covering the same footprint as the exported heightmap. Under the sea it's unused (the
-# water's colour comes from its depth). Reads, checks, packs: the colour is made in Copernicus.
+# Expects the RGB layer named in LAYER, made in Copernicus and imported into SOPs (there one volume with three
+# channels, R, G, B; an RGBA layer's alpha is ignored), values 0..1: the ground's albedo only (no AO, cavity,
+# shadow or light: maps.png has them), already converted to display values (sRGB), since the web reads them
+# as they are. Lying
+# in XZ like the height (no rotation; axis flips and swaps are handled), covering the same footprint as the
+# exported heightmap. Under the sea it's unused (the water's colour comes from its depth). Reads, checks,
+# packs: the colour is made in Copernicus.
 
 import json
 import os
@@ -18,27 +20,40 @@ import hou
 import numpy as np
 
 OUT_DIR = hou.text.expandString("$HIP/../web/src/lib/assets/terrain")
-# Heightfield layer per channel: R, G, B
-LAYERS = ("albedo_r", "albedo_g", "albedo_b")
+# The RGB layer from Copernicus
+LAYER = "albedo"
 MAX_SIZE = 2048
 
 geo = hou.pwd().geometry()
 
 
-def layer(name):
+def rgb_layer(name):
+    """The layer's volume: one, with at least three channels."""
     volume = next(
         (p for p in geo.prims() if isinstance(p, hou.Volume) and p.attribValue("name") == name),
         None,
     )
     if volume is None:
-        raise hou.NodeError(f"No '{name}' layer in the input (LAYERS at the top of the script)")
+        raise hou.NodeError(f"No '{name}' layer in the input (LAYER at the top of the script)")
+    if volume.channelCount() < 3:
+        raise hou.NodeError(f"'{name}' has {volume.channelCount()} channel(s): it must be an RGB layer")
+    if volume.storageType() != hou.volumeStorageType.Float:
+        raise hou.NodeError(f"'{name}' stores integers: it must be a float RGB layer")
     return volume
 
 
-def grid(volume):
-    """The layer as rows along +Z and columns along +X (row 0 = min Z), as export_heightmap.py does."""
+def rgb(volume):
+    """R, G, B as [j][i] arrays (i varies fastest): allVoxelsAsString interleaves the channels, as 32-bit floats."""
     rx, ry, rz = volume.resolution()
-    data = np.array(volume.allVoxels(), dtype=np.float32).reshape(ry, rx)  # [j][i], i varies fastest
+    count = volume.channelCount()
+    data = np.frombuffer(volume.allVoxelsAsString(), dtype=np.float32)
+    if data.size != rx * ry * count:
+        raise hou.NodeError(f"'{LAYER}': {data.size} values for {rx} x {ry} voxels of {count} channels")
+    return list(data.reshape(ry, rx, count).transpose(2, 0, 1)[:3])
+
+
+def grid(volume, data):
+    """data [j][i] as rows along +Z and columns along +X (row 0 = min Z), as export_heightmap.py does."""
     origin = np.array(volume.indexToPos((0, 0, 0)))
     di = np.array(volume.indexToPos((1, 0, 0))) - origin
     dj = np.array(volume.indexToPos((0, 1, 0))) - origin
@@ -79,11 +94,9 @@ def write_png(path, pixels):
         f.write(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", header) + chunk(b"IDAT", zlib.compress(raw, 9)) + chunk(b"IEND", b""))
 
 
-volumes = [layer(name) for name in LAYERS]
-channels = [grid(v) for v in volumes]
+volume = rgb_layer(LAYER)
+channels = [grid(volume, c) for c in rgb(volume)]
 shape = channels[0].shape
-if any(c.shape != shape for c in channels):
-    raise hou.NodeError(f"The albedo layers {LAYERS} must have the same resolution")
 if max(shape) > MAX_SIZE:
     raise hou.NodeError(f"{shape[1]} x {shape[0]}: stay at {MAX_SIZE} per side or less (WebGL2's guaranteed texture size)")
 
@@ -92,7 +105,7 @@ if os.path.exists(meta_path):
     with open(meta_path) as f:
         bounds = json.load(f)["bounds"]
     expected = (bounds["min"][0], bounds["min"][2], bounds["max"][0], bounds["max"][2])
-    actual = footprint(volumes[0])
+    actual = footprint(volume)
     size = max(expected[2] - expected[0], expected[3] - expected[1])
     if max(abs(a - e) for a, e in zip(actual, expected)) > 1e-3 * size:
         raise hou.NodeError(
