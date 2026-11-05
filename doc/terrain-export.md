@@ -38,9 +38,9 @@ The heightmap goes first and the far map second: the others check their footprin
 
 ## Albedo (5)
 
-- [ ] Display values (sRGB), the ground's colour only: no AO, shadow or light in it.
+- [ ] Display values (sRGB), the colour of everything, the objects included (gold, silver, the rock's grey: the materials only change how it's lit); no AO, shadow or light in it.
 - [ ] From a photo: its light taken out in linear light (`delight.cl`, at the photo's sun, on the heights before the stamps), then back to sRGB.
-- [ ] The sand painted under the objects too, wherever it covers them: the ground's colour shows where their masks thin out.
+- [ ] Drifts painted in both maps: here the colour fading from the object's to the sand's, in the masks the lighting.
 
 ## Far albedo (6)
 
