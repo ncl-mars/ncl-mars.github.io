@@ -9,9 +9,9 @@
 // edges stay crisp at any zoom; where they ramp gently (sand drifting over a ring), they blend by their values.
 // The colour is the same whatever the material: albedo.png inside the heightmap (rock and the objects' colours
 // painted in), faralbedo.png over the far map, else the tint, with a light variation from the noise texture.
-// A material changes only how it's lit: the ground is matte; metal, gloss and spare reflect the sky and the
-// sun's highlight (how metallic, how rough, a tint: the panel's Materials), depending on the view, which
-// re-marches the cache anyway.
+// A material changes only how it's lit: the ground is matte; metal, gloss and spare reflect the sky (dimmed in
+// the sun's cast shadow like the ground's light) and the sun's highlight (how metallic, how rough, a tint: the
+// panel's Materials), depending on the view, which re-marches the cache anyway.
 // Near-gray on purpose: the mood is desaturated, colour is kept for meaning.
 // Under the sea (terrainHeight below uSeaLevel), the water's own colour, whatever the material: shallow to
 // deep with its depth, foam where it thins out at the shore; lit the same way (the maps are baked on the
@@ -95,8 +95,10 @@ vec3 environment(vec3 r) {
 
 // Metal, gloss, spare: a diffuse base in `colour` (none for a metal: its reflections take the colour) under the
 // reflected sky and the sun's highlight (normalised Blinn-Phong, Schlick's Fresnel). surface: x how metallic,
-// y how rough
-vec3 shadeMaterial(vec3 colour, vec2 surface, vec3 n, vec3 v, float sun, float light, float ao, float cavity) {
+// y how rough. The sky it reflects dims in the sun's cast shadow (`shadow`, 1: lit) down to the light in full
+// shadow, like the ground's: the sky the scene shows is several times brighter than the light it leaves in the
+// shadows, so at full strength the reflections would light them up
+vec3 shadeMaterial(vec3 colour, vec2 surface, vec3 n, vec3 v, float sun, float shadow, float light, float ao, float cavity) {
 	float metallic = clamp(surface.x, 0.0, 1.0);
 	float roughness = clamp(surface.y, 0.05, 1.0);
 	vec3 f0 = mix(vec3(0.04), colour, metallic);
@@ -107,7 +109,7 @@ vec3 shadeMaterial(vec3 colour, vec2 surface, vec3 n, vec3 v, float sun, float l
 	float shininess = max(2.0 / (roughness * roughness) - 2.0, 1.0);
 	float highlight = (shininess + 8.0) / 25.1327 * pow(max(dot(n, h), 0.0), shininess); // / 8π
 	vec3 glint = f0 + (1.0 - f0) * pow(1.0 - max(dot(v, h), 0.0), 5.0);
-	vec3 specular = fresnel * environment(r) * ao + glint * uSunColor * (highlight * sun);
+	vec3 specular = fresnel * environment(r) * (ao * mix(uShading.x, 1.0, shadow)) + glint * uSunColor * (highlight * sun);
 	vec3 diffuse = colour * (1.0 - metallic) * (light * ao * cavity);
 	return diffuse * (1.0 - fresnel) + specular;
 }
@@ -157,9 +159,9 @@ vec3 shadeSurface(Surface s, vec3 rd) {
 	vec3 col = share.x * colour * (light * ao * cavity);
 	if (share.x < 1.0) {
 		vec3 v = -rd;
-		col += share.y * shadeMaterial(colour * uMetal, uMetalSurface, normal, v, sun, light, ao, cavity);
-		col += share.z * shadeMaterial(colour * uGloss, uGlossSurface, normal, v, sun, light, ao, cavity);
-		col += share.w * shadeMaterial(colour * uSpare, uSpareSurface, normal, v, sun, light, ao, cavity);
+		col += share.y * shadeMaterial(colour * uMetal, uMetalSurface, normal, v, sun, maps.r, light, ao, cavity);
+		col += share.z * shadeMaterial(colour * uGloss, uGlossSurface, normal, v, sun, maps.r, light, ao, cavity);
+		col += share.w * shadeMaterial(colour * uSpare, uSpareSurface, normal, v, sun, maps.r, light, ao, cavity);
 	}
 
 	// Under the sea: the water, whatever the material. The shoreline blends over about a pixel, so it doesn't

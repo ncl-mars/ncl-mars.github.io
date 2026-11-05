@@ -7,7 +7,8 @@
 - [Diagnose first](diagnose-first.md) — visual artifacts: data check / debug view before any fix; no blind fixes
 - [Baked lighting](baked-lighting.md) — shadows stay baked, sun fixed; only n·L is computed in the shader; to change where the sun shows, aim the camera
 - [Copernicus image ops](copernicus-image-ops.md) — masks, blurs, remaps are the user's, in Copernicus; export scripts only read, check, pack
+- [RGB layers](copernicus-rgb-layers.md) — a multi-channel texture is one Copernicus RGB layer (albedo, materials); exporters read it as is, never heightfields per channel
 - [Stale terrain in dev](dev-stale-terrain.md) — after a re-export with the dev server running, hard reload before diagnosing terrain oddities
 - [Terrain sets](terrain-sets.md) — saved terrains live in hou/geo/terrains/<name>/ (gitignored); the one in use is committed as usual; switch by copying back
 - [Hosting assets](hosting-assets.md) — no Git LFS; everything the site serves is in the repo; GitHub limits are per file (100 MiB) and 1 GB per site, no 50 MB ceiling
-- [Generic materials](materials-stamps.md) — slots are R metal, G gloss, B spare, coloured by albedo.png, blended by the masks; never call R "gold"
+- [Materials set aside](materials-stamps.md) — one matte material, stamps are sand (2026-11-05); code stays until the user says remove; slots were generic, never call R "gold"

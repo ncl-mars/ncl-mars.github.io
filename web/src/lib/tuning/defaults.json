@@ -76,9 +76,9 @@
 		"detailSize": 8
 	},
 	"materials": {
-		"metal": [0.95, 0.76, 0.42],
+		"metal": [0.992, 0.984, 0.965],
 		"metalMetallic": 1,
-		"metalRoughness": 0.3,
+		"metalRoughness": 0.2,
 		"gloss": [0.1, 0.1, 0.11],
 		"glossMetallic": 0,
 		"glossRoughness": 0.08,

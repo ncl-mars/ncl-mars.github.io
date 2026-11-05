@@ -1,12 +1,12 @@
 ---
 name: materials-stamps
-description: Material slots are generic (R metal, G gloss, B spare), coloured by albedo.png and blended by the masks; used for some stamps (gold, glossy rock)
+description: Materials set aside (2026-11-05): one matte material, the object stamps are sand; the material code stays until the user decides to remove it
 metadata:
   type: project
 ---
 
-The ground's look comes from `albedo.png` / `faralbedo.png` (LINZ imagery). On 2026-11-05 `materials.png` came back for some stamps, and every slot now takes its colour from the albedo (times a tint, white as painted), so the slots are generic surfaces: R metal (gold or silver is paint in the albedo), G gloss, B spare if needed. A glossy rock is the terrain (its grey in the albedo) mixed with G by a partial mask.
+On 2026-11-05 the user set the materials aside: one material, the matte ground, and the object stamps are sand like it. Metal and gloss rendered poorly, a "déchetterie" (dump) look. `material_id` is 0 everywhere in Houdini, so `materials.png` is black. The material code stays for now: generic slots R metal, G gloss, B spare, coloured by `albedo.png` times a tint, blended by the masks (`shade.glsl`, the `materials` tuning group, Debug view 3, `export_materials.py` reading one RGB layer).
 
-**Why:** the user's model is generic materials blended together, with one colour source for the site. They were angry when Claude called R "gold" (the metal's old default colour) and routed the rock's gloss to Spare instead of G.
+**Why:** the user's call after seeing the metal on the mont-blanc stamp; real reflections (a second march) were offered and judged not worth it. Earlier that day they insisted the slots are generic: never call R "gold"; gloss is G mixed with the terrain, never Spare.
 
-**How to apply:** talk about the slots generically (metal, gloss, spare), never as gold or rock. Gloss is G, mixed with the terrain through the mask's value. The material code is no longer a removal candidate; don't suggest materials for the ground's own look.
+**How to apply:** don't propose material-based looks or fixes (reflections, slot tuning) unless the user brings materials back. The removal is planned "in a bit": asked for, then paused the same day ("we never know"), so do it only when they say so. Then the whole chain: shader, `Terrain.ts` uniforms and settings type, the optional glob in `terrain/assets.ts`, the schema and defaults group, `'materials'` in the (site) layout's cached-groups list, Debug view 3 (its hint, composite.frag's comment), `export_materials.py` and `materials.png`, the docs and CLAUDE.md. Keep a black stand-in texture: `blackTexture()` also stands in for missing albedo maps. The march's `uFogColor`, `uSkyColor`, `uSunColor`, `uSunGlow` serve only `environment()` and the highlight.

@@ -16,7 +16,7 @@ Everything Houdini exports for the web terrain, in order: the 2 km site (2048²)
 | 1 | `heightmap.bin` / `.json` | `export_heightmap.py`, `NAME = "heightmap"` | `height`: the site, with its objects | 2048² |
 | 2 | `farmap.bin` / `.json` | `export_heightmap.py`, `NAME = "farmap"` | `height`: the far map, no objects | 1024² |
 | 3 | `maps.png` / `.json` | `export_maps.py` | `shadow`, `occlusion`, `cavity`, and `v@sun_dir` | 2048² (1024²: 2 m texels) |
-| 4 | `materials.png` (optional) | `export_materials.py` | `metal`, `gloss`, `spare` | 2048² |
+| 4 | `materials.png` (optional) | `export_materials.py` | `materials`: one RGB layer, R metal, G gloss, B spare | 2048² |
 | 5 | `albedo.png` (optional) | `export_albedo.py`, `NAME = "albedo"` | `albedo`: one RGB layer over the site | 2048² |
 | 6 | `faralbedo.png` (optional) | `export_albedo.py`, `NAME = "faralbedo"` | `albedo`: one RGB layer over the far map | 1024² |
 | 7 | `pois.json` | `export_pois.py` | one point per POI, `s@name` | |
@@ -35,6 +35,7 @@ The heightmap goes first and the far map second: the others check their footprin
 
 - [ ] One mask per material from `material_index`, each grown by about a texel, then all blurred the same, over 2 to 4 texels.
 - [ ] Gradients after the blur (sand over an object): the objects' masks × (1 − the cover), ramping over 16 texels or more to blend fully.
+- [ ] Joined into one RGB layer, `materials`: R metal, G gloss, B spare (an unused one black).
 
 ## Albedo (5)
 

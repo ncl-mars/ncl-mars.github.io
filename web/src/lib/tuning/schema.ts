@@ -85,7 +85,7 @@ export const schema: Group[] = [
 		label: 'Shading',
 		params: [
 			{ key: 'tint', label: 'Tint', kind: 'color', hint: 'The colour without albedo files (the materials’ too), and past them (the heightmap’s, the far map’s).' },
-			{ key: 'shadowLight', label: 'Light in shadow', min: 0, max: 1, step: 0.01 },
+			{ key: 'shadowLight', label: 'Light in shadow', min: 0, max: 1, step: 0.01, hint: 'What the sky leaves in the sun’s shadow. The materials’ reflections dim to it there too, so they don’t light up the shadows.' },
 			{ key: 'aoStrength', label: 'AO strength', min: 0, max: 1, step: 0.01 },
 			{ key: 'cavityStrength', label: 'Cavity strength', min: 0, max: 2, step: 0.01 },
 			{ key: 'exposure', label: 'Exposure', min: 0, max: 3, step: 0.01 }
@@ -141,7 +141,7 @@ export const schema: Group[] = [
 		key: 'materials',
 		label: 'Materials',
 		params: [
-			{ key: 'metal', label: 'Metal (R): tint', kind: 'color', hint: 'The materials.png red mask (export_materials.py, metal). Its colour is albedo.png’s (Ground colours), like every material’s, times this tint: white, as painted. Where no mask: the ground, matte.' },
+			{ key: 'metal', label: 'Metal (R): tint', kind: 'color', hint: 'The materials.png red mask (export_materials.py).Its colour is albedo.png’s (Ground colours), like every material’s, times this tint: white, as painted. Where no mask: the ground, matte.' },
 			{ key: 'metalMetallic', label: 'Metal: metallic', min: 0, max: 1, step: 0.01, hint: '1: a metal, no diffuse, the sky and the sun reflected in its colour. 0: its colour under white reflections, strong only at grazing angles (glass, lacquer).' },
 			{ key: 'metalRoughness', label: 'Metal: roughness', min: 0.05, max: 1, step: 0.01, hint: 'Lower: a smaller, brighter highlight and a sharper reflection of the sky.' },
 			{ key: 'gloss', label: 'Gloss (G): tint', kind: 'color', hint: 'The green mask: glass, lacquer, polished stone. Times albedo.png’s colour: white, as painted.' },
