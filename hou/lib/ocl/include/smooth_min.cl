@@ -78,4 +78,23 @@ float smin_circ_geo( float a, float b, float k ){
     // }
 
 
+// -------------------------------------------- Mix Factor
+// x: the smooth min, y: the mix factor, the weight of b (0: a, 0.5 where a == b, 1: b)
+// quadratic polynomial
+float2 smin_quad_mix( float a, float b, float k ){
+    k *= 4.0;
+    float h = max( k-fabs(a-b), 0.0f )/k;
+    float m = h*h*0.5;
+    float s = m*k*(1.0/2.0);
+    return (a<b) ? (float2)(a-s, m) : (float2)(b-s, 1.0f-m);
+}
+// cubic polynomial
+float2 smin_cube_mix( float a, float b, float k ){
+    k *= 6.0;
+    float h = max( k-fabs(a-b), 0.0f )/k;
+    float m = h*h*h*0.5;
+    float s = m*k*(1.0/3.0);
+    return (a<b) ? (float2)(a-s, m) : (float2)(b-s, 1.0f-m);
+}
+
 #endif

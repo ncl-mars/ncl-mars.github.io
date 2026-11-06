@@ -19,5 +19,6 @@
 		"**/web/build": true
 	},
 
-	"OpenCL.server.enable": false
+	"OpenCL.server.enable": false,
+	"claudeCode.idleCompaction":false
 }

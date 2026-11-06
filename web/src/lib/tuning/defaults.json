@@ -43,7 +43,7 @@
 		"shadowLight": 0.11,
 		"aoStrength": 0.81,
 		"cavityStrength": 0.32,
-		"exposure": 2
+		"exposure": 1.47
 	},
 	"fog": {
 		"color": [0.459, 0.561, 0.663],
