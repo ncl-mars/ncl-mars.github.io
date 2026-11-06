@@ -24,7 +24,7 @@ Notes live in `.claude/memory/`, **not** in the global `~/.claude/projects/.../m
 - `doc/formats/`: format contracts (heightmap, terrain maps, POIs) and the content files (project folders, portfolio.yaml)
 - `doc/dem.md`: real terrain from a DEM (LINZ lidar): download, preview, frame, cut, scale, export
 - `doc/terrain-export.md`: checklist of every terrain export from Houdini (order, layers, resolutions, bake settings)
-- `doc/fossils.md`: the object stamps as fossils with sand, in Copernicus (planned): layers in metres, stages, zone attributes, wind, order of work
+- `doc/fossils.md`: the object stamps as fossils with sand, and a subtle erosion of the terrain, with Copernicus's heightfield nodes (planned): layers, stages, zone attributes, the photo's darks, order of work
 
 ## Layout
 

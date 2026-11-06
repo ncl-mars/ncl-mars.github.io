@@ -9,7 +9,7 @@ metadata:
 - ID layers bind as `int` (`#bind layer project_id int`) and read with `imageNearest`.
 - Image space spans -1..1 across a square layer's width, so one pixel is `2.0f / @name.xres` (as in `delight.cl`).
 - Mono to SDF: negative inside (above the iso), positive outside. Distances are in image units, like `@P`: checked 2026-11-06, jumping `P - n * d` lands on the outlines.
-- Jumping to an SDF's outline (the id map kernel `sdf_to_ids`: each pixel takes the nearest stamp's id, 0 is the ground):
+- Jumping to an SDF's outline (the id map kernel `extrapolate_ids`: each pixel takes the nearest stamp's id, 0 is the ground):
   - Repeat `p -= n * (d + inset)`. A single jump misses far away, because the direction error grows with the distance.
   - Pixels on ridges, where the central difference cancels out, need many iterations: the user raised the count until the speckles went.
   - Thin lines of a third id along some territory borders remain. Only one-sided differences would fix them.
