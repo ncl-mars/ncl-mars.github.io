@@ -14,11 +14,12 @@ The object stamps as fossils: the objects stand proud of the ground where you pl
 |---|---|---|---|
 | `base` | m | The site's ground, without the objects | `cut_dem.cl`, × 0.5 ([dem.md](dem.md)) |
 | `objects` | m | The stamps' heights: P.y, as placed; 0 outside | `rasterize_height_aa`, anti-aliased |
+| `objects_full` | m | The same, not anti-aliased, at `alpha`'s resolution: for the emerged outline | `rasterize_full` |
 | `alpha` | 0–1 | The stamps' coverage | `rasterize_full`, not anti-aliased |
-| `sdf` | m | The distance to the nearest outline, negative inside | Mono to SDF of `alpha`, × the layer's scale |
+| `sdf` | m | The distance to the nearest emergence line (where a stamp comes out of the ground), negative on the emerged rock | Mono to SDF (iso 0) of the relief over `base`, × the layer's scale |
 | `id` | int | The project's id on every pixel: the nearest stamp's | `extrapolate_ids`, then the id fix |
 | `err` | 0/1 | Where the jump failed | `extrapolate_ids` |
-| `edge` | m | The nearest stamp's relief at its outline; ≤ 0 where it's buried | `extrapolate_ids` |
+| `edge` | m | The nearest stamp's relief just inside its emergence line: its wall's height where it stands proud, near 0 where it comes out gently | `extrapolate_ids` |
 | zone layers | per attribute | The stamps' zone attributes, on every pixel | `rasterize_full`, `extrapolate_ids`, the id fix, blurred |
 | `fossil` | m | The rock's relief over `base`, weathered | stage 3 |
 | `fossil_mask` | 0–1 | The rock's weight in its blend with the ground | stage 3 |
@@ -34,12 +35,13 @@ The object stamps as fossils: the objects stand proud of the ground where you pl
 ### 1. Rasterize
 
 - `objects`: P.y rasterized from above (a camera at (0, 1000, 0) looking down, over the 2,000 m cube), so each object sits exactly as placed, partly sunk or not: placing them is the burial. Anti-aliased (`rasterize_height_aa`).
-- `alpha`, `project_id` and the zone attributes at full resolution, not anti-aliased (`rasterize_full`).
+- `alpha`, `project_id`, P.y (`objects_full`) and the zone attributes at full resolution, not anti-aliased (`rasterize_full`).
 
 ### 2. Fields
 
 - Metres: one image unit is `length(@sdf.imageToWorld((float2)(1, 0)) - @sdf.imageToWorld((float2)(0, 0)))`, 1000 for the site (the layers' transform), so no kernel needs a size parameter. Directions (sun, wind) are swizzled into image axes (`.zyx`, as in `bake_shadow.cl`).
-- `extrapolate_ids`: one jump per pixel to the nearest outline, then every read at the landing point: `id`; `edge` (`objects − base` there, 2 px inside the outline, clear of the anti-aliasing); each zone attribute. And `err` where the jump failed: the SDF at the landing point is still positive, it never got inside a stamp. The jump works in Mono to SDF's image units (it moves `@P`); `sdf` leaves the subnet in metres.
+- The outline is where the rock comes out of the ground, not the stamps' footprint seen from above: the buried parts are underground and shape nothing (no weathering, no sand, no territory). `sdf` is Mono to SDF, iso 0, of the relief over the ground (`objects_full − base`) where `alpha` covers, and of a large negative value elsewhere (−1000: at 0, the sea, flattened at 0, would sit on the iso). The relief rather than a 0/1 mask, so the line falls between pixels where the rock comes out gently; at a wall it's the same step as a mask's. A stamp entirely underground has no emerged part: no outline, and its project drops out of the id map.
+- `extrapolate_ids`: one jump per pixel to the nearest emergence line, then every read at the landing point: `id`; `edge` (`objects − base` there, 2 px inside the line, clear of the anti-aliasing: the wall's height where the fossil stands proud, near 0 where it comes out gently); each zone attribute. And `err` where the jump failed: the SDF at the landing point is still positive, it never got onto emerged rock. The jump works in Mono to SDF's image units (it moves `@P`); `sdf` leaves the subnet in metres. The 2 px inset counts in pixels, not image units, so it holds at any resolution: emerged parts can be thin slivers.
 - The id fix, a second kernel: a mode filter. Each pixel counts the ids within `radius` and takes the most common one if its own is in the minority or `err` is set, copying its zone values from a neighbour with the winning id. Radius 1 clears the dots and the 1-px lines of a third id; a border moves by at most the radius.
 - The zone values blurred across the borders (the values, never the ids), so a value that changes from one zone to the next leaves no seam. The ids' stair-steps are the pixel grid: an id can't be anti-aliased.
 
@@ -53,7 +55,7 @@ The object stamps as fossils: the objects stand proud of the ground where you pl
 
 - Sand against each fossil: as high as `edge × climb` at the wall, down to nothing at `reach` metres, along `profile` (straight talus, concave drift). The wall above it stays bare.
 - The wind: a short ramp on the windward side, a long tail in the lee (`reach` scaled by `lee`, from the angle between the wind and the SDF's normal, which points away from the fossil).
-- A buried edge (`edge ≤ 0`) gets none: no special case.
+- Where the rock comes out gently, `edge` is near 0 and so is the sand: aprons build only against walls, with no special case.
 - Joined to the ground by a smooth max. The sediment stage slumps it.
 
 ### 5. Shelter
