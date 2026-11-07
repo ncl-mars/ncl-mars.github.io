@@ -2,6 +2,29 @@
 
 The object stamps as fossils: the objects stand proud of the ground where you placed them, their edges weathered, with sand slumped against them. The whole terrain gets a subtle erosion too (finer detail, deposits), stronger near the fossils, and an erosion tint over the photo. All in Copernicus with its heightfield nodes (any layer named `height`, its type info set to height), before the bakes and the exports ([terrain-export.md](terrain-export.md)). Planned on 2026-11-06: only the id map exists so far.
 
+## Big picture
+
+```
+1 INPUTS   DEM ─► base           objects ─► rasterize ─► objects (P.y) · alpha · project_id
+
+2 FIELDS   objects − base ─► Mono to SDF ─► sdf   (the line where the rock comes out)
+           sdf + project_id ─► extrapolate_ids ─► id
+
+3 HEIGHT   base + objects ─► merge_objects ─► Erode ─► Slump ─► height ─► bakes ─► export
+                                   │            │        │
+                              fossil_mask    debris    sand
+                                             sediment
+                                             flow
+
+4 COLOUR   photo ─► delight ─► lift darks ─► erosion tint ─► rock ─► sand ─► encode ─► albedo ─► export
+```
+
+- Erode: the rock is harder (`fossil_mask` lowers the erodability), so only its edges weather; blended strong near the fossils (`sdf`), subtle elsewhere.
+- Slump: its debris input is the sand, put near the fossils (`sdf`), an amount per zone (`id`), more on the lee side; it slides down to about 32° and piles against the walls.
+- Colour: the tint from Erode's masks and Mask by Feature; rock where `fossil_mask`, sand where `sand`.
+
+The rest of this doc is the detail behind each box.
+
 ## Principle
 
 - The heights go through the nodes in order: merge, erode, slump. Each step leaves its own layer for later tools and kernels: the fossil's mask, the erosion's deposits and flow, the sand's thickness, the feature masks, the zones. A merged height can't tell why a pixel is high (rock or sand); the layers can.

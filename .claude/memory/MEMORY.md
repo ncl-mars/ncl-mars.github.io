@@ -11,6 +11,7 @@
 - [Stale terrain in dev](dev-stale-terrain.md) — after a re-export with the dev server running, hard reload before diagnosing terrain oddities
 - [Terrain sets](terrain-sets.md) — saved terrains live in hou/geo/terrains/<name>/ (gitignored); the one in use is committed as usual; switch by copying back
 - [Hosting assets](hosting-assets.md) — no Git LFS; everything the site serves is in the repo; GitHub limits are per file (100 MiB) and 1 GB per site, no 50 MB ceiling
+- [Big picture first](big-picture-first.md) — plans and docs open with a simple graph of the whole flow and stages; details after
 - [Houdini snippets](houdini-snippets.md) — Temp kernels: the user's algorithm exactly, minimal; refs from this project (+ BioGrowth), never BrambleJewelry; no docs unless asked
 - [Copernicus heightfields](copernicus-heightfields.md) — Houdini 22 COPs have Erode, Slump, Mask by Feature, Strata…; any layer named height; never route through SOPs except to export
 - [Copernicus OpenCL](cop-opencl.md) — imx.h API, ID layers as int + imageNearest, Mono to SDF negative inside in image units, repeat the jump to an SDF's outline
