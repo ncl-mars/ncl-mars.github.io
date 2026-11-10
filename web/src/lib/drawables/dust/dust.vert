@@ -14,6 +14,7 @@ precision highp sampler3D; // no default precision
 #include /terrain;
 #include /wind;
 #include /fog;
+#include /tonemap;
 
 uniform mat4 uViewProj;
 uniform vec3 uCamPos;
@@ -22,11 +23,11 @@ uniform vec4 uBox;        // x: box size (x and z), y: height range above the gr
 uniform vec4 uMotion;     // x: wind follow, y: turbulence (world units), z: turbulence scale (world units), w: turbulence speed
 uniform vec2 uHop;        // x: share of specks hopping along the ground, y: hop height
 uniform vec4 uLook;       // x: size (world units), y: opacity, z: backlight, w: largest point (px)
-uniform vec3 uDustColor;
+uniform vec3 uDustColor;  // linear
 uniform float uFocal;     // px per world unit at unit depth: viewport height / (2 tan(fov / 2))
 // uNoise (the 3D noise texture) is declared by /fog
 
-out vec4 vColor;          // premultiplied
+out vec4 vColor;          // display values (the screen's), premultiplied
 
 float rand(int id, int k) {
 	return latticeHash(ivec2(id, k));
@@ -85,5 +86,5 @@ void main() {
 	vec3 rd = toSpeck / max(t, 1e-3);
 	float glow = pow(max(dot(rd, uSunDir), 0.0), 6.0) * uLook.z;
 	vec3 col = atmosphere(uDustColor + uSunColor * glow, uCamPos, rd, t);
-	vColor = vec4(col * alpha, alpha);
+	vColor = vec4(display(col) * alpha, alpha); // the screen holds display values: as the composite wrote them
 }

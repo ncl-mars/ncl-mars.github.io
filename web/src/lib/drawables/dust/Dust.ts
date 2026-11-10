@@ -2,6 +2,7 @@ import { setUniforms } from 'twgl.js';
 import vertexSource from './dust.vert';
 import fragmentSource from './dust.frag';
 import { hotSwap, type Program } from '../../gl/programs';
+import { srgbToLinear } from '../../gl/colour';
 import type { SurveyCamera } from '../../gl/camera';
 import type { Renderer } from '../../gl/renderer';
 import type { DrawContext, Drawable } from '../../gl/types';
@@ -33,7 +34,8 @@ export interface DustSettings {
  * Dust in the wind, drawn after the terrain in the same view: points, depth-tested against the ground the
  * terrain wrote, blended over it (premultiplied), never writing depth. Everything happens in the vertex
  * shader (dust.vert): no buffers, the point's id is its seed. Takes the ground and the atmosphere from the
- * terrain (`sceneUniforms`), so it draws nothing until the ground has loaded.
+ * terrain (`sceneUniforms`, the display transform's `uTone` included), so it draws nothing until the ground
+ * has loaded.
  */
 export class Dust implements Drawable {
 	private program: Program | null = null;
@@ -44,6 +46,7 @@ export class Dust implements Drawable {
 	private readonly motion = new Float32Array(4);
 	private readonly hop = new Float32Array(2);
 	private readonly look = new Float32Array(4);
+	private readonly colour = new Float32Array(3);
 	private readonly uniforms: Record<string, unknown>;
 
 	constructor(
@@ -86,7 +89,7 @@ export class Dust implements Drawable {
 		const u = this.uniforms;
 		u.uViewProj = camera.viewProjection;
 		u.uCamPos = camera.eye;
-		u.uDustColor = s.color;
+		u.uDustColor = srgbToLinear(s.color, this.colour); // a display value, the shaders light in linear
 		u.uFocal = ctx.rect.height * 0.5 * camera.projection[5]; // projection[5] = 1 / tan(fov / 2)
 
 		const info = this.program!.info;

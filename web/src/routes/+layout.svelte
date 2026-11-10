@@ -7,6 +7,7 @@
 	import { onMount, type Component } from 'svelte';
 	import { Renderer } from '$lib/gl/renderer';
 	import { setRenderer } from '$lib/gl/context';
+	import { display, srgbToLinear } from '$lib/gl/colour';
 	import { onTuningChange, tuning } from '$lib/tuning';
 
 	let { children } = $props();
@@ -14,20 +15,24 @@
 	const renderer = new Renderer({ maxPixelRatio: tuning.renderer.maxPixelRatio, quality: tuning.renderer });
 	setRenderer(renderer);
 
-	// The page background is the fog colour, so the endless terrain has no visible edge (and loading
-	// doesn't flash another colour). Prerendered into the HTML, then kept in sync with the dev panel.
-	const cssColor = (c: number[]) => `rgb(${c.map((v) => Math.round(v * 255)).join(' ')})`;
-	const backgroundStyle = `<style>:root{--bg:${cssColor(tuning.fog.color)}}</style>`;
+	// The page background is the fog colour as the screen shows it (through the exposure, tone curve and
+	// encode, gl/colour.ts), so the endless terrain has no visible edge (and loading doesn't flash another
+	// colour). Prerendered into the HTML, then kept in sync with the dev panel.
+	const background = () => {
+		const c = display(srgbToLinear(tuning.fog.color), tuning.tone.exposure, tuning.tone.curve);
+		return `rgb(${c.map((v) => Math.round(v * 255)).join(' ')})`;
+	};
+	const backgroundStyle = `<style>:root{--bg:${background()}}</style>`;
 
 	let canvas: HTMLCanvasElement;
 	let DevPanel = $state<Component<{ renderer: Renderer }> | null>(null);
 
 	onMount(() => {
 		renderer.mount(canvas);
-		document.documentElement.style.setProperty('--bg', cssColor(tuning.fog.color)); // the browser's value wins
+		document.documentElement.style.setProperty('--bg', background()); // the browser's value wins
 		const stopListening = onTuningChange((group) => {
 			if (group === 'renderer') renderer.setMaxPixelRatio(tuning.renderer.maxPixelRatio);
-			if (group === 'fog') document.documentElement.style.setProperty('--bg', cssColor(tuning.fog.color));
+			if (group === 'fog' || group === 'tone') document.documentElement.style.setProperty('--bg', background());
 		});
 		if (import.meta.env.DEV) {
 			import('$lib/components/DevPanel.svelte').then((module) => (DevPanel = module.default));
@@ -41,7 +46,7 @@
 
 <svelte:head>
 	<link rel="icon" href={favicon} />
-	<!-- --bg = fog colour, built from defaults.json at prerender (no user content) -->
+	<!-- --bg = fog colour as displayed, built from defaults.json at prerender (no user content) -->
 	{@html backgroundStyle}
 </svelte:head>
 

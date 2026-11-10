@@ -1,5 +1,5 @@
 /**
- * Offscreen render targets: an RGBA8 colour texture + a DEPTH_COMPONENT24 depth texture (both core WebGL2,
+ * Offscreen render targets: an RGBA8 or SRGB8_ALPHA8 colour texture + a DEPTH_COMPONENT24 depth texture (core WebGL2,
  * no float render targets) that a later pass can sample. Used by the terrain cache, later by transitions.
  * And a colour texture alone, for data rendered once (the terrain's shadow ceiling).
  */
@@ -11,11 +11,20 @@ export interface ColorDepthTarget {
 	height: number;
 }
 
-/** Colour is LINEAR-filtered (it may be upscaled); depth is NEAREST (depth textures can't be filtered). */
-export function createColorDepthTarget(gl: WebGL2RenderingContext, width: number, height: number): ColorDepthTarget {
+/**
+ * Colour is LINEAR-filtered (it may be upscaled); depth is NEAREST (depth textures can't be filtered).
+ * `format`: RGBA8, or SRGB8_ALPHA8 for linear light (the GPU encodes on write and decodes on read, so 8 bits
+ * keep the darks' precision; alpha stays linear).
+ */
+export function createColorDepthTarget(
+	gl: WebGL2RenderingContext,
+	width: number,
+	height: number,
+	format: number = gl.RGBA8
+): ColorDepthTarget {
 	const color = gl.createTexture()!;
 	gl.bindTexture(gl.TEXTURE_2D, color);
-	gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA8, width, height);
+	gl.texStorage2D(gl.TEXTURE_2D, 1, format, width, height);
 	setSampling(gl, gl.LINEAR);
 
 	const depth = gl.createTexture()!;

@@ -1,5 +1,7 @@
 // Shading stage: the ground's material colour at a Surface, before any fog (the composite pass adds the
 // atmosphere). Needs /terrain, ./surface and ./shafts (sunVisibility).
+// In linear light: the albedo maps are sRGB textures (the GPU decodes them), the colour uniforms are converted
+// on upload. Unexposed (the composite applies Shading → Exposure), so the cache's 8 bits hold it (≤ 1).
 // The sun's light: its angle on the slope, from the heightmap's normal (as sharp as the heights, whatever the
 // maps' resolution), times its shadow. Inside the heightmap, the shadow, AO and cavity are the maps baked in
 // Houdini (doc/formats/terrain-maps.md); beyond (far map, noise), the shadow ceiling's shadows (ridges, far
@@ -21,7 +23,7 @@ uniform sampler2D uMaps;      // R the sun's cast shadow (1: lit), G AO, B cavit
 uniform vec3 uSunDir;         // toward the sun, the one used for the bake
 uniform float uPixel;         // a pixel's angle in the cache (radians): the normal's footprint with distance
 uniform vec3 uTint;           // the colour without albedo maps, and past them
-uniform sampler2D uAlbedo;    // the colour inside the heightmap (display values), used if uAlbedoGrade.x
+uniform sampler2D uAlbedo;    // the colour inside the heightmap (an sRGB texture: linear when read), used if uAlbedoGrade.x
 uniform sampler2D uFarAlbedo; // and over the far map, used if uAlbedoGrade.z
 uniform vec3 uAlbedoGrade;    // x: 1 with an albedo map, 0 without; y: their saturation; z: 1 with a far albedo map
 uniform vec3 uAlbedoTint;     // multiplies them (white: as exported)
@@ -40,13 +42,13 @@ uniform vec3 uFogColor;       // what they reflect: the sky as /fog draws it
 uniform vec3 uSkyColor;
 uniform vec3 uSunColor;
 uniform vec2 uSunGlow;        // x: strength, y: tightness
-uniform vec4 uShading;        // x: light in full shadow, y: AO strength, z: cavity strength, w: exposure
+uniform vec3 uShading;        // x: light in full shadow, y: AO strength, z: cavity strength
 uniform vec3 uShallow;        // the water's colour where it's shallow
 uniform vec3 uDeep;           // and where it's deep
 uniform vec3 uWater;          // x: depth over which it turns deep (world units), y: foam, z: foam width (depth, world units)
 uniform float uDebugView;     // dev (Light shafts → Debug view): 3 the materials in flat colours, 4 the ground's colour unlit
 
-const vec3 FOAM = vec3(0.9, 0.92, 0.93);
+const vec3 FOAM = vec3(0.79, 0.83, 0.85); // linear: (0.9, 0.92, 0.93) as displayed
 
 // The largest of three weights wins, anti-aliased against the runner-up over `aa`, so where three materials meet,
 // none leaves a gap
@@ -174,5 +176,5 @@ vec3 shadeSurface(Surface s, vec3 rd) {
 		water = mix(water, FOAM, uWater.y * (1.0 - smoothstep(0.0, max(uWater.z, 0.01), depth)));
 		col = mix(col, water * (light * ao), wet); // a flat surface: no cavities
 	}
-	return col * uShading.w;
+	return col;
 }

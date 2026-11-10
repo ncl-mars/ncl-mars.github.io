@@ -28,7 +28,19 @@ export function createHeightTexture(
  * Image holding data, not colour (terrain maps): decoded without colour-space conversion or premultiplied
  * alpha so the values reach the shader untouched, stored as RGBA8 (not sRGB), mipmapped.
  */
-export async function loadDataTexture(gl: WebGL2RenderingContext, url: string): Promise<WebGLTexture> {
+export function loadDataTexture(gl: WebGL2RenderingContext, url: string): Promise<WebGLTexture> {
+	return loadImageTexture(gl, url, gl.RGBA8);
+}
+
+/**
+ * Image holding colour (the albedo maps: display values, sRGB): stored as SRGB8_ALPHA8, so the GPU decodes it
+ * to linear light when sampling, and filters and mipmaps it in linear. Decoded like data otherwise.
+ */
+export function loadColourTexture(gl: WebGL2RenderingContext, url: string): Promise<WebGLTexture> {
+	return loadImageTexture(gl, url, gl.SRGB8_ALPHA8);
+}
+
+async function loadImageTexture(gl: WebGL2RenderingContext, url: string, format: number): Promise<WebGLTexture> {
 	const response = await fetch(url);
 	if (!response.ok) throw new Error(`${url}: HTTP ${response.status}`);
 	const bitmap = await createImageBitmap(await response.blob(), {
@@ -40,7 +52,7 @@ export async function loadDataTexture(gl: WebGL2RenderingContext, url: string): 
 	gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false); // image row 0 = texture row 0 (= min z)
 	gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
 	gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
-	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, bitmap);
+	gl.texImage2D(gl.TEXTURE_2D, 0, format, gl.RGBA, gl.UNSIGNED_BYTE, bitmap);
 	gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.BROWSER_DEFAULT_WEBGL);
 	bitmap.close();
 	gl.generateMipmap(gl.TEXTURE_2D);

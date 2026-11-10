@@ -9,13 +9,16 @@ precision highp int; // the noise hash needs 32-bit integers (fragment ints defa
 // exactly on it), waves tilt its normal (two layers of the noise texture, drifting with the wind and slowly
 // changing, filtered with distance so they don't sparkle), and it reflects the sky (Fresnel) and the sun's
 // glint, cut where the shadow ceiling says the sun doesn't reach.
+// All in linear light (the cache decodes to it), then /tonemap's display(): exposure, tone curve, sRGB encode.
 
 #include /common;
 #include /noise;
 #include /wind;
 #include /fog;
+#include /tonemap;
 
-uniform sampler2D uColor;
+uniform sampler2D uColor;       // the cache: linear light, sRGB bytes (decoded when sampled), alpha the light shafts
+uniform float uExposure;        // the ground's, against the fog (the cache holds it unexposed: ≤ 1 in 8 bits)
 uniform highp sampler2D uDepth; // highp: samplers default to lowp, which would ruin the depth
 uniform mat4 uInvViewProj;
 uniform vec3 uCamPos;
@@ -76,7 +79,7 @@ void main() {
 		vec3 p = h.xyz / h.w;
 		float t = length(p - uCamPos);
 		vec4 cached = texture(uColor, vUv); // alpha: the light shafts (terrain.frag)
-		vec3 ground = cached.rgb;
+		vec3 ground = cached.rgb * uExposure;
 		if (uSea.x + uSea.y > 0.0 && rd.y < 0.0 && uCamPos.y > uSeaLevel) {
 			// Water? Asked with the cache texel's own ray: the cache can be coarser than the view (the rough march
 			// in motion), and its depth with this pixel's ray would land off the plane, in flickering patches
@@ -94,9 +97,11 @@ void main() {
 	} else {
 		col = skyColor(rd);
 	}
+	col = display(col);
 	if (uShaftView > 2.5) {
-		// The march drew a debug view into the cache (3 the materials, 4 the ground's colour): as it is, no fog
-		col = depth < 1.0 ? texture(uColor, vUv).rgb : vec3(0.6, 0.7, 0.8);
+		// The march drew a debug view into the cache (3 the materials, 4 the ground's colour): as it is, no fog,
+		// no exposure or tone curve, only the encode (view 4 shows the albedo as exported)
+		col = depth < 1.0 ? linearToSrgb(texture(uColor, vUv).rgb) : vec3(0.6, 0.7, 0.8);
 	} else if (uShaftView > 1.5) {
 		// The ground as the march found it (rebuilt from the cache's depth, as the passes after it do): a dark
 		// line every metre of height, a red one every 10 m in x, a blue one in z. Stairs in that surface show

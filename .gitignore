@@ -19,6 +19,7 @@ __pycache__/
 
 # Houdini: autosave backups, caches and renders (.hip* and .hda files are tracked)
 hou/**/backup/
+hou/gen_maps_*
 hou/geo/
 hou/cache/
 hou/render/

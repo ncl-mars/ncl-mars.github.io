@@ -40,10 +40,10 @@
 	},
 	"shading": {
 		"tint": [0.8, 0.81, 0.83],
-		"shadowLight": 0.11,
+		"shadowLight": 0.008,
 		"aoStrength": 0.81,
 		"cavityStrength": 0.32,
-		"exposure": 1.47
+		"exposure": 2.33
 	},
 	"fog": {
 		"color": [0.459, 0.561, 0.663],
@@ -53,6 +53,10 @@
 		"sunColor": [0.95, 0.86, 0.72],
 		"sunGlow": 0.49,
 		"sunPower": 18
+	},
+	"tone": {
+		"exposure": 1,
+		"curve": 1
 	},
 	"mist": {
 		"density": 0.007,

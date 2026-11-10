@@ -85,23 +85,31 @@ export const schema: Group[] = [
 		label: 'Shading',
 		params: [
 			{ key: 'tint', label: 'Tint', kind: 'color', hint: 'The colour without albedo files (the materials’ too), and past them (the heightmap’s, the far map’s).' },
-			{ key: 'shadowLight', label: 'Light in shadow', min: 0, max: 1, step: 0.01, hint: 'What the sky leaves in the sun’s shadow. The materials’ reflections dim to it there too, so they don’t light up the shadows.' },
+			{ key: 'shadowLight', label: 'Light in shadow', min: 0, max: 0.2, step: 0.001, hint: 'What the sky leaves in the sun’s shadow, in linear light (0.01 shows about as 0.12 would on screen). The materials’ reflections dim to it there too, so they don’t light up the shadows.' },
 			{ key: 'aoStrength', label: 'AO strength', min: 0, max: 1, step: 0.01 },
 			{ key: 'cavityStrength', label: 'Cavity strength', min: 0, max: 2, step: 0.01 },
-			{ key: 'exposure', label: 'Exposure', min: 0, max: 3, step: 0.01 }
+			{ key: 'exposure', label: 'Exposure', min: 0, max: 5, step: 0.01, hint: 'The ground’s brightness against the fog, in linear light (applied in the composite, not cached). Tone → Exposure is the whole picture’s.' }
 		]
 	},
 	{
 		key: 'fog',
 		label: 'Fog',
 		params: [
-			{ key: 'color', label: 'Colour', kind: 'color', hint: 'Fog and horizon. Also the page background.' },
+			{ key: 'color', label: 'Colour', kind: 'color', hint: 'Fog and horizon. Also the page background (through the tone curve, like the scene). Colours are picked as displayed and converted to linear light for the shaders.' },
 			{ key: 'skyColor', label: 'Sky', kind: 'color', hint: 'Sky overhead, above the horizon fog.' },
 			{ key: 'density', label: 'Density', min: 0, max: 0.006, step: 0.00005 },
 			{ key: 'end', label: 'End distance', min: 200, max: 4000, step: 10, hint: 'Fully fogged from here. The raymarch stops here too.' },
 			{ key: 'sunColor', label: 'Sun glow colour', kind: 'color' },
 			{ key: 'sunGlow', label: 'Sun glow', min: 0, max: 2, step: 0.01, hint: 'How much the fog brightens toward the sun.' },
 			{ key: 'sunPower', label: 'Sun glow tightness', min: 1, max: 64, step: 0.5 }
+		]
+	},
+	{
+		key: 'tone',
+		label: 'Tone',
+		params: [
+			{ key: 'exposure', label: 'Exposure', min: 0, max: 4, step: 0.01, hint: 'The whole picture (ground, fog, sky, dust), in linear light, before the tone curve. Also the page background.' },
+			{ key: 'curve', label: 'Tone curve', kind: 'int', min: 0, max: 2, step: 1, hint: '0: none, values above 1 clip, channel by channel. 1: neutral (Khronos PBR Neutral): hues and saturation kept up to near white, only the highlights roll off. 2: ACES (Narkowicz’s fit): more contrast, the highlights desaturate toward white.' }
 		]
 	},
 	{

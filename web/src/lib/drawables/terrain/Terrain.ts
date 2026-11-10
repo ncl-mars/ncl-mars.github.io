@@ -4,8 +4,9 @@ import marchSource from './terrain.frag';
 import compositeSource from './composite.frag';
 import shadowSource from './shadow.frag';
 import { hotSwap, type Program } from '../../gl/programs';
-import { createHeightTexture, loadDataTexture } from '../../gl/textures';
+import { createHeightTexture, loadColourTexture, loadDataTexture } from '../../gl/textures';
 import { createNoiseTexture3D } from '../../gl/noise';
+import { srgbToLinear } from '../../gl/colour';
 import {
 	createColorDepthTarget,
 	createColorTarget,
@@ -62,6 +63,7 @@ export interface TerrainSettings {
 		sunGlow: number;
 		sunPower: number;
 	};
+	tone: { exposure: number; curve: number };
 	mist: { density: number; height: number; falloff: number; banks: number; bankScale: number };
 	shafts: { samples: number; softness: number; darkness: number; glow: number; power: number; view: number };
 	ground: {
@@ -114,6 +116,9 @@ export interface TerrainSettings {
  *    ceiling (shadow.frag, rendered once per ground: the sun and the ground are fixed).
  * 2. Composite (composite.frag), every frame: the cache under the live atmosphere (fog, height mist,
  *    wind-driven banks, sun glow, light shafts), with the cached depth written back for later passes.
+ * In linear light: the albedo maps are sRGB textures (decoded by the GPU), the panel's colours are converted
+ * on upload (gl/colour.ts), the cache stores linear light in sRGB bytes (SRGB8_ALPHA8), and the composite ends
+ * with /tonemap's display() (exposure, tone curve, sRGB encode).
  * Also drives the camera (`camera.update`) with the CPU `Ground`. Draws nothing until the heightmap and
  * maps are loaded, then fades in. Textures are cached per GL context; the cache target is per instance.
  */
@@ -169,7 +174,19 @@ export class Terrain implements Drawable {
 	private time = 0;
 	private generation = 0;
 
-	private readonly shadingVector = new Float32Array(4);
+	private readonly shadingVector = new Float32Array(3);
+	private readonly toneVector = new Float32Array(2);
+	/** The panel's colours in linear light (they're display values). */
+	private readonly tintLinear = new Float32Array(3);
+	private readonly albedoTintLinear = new Float32Array(3);
+	private readonly fogLinear = new Float32Array(3);
+	private readonly skyLinear = new Float32Array(3);
+	private readonly sunLinear = new Float32Array(3);
+	private readonly shallowLinear = new Float32Array(3);
+	private readonly deepLinear = new Float32Array(3);
+	private readonly metalLinear = new Float32Array(3);
+	private readonly glossLinear = new Float32Array(3);
+	private readonly spareLinear = new Float32Array(3);
 	private readonly farFieldVector = new Float32Array(4);
 	private readonly slabVector = new Float32Array(2);
 	private readonly sunGlowVector = new Float32Array(2);
@@ -236,6 +253,7 @@ export class Terrain implements Drawable {
 			uSunGlow: this.sunGlowVector
 		};
 		this.compositeUniforms = {
+			uTone: this.toneVector,
 			uSunDir: assets.maps.sunDir,
 			uSunGlow: this.sunGlowVector,
 			uMist: this.mistVector,
@@ -295,10 +313,10 @@ export class Terrain implements Drawable {
 			? renderer.resource(`maps:${materialsUrl}`, (gl) => loadDataTexture(gl, materialsUrl))
 			: Promise.resolve(renderer.resource('materials:none', (gl) => blackTexture(gl)));
 		const albedo = albedoUrl
-			? renderer.resource(`maps:${albedoUrl}`, (gl) => loadDataTexture(gl, albedoUrl))
+			? renderer.resource(`colour:${albedoUrl}`, (gl) => loadColourTexture(gl, albedoUrl))
 			: Promise.resolve(null);
 		const farAlbedo = farAlbedoUrl
-			? renderer.resource(`maps:${farAlbedoUrl}`, (gl) => loadDataTexture(gl, farAlbedoUrl))
+			? renderer.resource(`colour:${farAlbedoUrl}`, (gl) => loadColourTexture(gl, farAlbedoUrl))
 			: Promise.resolve(null);
 		Promise.all([height, far, maps, materials, albedo, farAlbedo])
 			.then(([h, f, mapsTexture, materialsTexture, albedoTexture, farAlbedoTexture]) => {
@@ -422,7 +440,7 @@ export class Terrain implements Drawable {
 		if (target && target.width === width && target.height === height) return target;
 		this.release(gl, target);
 		this.dirty = true;
-		return createColorDepthTarget(gl, width, height);
+		return createColorDepthTarget(gl, width, height, gl.SRGB8_ALPHA8); // linear light, sRGB bytes
 	}
 
 	private release(gl: WebGL2RenderingContext, target: ColorDepthTarget | null): null {
@@ -440,7 +458,6 @@ export class Terrain implements Drawable {
 		s[0] = shading.shadowLight;
 		s[1] = shading.aoStrength;
 		s[2] = shading.cavityStrength;
-		s[3] = shading.exposure;
 		const f = this.farFieldVector;
 		f[0] = ground.farBase;
 		f[1] = farField.amplitude;
@@ -469,11 +486,11 @@ export class Terrain implements Drawable {
 		u.uPixel = 2 / (camera.projection[5] * cache.height); // this cache's pixels (the rough one's are larger)
 		u.uExactHeights = march.exactHeights;
 		u.uMaxDistance = fog.end;
-		u.uTint = shading.tint;
+		u.uTint = srgbToLinear(shading.tint, this.tintLinear);
 		u.uShadow = this.shadow!.color;
 		u.uSeaLevel = water.level;
-		u.uShallow = water.shallow;
-		u.uDeep = water.deep;
+		u.uShallow = srgbToLinear(water.shallow, this.shallowLinear);
+		u.uDeep = srgbToLinear(water.deep, this.deepLinear);
 		this.waterVector[0] = water.depth;
 		this.waterVector[1] = water.foam;
 		this.waterVector[2] = water.foamWidth;
@@ -483,22 +500,22 @@ export class Terrain implements Drawable {
 		u.uFarAlbedo = this.farAlbedoTexture ?? this.materialsTexture;
 		const farAlbedo = this.farAlbedoTexture && this.farTexture ? 1 : 0;
 		this.albedoGradeVector.set([this.albedoTexture ? 1 : 0, colours.albedoSaturation, farAlbedo]);
-		u.uAlbedoTint = colours.albedoTint;
+		u.uAlbedoTint = srgbToLinear(colours.albedoTint, this.albedoTintLinear);
 		this.detailVector.set([colours.detail, colours.detailSize]);
 		// The materials, and the sky they reflect (as the fog draws it)
 		u.uMaterials = this.materialsTexture;
 		u.uMaterialEdge = materials.edge;
 		u.uMaterialBlend = materials.blend;
 		u.uDebugView = shafts.view; // 3 and 4 are drawn here (the shafts group re-marches the cache)
-		u.uMetal = materials.metal;
+		u.uMetal = srgbToLinear(materials.metal, this.metalLinear);
 		this.metalSurfaceVector.set([materials.metalMetallic, materials.metalRoughness]);
-		u.uGloss = materials.gloss;
+		u.uGloss = srgbToLinear(materials.gloss, this.glossLinear);
 		this.glossSurfaceVector.set([materials.glossMetallic, materials.glossRoughness]);
-		u.uSpare = materials.spare;
+		u.uSpare = srgbToLinear(materials.spare, this.spareLinear);
 		this.spareSurfaceVector.set([materials.spareMetallic, materials.spareRoughness]);
-		u.uFogColor = fog.color;
-		u.uSkyColor = fog.skyColor;
-		u.uSunColor = fog.sunColor;
+		u.uFogColor = srgbToLinear(fog.color, this.fogLinear);
+		u.uSkyColor = srgbToLinear(fog.skyColor, this.skyLinear);
+		u.uSunColor = srgbToLinear(fog.sunColor, this.sunLinear);
 		this.sunGlowVector[0] = fog.sunGlow;
 		this.sunGlowVector[1] = fog.sunPower;
 		u.uNoise = this.noiseTexture;
@@ -552,7 +569,9 @@ export class Terrain implements Drawable {
 	/** The cached ground under the live atmosphere, into the view. */
 	private composite(gl: WebGL2RenderingContext, ctx: DrawContext, cache: ColorDepthTarget) {
 		const camera = this.camera;
-		const { fog, mist, wind, shafts, water } = this.settings;
+		const { fog, mist, wind, shafts, water, shading, tone } = this.settings;
+		this.toneVector[0] = tone.exposure;
+		this.toneVector[1] = tone.curve;
 		this.sunGlowVector[0] = fog.sunGlow;
 		this.sunGlowVector[1] = fog.sunPower;
 		// Shafts off: the cache's alpha is 1 (all lit), and lit mist keeps the plain sun glow
@@ -571,11 +590,12 @@ export class Terrain implements Drawable {
 		u.uCamPos = camera.eye;
 		u.uFade = this.fade;
 		u.uShaftView = shafts.view;
-		u.uFogColor = fog.color;
-		u.uSkyColor = fog.skyColor;
+		u.uExposure = shading.exposure; // the ground's, against the fog (the cache holds it unexposed: ≤ 1 in 8 bits)
+		u.uFogColor = srgbToLinear(fog.color, this.fogLinear);
+		u.uSkyColor = srgbToLinear(fog.skyColor, this.skyLinear);
 		u.uFogDensity = fog.density;
 		u.uFogEnd = fog.end;
-		u.uSunColor = fog.sunColor;
+		u.uSunColor = srgbToLinear(fog.sunColor, this.sunLinear);
 		u.uBankScale = mist.bankScale;
 		u.uNoise = this.noiseTexture;
 		u.uWindSpeed = wind.speed;
