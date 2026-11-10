@@ -55,8 +55,8 @@
 		"sunPower": 18
 	},
 	"tone": {
-		"exposure": 1,
-		"curve": 1
+		"exposure": 0.91,
+		"curve": 2
 	},
 	"mist": {
 		"density": 0.007,
@@ -74,8 +74,8 @@
 		"view": 0
 	},
 	"ground": {
-		"albedoSaturation": 1,
-		"albedoTint": [1, 1, 1],
+		"albedoSaturation": 0.63,
+		"albedoTint": [0.929, 0.929, 0.929],
 		"detail": 0.1,
 		"detailSize": 8
 	},

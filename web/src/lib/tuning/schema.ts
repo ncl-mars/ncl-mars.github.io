@@ -109,7 +109,7 @@ export const schema: Group[] = [
 		label: 'Tone',
 		params: [
 			{ key: 'exposure', label: 'Exposure', min: 0, max: 4, step: 0.01, hint: 'The whole picture (ground, fog, sky, dust), in linear light, before the tone curve. Also the page background.' },
-			{ key: 'curve', label: 'Tone curve', kind: 'int', min: 0, max: 2, step: 1, hint: '0: none, values above 1 clip, channel by channel. 1: neutral (Khronos PBR Neutral): hues and saturation kept up to near white, only the highlights roll off. 2: ACES (Narkowicz’s fit): more contrast, the highlights desaturate toward white.' }
+			{ key: 'curve', label: 'Tone curve', kind: 'int', min: 0, max: 2, step: 1, hint: '0: neutral (Khronos PBR Neutral): hues and saturation kept up to near white, only the highlights roll off. 1: AgX: the highlights desaturate smoothly toward white, the hues hold, a soft contrast. 2: ACES (Narkowicz’s fit): more contrast and saturation, the highlights desaturate toward white.' }
 		]
 	},
 	{
