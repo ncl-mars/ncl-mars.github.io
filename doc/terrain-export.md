@@ -16,10 +16,9 @@ Everything Houdini exports for the web terrain, in order: the 2 km site (2048²)
 | 1 | `heightmap.bin` / `.json` | `export_heightmap.py`, `NAME = "heightmap"` | `height`: the site, with its objects | 2048² |
 | 2 | `farmap.bin` / `.json` | `export_heightmap.py`, `NAME = "farmap"` | `height`: the far map, no objects | 1024² |
 | 3 | `maps.png` / `.json` | `export_maps.py` | `shadow`, `occlusion`, `cavity`, and `v@sun_dir` | 2048² (1024²: 2 m texels) |
-| 4 | `materials.png` (optional) | `export_materials.py` | `materials`: one RGB layer, R metal, G gloss, B spare | 2048² |
-| 5 | `albedo.png` (optional) | `export_albedo.py`, `NAME = "albedo"` | `albedo`: one RGB layer over the site | 2048² |
-| 6 | `faralbedo.png` (optional) | `export_albedo.py`, `NAME = "faralbedo"` | `albedo`: one RGB layer over the far map | 1024² |
-| 7 | `pois.json` | `export_pois.py` | one point per POI, `s@name` | |
+| 4 | `albedo.png` (optional) | `export_albedo.py`, `NAME = "albedo"` | `albedo`: one RGB layer over the site | 2048² |
+| 5 | `faralbedo.png` (optional) | `export_albedo.py`, `NAME = "faralbedo"` | `albedo`: one RGB layer over the far map | 1024² |
+| 6 | `pois.json` | `export_pois.py` | one point per POI, `s@name` | |
 
 The heightmap goes first and the far map second: the others check their footprint against the `.json` of the heights they lie on. All of them cover the site's 2,000 m, except the far albedo (the far map's 16,000 m), and none goes over 2048 per side.
 
@@ -31,29 +30,22 @@ The heightmap goes first and the far map second: the others check their footprin
 - [ ] `cavity`: Curvature at the same scale, remapped around 0.5 (crests above).
 - [ ] Below 2048², downsample after the bake, so small occluders keep their shadows.
 
-## Materials (4)
+## Albedo (4)
 
-- [ ] One mask per material from `material_index`, each grown by about a texel, then all blurred the same, over 2 to 4 texels.
-- [ ] Gradients after the blur (sand over an object): the objects' masks × (1 − the cover), ramping over 16 texels or more to blend fully.
-- [ ] Joined into one RGB layer, `materials`: R metal, G gloss, B spare (an unused one black).
-
-## Albedo (5)
-
-- [ ] Display values (sRGB), the colour of everything, the objects included (gold, silver, the rock's grey: the materials only change how it's lit); no AO, shadow or light in it.
+- [ ] Display values (sRGB), the colour of everything, the stamps included (one matte material); no AO, shadow or light in it.
 - [ ] From a photo: its light taken out in linear light (`delight.cl`, at the photo's sun, on the heights before the stamps), then back to sRGB.
-- [ ] Drifts painted in both maps: here the colour fading from the object's to the sand's, in the masks the lighting.
 
-## Far albedo (6)
+## Far albedo (5)
 
 - [ ] Over the far map's 16,000 m, 1024², made like the site's albedo (display values, no light in it).
 - [ ] Its colours matched to the site's albedo where they overlap (both cover the site), or the site's edge shows.
 
-## POIs (7)
+## POIs (6)
 
 - [ ] One point per POI on the new ground, `s@name` its project folder's id, inside the site (±1,000).
 
 ## In the web
 
 - [ ] Hard reload: with the dev server running, the page can keep the old heights.
-- [ ] Check in the panel: Light shafts → Debug view 2 (a line every metre of height: unbroken across the site's edge), 3 (the materials), 4 (the ground's colour).
+- [ ] Check in the panel: Light shafts → Debug view 2 (a line every metre of height: unbroken across the site's edge), 4 (the ground's colour).
 - [ ] If the terrain changed: retune what's in metres (camera distances, start view, mist, fog) and reframe the POIs (Copy pose).

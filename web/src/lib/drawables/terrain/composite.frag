@@ -24,7 +24,7 @@ uniform highp sampler2D uDepth; // highp: samplers default to lowp, which would 
 uniform mat4 uInvViewProj;
 uniform vec3 uCamPos;
 uniform float uFade;            // 0 → 1 once the terrain is loaded
-uniform float uShaftView;       // dev views: 1 the light shafts' lit share in grey; 2 the march's ground, a line every metre; 3, 4 the march's own (shade.glsl), without fog
+uniform float uShaftView;       // dev views: 1 the light shafts' lit share in grey; 2 the march's ground, a line every metre; 3 the ground lit, 4 its colour unlit (shade.glsl), without fog
 uniform float uSeaLevel;
 uniform vec4 uWaves;            // x: size (world units), y: speed, z: strength (slope), w: distance they fade over
 uniform vec3 uSea;              // x: reflection, y: glint, z: glint tightness
@@ -104,8 +104,8 @@ void main() {
 	float r = length(q) / length(vec2(uVignette.w, 1.0) * 0.5);
 	col *= 1.0 - uVignette.x * smoothstep(uVignette.y, uVignette.y + uVignette.z, r);
 	if (uShaftView > 2.5) {
-		// The march drew a debug view into the cache (3 the materials, 4 the ground's colour): as it is, no fog,
-		// no exposure or tone curve, only the encode (view 4 shows the albedo as exported)
+		// The cache as the march drew it (3 the ground lit, 4 its colour unlit): no fog, no exposure or tone
+		// curve, only the encode (view 4 shows the albedo as exported)
 		col = depth < 1.0 ? linearToSrgb(texture(uColor, vUv).rgb) : vec3(0.6, 0.7, 0.8);
 	} else if (uShaftView > 1.5) {
 		// The ground as the march found it (rebuilt from the cache's depth, as the passes after it do): a dark

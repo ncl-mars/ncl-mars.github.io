@@ -125,7 +125,7 @@
 
 		const stopTuning = onTuningChange((group) => {
 			// Panel edits to what the march caches (the ground, the light shafts, which the mist weighs) need a re-march
-			const cached = ['march', 'shading', 'farField', 'fog', 'mist', 'shafts', 'water', 'ground', 'materials'];
+			const cached = ['march', 'shading', 'farField', 'fog', 'mist', 'shafts', 'water', 'ground'];
 			if (cached.includes(group)) terrain.invalidate();
 			// A new start view moves home and every POI view: show the current one's new framing
 			if (group === 'start' && !dev.freeCamera) tour.reframe();

@@ -1,23 +1,17 @@
-// Shading stage: the ground's material colour at a Surface, before any fog (the composite pass adds the
-// atmosphere). Needs /terrain, ./surface and ./shafts (sunVisibility).
+// Shading stage: the ground's colour at a Surface, before any fog (the composite pass adds the atmosphere).
+// Needs /terrain, ./surface and ./shafts (sunVisibility).
 // In linear light: the albedo maps are sRGB textures (the GPU decodes them), the colour uniforms are converted
 // on upload. Unexposed (the composite applies Shading → Exposure), so the cache's 8 bits hold it (≤ 1).
 // The sun's light: its angle on the slope, from the heightmap's normal (as sharp as the heights, whatever the
 // maps' resolution), times its shadow. Inside the heightmap, the shadow, AO and cavity are the maps baked in
 // Houdini (doc/formats/terrain-maps.md); beyond (far map, noise), the shadow ceiling's shadows (ridges, far
 // mountains), blended with the maps across the band.
-// Materials (materials.png: three soft masks from Houdini, R metal, G gloss, B spare, the ground the rest):
-// where the masks are steep (an edge, blurred over a few texels), the largest weight wins, anti-aliased, so the
-// edges stay crisp at any zoom; where they ramp gently (sand drifting over a ring), they blend by their values.
-// The colour is the same whatever the material: albedo.png inside the heightmap (rock and the objects' colours
-// painted in), faralbedo.png over the far map, else the tint, with a light variation from the noise texture.
-// A material changes only how it's lit: the ground is matte; metal, gloss and spare reflect the sky (dimmed in
-// the sun's cast shadow like the ground's light) and the sun's highlight (how metallic, how rough, a tint: the
-// panel's Materials), depending on the view, which re-marches the cache anyway.
+// One material, matte: the colour is albedo.png inside the heightmap (the fossils' colours painted in),
+// faralbedo.png over the far map, else the tint, with a light variation from the noise texture.
 // Near-gray on purpose: the mood is desaturated, colour is kept for meaning.
-// Under the sea (terrainHeight below uSeaLevel), the water's own colour, whatever the material: shallow to
-// deep with its depth, foam where it thins out at the shore; lit the same way (the maps are baked on the
-// flattened terrain). The waves (reflection, glint) are the composite's: they move, the cache doesn't.
+// Under the sea (terrainHeight below uSeaLevel), the water's own colour: shallow to deep with its depth, foam
+// where it thins out at the shore; lit the same way (the maps are baked on the flattened terrain). The waves
+// (reflection, glint) are the composite's: they move, the cache doesn't.
 
 uniform sampler2D uMaps;      // R the sun's cast shadow (1: lit), G AO, B cavity: linear data
 uniform vec3 uSunDir;         // toward the sun, the one used for the bake
@@ -29,102 +23,26 @@ uniform vec3 uAlbedoGrade;    // x: 1 with an albedo map, 0 without; y: their sa
 uniform vec3 uAlbedoTint;     // multiplies them (white: as exported)
 uniform vec2 uDetail;         // x: colour variation, y: its size (world units)
 uniform highp sampler3D uNoise; // gl/noise.ts: tileable gradient noise, sample with p / 8
-uniform sampler2D uMaterials; // R metal, G gloss, B spare: soft masks (doc/formats/terrain-maps.md); black without
-uniform float uMaterialEdge;  // their edges' softness, in mask units (at least a pixel, for anti-aliasing)
-uniform float uMaterialBlend; // a ramp in the masks this many texels wide is half an edge, half a blend
-uniform vec3 uMetal;          // each material's tint of the colour (white: as is), then x: how metallic, y: how rough
-uniform vec2 uMetalSurface;
-uniform vec3 uGloss;
-uniform vec2 uGlossSurface;
-uniform vec3 uSpare;
-uniform vec2 uSpareSurface;
-uniform vec3 uFogColor;       // what they reflect: the sky as /fog draws it
-uniform vec3 uSkyColor;
-uniform vec3 uSunColor;
-uniform vec2 uSunGlow;        // x: strength, y: tightness
 uniform vec3 uShading;        // x: light in full shadow, y: AO strength, z: cavity strength
 uniform vec3 uShallow;        // the water's colour where it's shallow
 uniform vec3 uDeep;           // and where it's deep
 uniform vec3 uWater;          // x: depth over which it turns deep (world units), y: foam, z: foam width (depth, world units)
-uniform float uDebugView;     // dev (Light shafts → Debug view): 3 the materials in flat colours, 4 the ground's colour unlit
+uniform float uDebugView;     // dev (Light shafts → Debug view): 4 the ground's colour unlit
 
 const vec3 FOAM = vec3(0.79, 0.83, 0.85); // linear: (0.9, 0.92, 0.93) as displayed
-
-// The largest of three weights wins, anti-aliased against the runner-up over `aa`, so where three materials meet,
-// none leaves a gap
-vec3 largestWins(vec3 w, float aa) {
-	vec3 share = smoothstep(-aa, aa, w - vec3(max(w.y, w.z), max(w.x, w.z), max(w.x, w.y)));
-	return share / max(share.x + share.y + share.z, 1e-4);
-}
-
-// Each material's share (ground, metal, gloss, spare) from the masks m at uv, on two levels: the objects (metal,
-// gloss and spare together, so an object's outline is their union) against the ground, then each material within
-// the objects (a gem in a ring, under the same sand). On each, where the values are steep (an edge, blurred over
-// a few texels), the largest wins, anti-aliased, crisp at any zoom; where they ramp gently, they blend by their
-// values, as painted. Takes derivatives: call it before branching
-vec4 materialShares(vec2 uv, vec3 m) {
-	float objects = m.r + m.g + m.b;
-	vec4 v = vec4(objects, m / max(objects, 1e-4)); // the objects, then each material's share of them
-	// Their slopes in texels: their gradients on screen, back through uv's (tx, ty: texels per pixel along the
-	// screen's x and y)
-	vec2 size = vec2(textureSize(uMaterials, 0));
-	vec2 tx = dFdx(uv) * size, ty = dFdy(uv) * size;
-	vec4 dx = dFdx(v), dy = dFdy(v);
-	vec4 gu = ty.y * dx - tx.y * dy, gv = tx.x * dy - ty.x * dx;
-	vec4 slope = sqrt(gu * gu + gv * gv) / max(abs(tx.x * ty.y - tx.y * ty.x), 1e-20);
-	// 0: a gentle ramp, blended; 1: an edge, the largest wins. A ramp uMaterialBlend texels wide is half of each
-	vec2 steep = smoothstep(0.5, 1.5, vec2(slope.x, max(slope.y, max(slope.z, slope.w))) * uMaterialBlend);
-	// An edge is at least this soft: a pixel and a half, anti-aliased at any zoom
-	vec4 fw = fwidth(v);
-	float aaObjects = max(max(fw.x * 1.5, uMaterialEdge), 1e-4);
-	float aaWithin = max(max(max(fw.y, max(fw.z, fw.w)) * 1.5, uMaterialEdge), 1e-4);
-	float shown = mix(objects, smoothstep(-aaObjects, aaObjects, 2.0 * objects - 1.0), steep.x);
-	return vec4(1.0 - shown, shown * mix(v.yzw, largestWins(v.yzw, aaWithin), steep.y));
-}
 
 // An albedo map's colour as the panel grades it (Ground colours → Albedo saturation, Albedo tint)
 vec3 gradeAlbedo(vec3 albedo) {
 	return mix(vec3(dot(albedo, vec3(0.2126, 0.7152, 0.0722))), albedo, uAlbedoGrade.y) * uAlbedoTint;
 }
 
-// What metal and gloss reflect: the sky as /fog's skyColor draws it (the horizon's fog, brighter toward the
-// sun, the sky overhead; mirror it), and below the horizon the ground, as a dim average (no reflection march)
-vec3 environment(vec3 r) {
-	vec3 horizon = uFogColor + uSunColor * uSunGlow.x * pow(max(dot(r, uSunDir), 0.0), uSunGlow.y);
-	vec3 sky = mix(horizon, uSkyColor, smoothstep(0.0, 0.45, r.y));
-	return mix(uTint * uShading.x, sky, smoothstep(-0.15, 0.05, r.y));
-}
-
-// Metal, gloss, spare: a diffuse base in `colour` (none for a metal: its reflections take the colour) under the
-// reflected sky and the sun's highlight (normalised Blinn-Phong, Schlick's Fresnel). surface: x how metallic,
-// y how rough. The sky it reflects dims in the sun's cast shadow (`shadow`, 1: lit) down to the light in full
-// shadow, like the ground's: the sky the scene shows is several times brighter than the light it leaves in the
-// shadows, so at full strength the reflections would light them up
-vec3 shadeMaterial(vec3 colour, vec2 surface, vec3 n, vec3 v, float sun, float shadow, float light, float ao, float cavity) {
-	float metallic = clamp(surface.x, 0.0, 1.0);
-	float roughness = clamp(surface.y, 0.05, 1.0);
-	vec3 f0 = mix(vec3(0.04), colour, metallic);
-	vec3 fresnel = f0 + (1.0 - f0) * pow(1.0 - max(dot(n, v), 0.0), 5.0);
-	// A rough surface reflects toward its normal: the sky's average rather than one direction
-	vec3 r = normalize(mix(reflect(-v, n), n, roughness * roughness));
-	vec3 h = normalize(v + uSunDir);
-	float shininess = max(2.0 / (roughness * roughness) - 2.0, 1.0);
-	float highlight = (shininess + 8.0) / 25.1327 * pow(max(dot(n, h), 0.0), shininess); // / 8π
-	vec3 glint = f0 + (1.0 - f0) * pow(1.0 - max(dot(v, h), 0.0), 5.0);
-	vec3 specular = fresnel * environment(r) * (ao * mix(uShading.x, 1.0, shadow)) + glint * uSunColor * (highlight * sun);
-	vec3 diffuse = colour * (1.0 - metallic) * (light * ao * cavity);
-	return diffuse * (1.0 - fresnel) + specular;
-}
-
 vec3 shadeSurface(Surface s, vec3 rd) {
-	// Sampled before branching: mipmapped lookups and derivatives need the neighbouring pixels
+	// Sampled before branching: mipmapped lookups need the neighbouring pixels
 	vec2 uv = terrainUv(s.position.xz);
 	float mask = coreMask(s.position.xz);
 	vec3 maps = texture(uMaps, uv).rgb;
 	vec3 albedo = texture(uAlbedo, uv).rgb;
 	vec3 farAlbedo = texture(uFarAlbedo, farUv(s.position.xz)).rgb;
-	// Ground, metal, gloss, spare; the masks faded out with the heightmap: ground past its edges
-	vec4 share = materialShares(uv, texture(uMaterials, uv).rgb * mask);
 	if (!s.hit) return vec3(0.0);
 
 	vec3 p = s.position;
@@ -138,8 +56,8 @@ vec3 shadeSurface(Surface s, vec3 rd) {
 	float ao = mix(1.0, maps.g, uShading.y);
 	float cavity = 1.0 + (maps.b - 0.5) * uShading.z;
 
-	// The colour, whatever the material: the albedo map inside the heightmap, the far albedo map over the far map,
-	// else the tint, each map fading out over its band; then a light variation
+	// The colour: the albedo map inside the heightmap, the far albedo map over the far map, else the tint, each
+	// map fading out over its band; then a light variation
 	vec3 colour = uTint;
 	if (uAlbedoGrade.z > 0.0) colour = mix(colour, gradeAlbedo(farAlbedo), farMask(p.xz));
 	if (uAlbedoGrade.x > 0.0) colour = mix(colour, gradeAlbedo(albedo), mask);
@@ -150,24 +68,11 @@ vec3 shadeSurface(Surface s, vec3 rd) {
 		colour *= 1.0 + (n - 0.5) * 2.0 * uDetail.x;
 	}
 
-	if (uDebugView > 2.5) {
-		// Dev views: 3 each material in a flat colour (ground grey, metal yellow, gloss blue, spare green), lit just
-		// enough to read the relief; 4 the colour as the shader uses it, unlit, the materials' tints and the sea
-		// ignored. The composite shows them without fog
-		if (uDebugView > 3.5) return colour;
-		vec3 swatch = share.x * vec3(0.5) + share.y * vec3(1.0, 0.8, 0.2) + share.z * vec3(0.2, 0.45, 1.0) + share.w * vec3(0.3, 0.8, 0.3);
-		return swatch * (0.4 + 0.6 * sun);
-	}
-	vec3 col = share.x * colour * (light * ao * cavity);
-	if (share.x < 1.0) {
-		vec3 v = -rd;
-		col += share.y * shadeMaterial(colour * uMetal, uMetalSurface, normal, v, sun, maps.r, light, ao, cavity);
-		col += share.z * shadeMaterial(colour * uGloss, uGlossSurface, normal, v, sun, maps.r, light, ao, cavity);
-		col += share.w * shadeMaterial(colour * uSpare, uSpareSurface, normal, v, sun, maps.r, light, ao, cavity);
-	}
+	// Dev view 4: the colour as the shader uses it, unlit, the sea ignored. The composite shows it without fog
+	if (uDebugView > 3.5) return colour;
+	vec3 col = colour * (light * ao * cavity);
 
-	// Under the sea: the water, whatever the material. The shoreline blends over about a pixel, so it doesn't
-	// stair-step
+	// Under the sea: the water. The shoreline blends over about a pixel, so it doesn't stair-step
 	float depth = uSeaLevel - terrainHeight(p.xz);
 	float edge = max(0.02, s.t * uPrecision);
 	if (depth > -edge) {

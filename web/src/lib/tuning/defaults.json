@@ -84,19 +84,6 @@
 		"detail": 0.1,
 		"detailSize": 8
 	},
-	"materials": {
-		"metal": [0.992, 0.984, 0.965],
-		"metalMetallic": 1,
-		"metalRoughness": 0.2,
-		"gloss": [0.1, 0.1, 0.11],
-		"glossMetallic": 0,
-		"glossRoughness": 0.08,
-		"spare": [0.6, 0.6, 0.6],
-		"spareMetallic": 0,
-		"spareRoughness": 0.9,
-		"edge": 0.02,
-		"blend": 8
-	},
 	"water": {
 		"level": 0,
 		"shallow": [0.463, 0.561, 0.576],
