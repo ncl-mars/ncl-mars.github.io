@@ -64,6 +64,7 @@ export interface TerrainSettings {
 		sunPower: number;
 	};
 	tone: { exposure: number; curve: number };
+	post: { vignette: number; vignetteRadius: number; vignetteSoftness: number };
 	mist: { density: number; height: number; falloff: number; banks: number; bankScale: number };
 	shafts: { samples: number; softness: number; darkness: number; glow: number; power: number; view: number };
 	ground: {
@@ -176,6 +177,7 @@ export class Terrain implements Drawable {
 
 	private readonly shadingVector = new Float32Array(3);
 	private readonly toneVector = new Float32Array(2);
+	private readonly vignetteVector = new Float32Array(4);
 	/** The panel's colours in linear light (they're display values). */
 	private readonly tintLinear = new Float32Array(3);
 	private readonly albedoTintLinear = new Float32Array(3);
@@ -254,6 +256,7 @@ export class Terrain implements Drawable {
 		};
 		this.compositeUniforms = {
 			uTone: this.toneVector,
+			uVignette: this.vignetteVector,
 			uSunDir: assets.maps.sunDir,
 			uSunGlow: this.sunGlowVector,
 			uMist: this.mistVector,
@@ -569,9 +572,14 @@ export class Terrain implements Drawable {
 	/** The cached ground under the live atmosphere, into the view. */
 	private composite(gl: WebGL2RenderingContext, ctx: DrawContext, cache: ColorDepthTarget) {
 		const camera = this.camera;
-		const { fog, mist, wind, shafts, water, shading, tone } = this.settings;
+		const { fog, mist, wind, shafts, water, shading, tone, post } = this.settings;
 		this.toneVector[0] = tone.exposure;
 		this.toneVector[1] = tone.curve;
+		const v = this.vignetteVector;
+		v[0] = post.vignette;
+		v[1] = post.vignetteRadius;
+		v[2] = Math.max(0.01, post.vignetteSoftness);
+		v[3] = ctx.rect.width / ctx.rect.height;
 		this.sunGlowVector[0] = fog.sunGlow;
 		this.sunGlowVector[1] = fog.sunPower;
 		// Shafts off: the cache's alpha is 1 (all lit), and lit mist keeps the plain sun glow

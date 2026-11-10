@@ -19,6 +19,7 @@ precision highp int; // the noise hash needs 32-bit integers (fragment ints defa
 
 uniform sampler2D uColor;       // the cache: linear light, sRGB bytes (decoded when sampled), alpha the light shafts
 uniform float uExposure;        // the ground's, against the fog (the cache holds it unexposed: ≤ 1 in 8 bits)
+uniform vec4 uVignette;         // x: strength, y: radius, z: softness (1: the screen's corner), w: the view's aspect
 uniform highp sampler2D uDepth; // highp: samplers default to lowp, which would ruin the depth
 uniform mat4 uInvViewProj;
 uniform vec3 uCamPos;
@@ -98,6 +99,10 @@ void main() {
 		col = skyColor(rd);
 	}
 	col = display(col);
+	// Radial vignette, on display values: a circle on screen (the aspect corrected), 1 at the corners
+	vec2 q = (vUv - 0.5) * vec2(uVignette.w, 1.0);
+	float r = length(q) / length(vec2(uVignette.w, 1.0) * 0.5);
+	col *= 1.0 - uVignette.x * smoothstep(uVignette.y, uVignette.y + uVignette.z, r);
 	if (uShaftView > 2.5) {
 		// The march drew a debug view into the cache (3 the materials, 4 the ground's colour): as it is, no fog,
 		// no exposure or tone curve, only the encode (view 4 shows the albedo as exported)

@@ -35,14 +35,14 @@
 		"refineSteps": 6,
 		"renderScale": 1,
 		"motionScale": 0.5,
-		"motionMode": 1,
+		"motionMode": 0,
 		"exactHeights": 1
 	},
 	"shading": {
 		"tint": [0.8, 0.81, 0.83],
 		"shadowLight": 0.008,
-		"aoStrength": 0.81,
-		"cavityStrength": 0.32,
+		"aoStrength": 0.63,
+		"cavityStrength": 0,
 		"exposure": 2.33
 	},
 	"fog": {
@@ -57,6 +57,11 @@
 	"tone": {
 		"exposure": 0.91,
 		"curve": 2
+	},
+	"post": {
+		"vignette": 0.25,
+		"vignetteRadius": 0.4,
+		"vignetteSoftness": 0.7
 	},
 	"mist": {
 		"density": 0.007,
@@ -74,8 +79,8 @@
 		"view": 0
 	},
 	"ground": {
-		"albedoSaturation": 0.63,
-		"albedoTint": [0.929, 0.929, 0.929],
+		"albedoSaturation": 0.43,
+		"albedoTint": [1, 1, 1],
 		"detail": 0.1,
 		"detailSize": 8
 	},
@@ -94,8 +99,8 @@
 	},
 	"water": {
 		"level": 0,
-		"shallow": [0.37, 0.5, 0.52],
-		"deep": [0.13, 0.21, 0.28],
+		"shallow": [0.463, 0.561, 0.576],
+		"deep": [0.204, 0.255, 0.298],
 		"depth": 6,
 		"foam": 0.6,
 		"foamWidth": 0.6,

@@ -113,6 +113,15 @@ export const schema: Group[] = [
 		]
 	},
 	{
+		key: 'post',
+		label: 'Post',
+		params: [
+			{ key: 'vignette', label: 'Vignette', min: 0, max: 1, step: 0.01, hint: 'How much the corners darken. Radial: a circle on screen, whatever its shape. On display values, at the end of the composite: the labels (HTML) stay clean.' },
+			{ key: 'vignetteRadius', label: 'Vignette radius', min: 0, max: 1.5, step: 0.01, hint: 'Where the darkening starts, from the centre: 1 is the screen’s corner.' },
+			{ key: 'vignetteSoftness', label: 'Vignette softness', min: 0.01, max: 2, step: 0.01, hint: 'How far it takes to reach full strength, in the same units.' }
+		]
+	},
+	{
 		key: 'mist',
 		label: 'Mist',
 		params: [
