@@ -1,15 +1,18 @@
 <script lang="ts">
 	// A project as a card over the scene, which stays alive behind it (wind, mist). A CSS backdrop-filter
 	// can blur, desaturate and wash everything behind (scene, labels); the card scrolls on its own,
-	// never the window (the views' cached rects stay valid). Escape, the × or a click on the scene closes;
-	// images open in the lightbox; videos play muted and looping while visible (not with reduced motion),
-	// with controls to unmute. The look comes from tuning.overlay, live; the prerendered page has the defaults.
+	// never the window (the views' cached rects stay valid). Escape, the × or a click on the scene closes.
+	// The text in reading order (paragraphs, and the files placed between them), the credits, then the header's
+	// media list. Images open in the lightbox, which browses them all in that order; videos play muted and
+	// looping while visible (not with reduced motion), with controls to unmute. The look comes from
+	// tuning.overlay, live; the prerendered page has the defaults.
 	import { fade, fly } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 	import type { Attachment } from 'svelte/attachments';
+	import type { Picture } from 'vite-imagetools';
 	import Lightbox from './Lightbox.svelte';
 	import { onTuningChange, tuning } from '$lib/tuning';
-	import type { Project } from '$lib/content/projects';
+	import type { Block, Media, Project } from '$lib/content/projects';
 
 	let { project, kicker, onclose }: { project: Project; kicker?: string; onclose: () => void } = $props();
 
@@ -39,15 +42,23 @@
 	const slideX = () => (reducedMotion || align === 1 ? 0 : align === 0 ? -40 : 40);
 	const slideY = () => (reducedMotion || align !== 1 ? 0 : 24);
 
-	const images = $derived(
-		project.media.flatMap((item) => (item.kind === 'image' ? [{ picture: item.picture, caption: item.alt }] : []))
-	);
+	// Every image of the card in reading order (the text's, then the media list's): what the lightbox browses.
+	// Each file gets its place in it (−1: a paragraph or a video)
+	const gallery = $derived.by(() => {
+		const images: { picture: Picture; caption: string }[] = [];
+		const place = (item: Block) => {
+			if (item.kind !== 'image') return -1;
+			images.push({ picture: item.picture, caption: item.alt });
+			return images.length - 1;
+		};
+		return { body: project.body.map(place), media: project.media.map(place), images };
+	});
 	let lightboxOpen = $state(false);
 	let lightboxIndex = $state(0);
 	let panel: HTMLElement;
 
-	function openImage(mediaIndex: number) {
-		lightboxIndex = project.media.slice(0, mediaIndex).filter((item) => item.kind === 'image').length;
+	function openImage(index: number) {
+		lightboxIndex = index;
 		lightboxOpen = true;
 	}
 
@@ -115,8 +126,12 @@
 			<h1 id="project-title">{project.title}</h1>
 		</header>
 
-		{#each project.presentation as paragraph, i (i)}
-			<p class="presentation">{paragraph}</p>
+		{#each project.body as block, i (i)}
+			{#if block.kind === 'text'}
+				<p class="presentation">{block.text}</p>
+			{:else}
+				<div class="placed">{@render file(block, gallery.body[i])}</div>
+			{/if}
 		{/each}
 
 		{#if project.credits.length}
@@ -130,32 +145,39 @@
 			</dl>
 		{/if}
 
-		<div class="media">
-			{#each project.media as item, i (i)}
-				{#if item.kind === 'image'}
-					<button class="image" type="button" aria-label="Full screen: {item.alt}" onclick={() => openImage(i)}>
-						<enhanced:img src={item.picture} alt={item.alt} sizes="(max-width: 700px) 100vw, {tuning.overlay.width}rem" />
-					</button>
-				{:else}
-					<video
-						src={item.src}
-						poster={item.poster}
-						aria-label={item.alt}
-						muted
-						loop
-						playsinline
-						controls
-						preload="metadata"
-						{@attach playWhenVisible}
-					></video>
-				{/if}
-			{/each}
-		</div>
+		{#if project.media.length}
+			<div class="media">
+				{#each project.media as item, i (i)}
+					{@render file(item, gallery.media[i])}
+				{/each}
+			</div>
+		{/if}
 	</article>
 </div>
 
+<!-- An image (`image`: its place in the lightbox) or a video, in the text or in the media list -->
+{#snippet file(item: Media, image: number)}
+	{#if item.kind === 'image'}
+		<button class="image" type="button" aria-label="Full screen: {item.alt}" onclick={() => openImage(image)}>
+			<enhanced:img src={item.picture} alt={item.alt} sizes="(max-width: 700px) 100vw, {tuning.overlay.width}rem" />
+		</button>
+	{:else}
+		<video
+			src={item.src}
+			poster={item.poster}
+			aria-label={item.alt}
+			muted
+			loop
+			playsinline
+			controls
+			preload="metadata"
+			{@attach playWhenVisible}
+		></video>
+	{/if}
+{/snippet}
+
 {#if lightboxOpen}
-	<Lightbox {images} bind:index={lightboxIndex} onclose={() => (lightboxOpen = false)} />
+	<Lightbox images={gallery.images} bind:index={lightboxIndex} onclose={() => (lightboxOpen = false)} />
 {/if}
 
 <style>
@@ -288,6 +310,11 @@
 
 	.credits dd {
 		margin: 0;
+	}
+
+	/* A file placed in the text, between two paragraphs */
+	.placed {
+		margin: 1.5rem 0;
 	}
 
 	.media {

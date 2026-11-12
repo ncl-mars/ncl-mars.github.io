@@ -3,9 +3,11 @@
 	import { portfolio } from '$lib/content/portfolio';
 
 	let { data } = $props();
+	// The first paragraph, for search engines and link previews
+	const description = $derived(data.project.body.find((block) => block.kind === 'text')?.text ?? data.project.title);
 </script>
 
 <svelte:head>
 	<title>{data.project.title} · {portfolio.name}</title>
-	<meta name="description" content={data.project.presentation[0] ?? data.project.title} />
+	<meta name="description" content={description} />
 </svelte:head>
