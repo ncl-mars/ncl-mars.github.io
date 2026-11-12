@@ -9,6 +9,7 @@ uniform sampler2D uShadow; // shadow ceiling, 0..1 over the slab as r + g / 255 
 uniform vec4 uShadowBox;   // xy: min corner (world xz), zw: 1 / size
 uniform vec4 uShaftMarch;  // x: samples per ray (0: off), y: edge softness (world units), z: fog density
 uniform vec4 uMist;        // as in /fog: x density at the base, y base height (world), z falloff height
+uniform mediump sampler2D uBlueNoise; // gl/noise.ts: a 64² tile of blue noise, the samples' offset per pixel
 
 // 1 where the sun reaches p, 0 in the shadow of the ground; lit outside the shadow ceiling's box (faded)
 float sunVisibility(vec3 p) {
@@ -42,8 +43,9 @@ float shaftLight(vec3 ro, vec3 rd, float tEnd) {
 	}
 	if (t1 <= t0) return 1.0;
 
-	// Samples denser near the eye (squared spacing), jittered per pixel so the steps read as fine grain
-	float jitter = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+	// Samples denser near the eye (squared spacing), offset per pixel by blue noise so the steps read as an even,
+	// fine grain (the interleaved gradient noise used before showed as a pattern of dots with few samples)
+	float jitter = (texelFetch(uBlueNoise, ivec2(gl_FragCoord.xy) % textureSize(uBlueNoise, 0), 0).r * 255.0 + 0.5) / 256.0;
 	float span = t1 - t0;
 	float n = float(samples);
 	float shadowed = 0.0;

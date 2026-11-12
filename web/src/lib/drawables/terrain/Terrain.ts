@@ -5,7 +5,7 @@ import compositeSource from './composite.frag';
 import shadowSource from './shadow.frag';
 import { hotSwap, type Program } from '../../gl/programs';
 import { createHeightTexture, loadColourTexture, loadDataTexture } from '../../gl/textures';
-import { createNoiseTexture3D } from '../../gl/noise';
+import { createBlueNoiseTexture, createNoiseTexture3D } from '../../gl/noise';
 import { srgbToLinear } from '../../gl/colour';
 import {
 	createColorDepthTarget,
@@ -152,6 +152,8 @@ export class Terrain implements Drawable {
 	private farAlbedoTexture: WebGLTexture | null = null;
 	/** For the mist banks (/fog). */
 	private noiseTexture: WebGLTexture | null = null;
+	/** The light shafts' per-pixel sample offsets. */
+	private blueNoise: WebGLTexture | null = null;
 	/** The terrain cache at `renderScale`, and at `renderScale × motionScale` for a moving camera. */
 	private sharp: ColorDepthTarget | null = null;
 	private rough: ColorDepthTarget | null = null;
@@ -280,6 +282,7 @@ export class Terrain implements Drawable {
 		this.shadowProgram = renderer.program(vertex, shadowFragment);
 		this.vao = gl.createVertexArray();
 		this.noiseTexture = renderer.resource('noise:3d', (gl) => createNoiseTexture3D(gl));
+		this.blueNoise = renderer.resource('noise:blue', (gl) => createBlueNoiseTexture(gl));
 		this.noAlbedo = renderer.resource('black', (gl) => blackTexture(gl));
 		this.shadow = createColorTarget(gl, SHADOW_SIZE, SHADOW_SIZE, gl.RG8);
 		this.shadowKey = '';
@@ -419,6 +422,7 @@ export class Terrain implements Drawable {
 		this.farAlbedoTexture = null;
 		this.mapsTexture = null;
 		this.noiseTexture = null;
+		this.blueNoise = null;
 		this.fade = 0;
 	}
 
@@ -502,6 +506,7 @@ export class Terrain implements Drawable {
 		this.detailVector.set([colours.detail, colours.detailSize]);
 		u.uDebugView = shafts.view; // 4 is drawn here (the shafts group re-marches the cache)
 		u.uNoise = this.noiseTexture;
+		u.uBlueNoise = this.blueNoise;
 
 		gl.disable(gl.SCISSOR_TEST);
 		this.renderShadow(gl, this.shadow!); // also shades the terrain past the baked maps: needed with the shafts off

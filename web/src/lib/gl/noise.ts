@@ -5,6 +5,9 @@
  * - 3D noise: 64³ RGBA8, four independent tileable gradient (Perlin) noises, 8 lattice cells per tile,
  *   REPEAT + LINEAR + mipmaps. In GLSL, sample with `p / 8.0` where p is in noise cells; mean ≈ 0.5.
  * - Hash: 256² RGBA8 white noise, REPEAT + NEAREST, for per-cell random values (`texelFetch`).
+ * - Blue noise: 64² R8, REPEAT + NEAREST, values spread evenly with no clumps or gaps (void-and-cluster), for
+ *   per-pixel offsets: `texelFetch(…, ivec2(gl_FragCoord.xy) % 64, 0).r`. Few samples then read as an even,
+ *   fine grain instead of a pattern.
  */
 
 const NOISE_CELLS = 8;
@@ -49,6 +52,120 @@ export function createHashTexture(gl: WebGL2RenderingContext, size = 256): WebGL
 	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
 	gl.bindTexture(gl.TEXTURE_2D, null);
 	return texture;
+}
+
+export function createBlueNoiseTexture(gl: WebGL2RenderingContext, size = 64): WebGLTexture {
+	const texture = gl.createTexture()!;
+	gl.bindTexture(gl.TEXTURE_2D, texture);
+	gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+	gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, size, size, 0, gl.RED, gl.UNSIGNED_BYTE, blueNoise(size, 7));
+	gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+	gl.bindTexture(gl.TEXTURE_2D, null);
+	return texture;
+}
+
+/**
+ * Blue noise by void-and-cluster (Ulichney, 1993), tileable: every pixel gets a rank, 0 to size² − 1, such that
+ * the pixels under any threshold are spread as evenly as possible. Energy is a Gaussian (σ 1.5 pixels, cut at
+ * 3σ) summed over the chosen pixels, wrapping around the tile. Ranks out as bytes, 0..255, evenly used.
+ */
+function blueNoise(size: number, seed: number): Uint8Array {
+	const n = size * size;
+	const sigma = 1.5;
+	const radius = Math.ceil(3 * sigma);
+	const dx: number[] = [];
+	const dy: number[] = [];
+	const weights: number[] = [];
+	for (let y = -radius; y <= radius; y++) {
+		for (let x = -radius; x <= radius; x++) {
+			dx.push(x);
+			dy.push(y);
+			weights.push(Math.exp(-(x * x + y * y) / (2 * sigma * sigma)));
+		}
+	}
+	/** Add (sign 1) or remove (−1) pixel i's Gaussian to an energy map. */
+	const splat = (energy: Float32Array, i: number, sign: number) => {
+		const x = i % size;
+		const y = (i - x) / size;
+		for (let k = 0; k < weights.length; k++) {
+			energy[((y + dy[k] + size) % size) * size + ((x + dx[k] + size) % size)] += sign * weights[k];
+		}
+	};
+	/** The pixel whose `pattern` is `value` with the highest energy (`highest`), or the lowest. */
+	const find = (energy: Float32Array, pattern: Uint8Array, value: number, highest: boolean) => {
+		let best = -1;
+		let bestEnergy = highest ? -Infinity : Infinity;
+		for (let i = 0; i < n; i++) {
+			if (pattern[i] !== value) continue;
+			const e = energy[i];
+			if (highest ? e > bestEnergy : e < bestEnergy) {
+				bestEnergy = e;
+				best = i;
+			}
+		}
+		return best;
+	};
+
+	// A few random points (a tenth), then spread: move the tightest cluster's point to the largest void until
+	// that changes nothing
+	const rand = mulberry32(seed);
+	const pattern = new Uint8Array(n);
+	const energy = new Float32Array(n);
+	const initial = Math.round(n / 10);
+	for (let placed = 0; placed < initial; ) {
+		const i = Math.floor(rand() * n);
+		if (pattern[i]) continue;
+		pattern[i] = 1;
+		splat(energy, i, 1);
+		placed++;
+	}
+	for (let pass = 0; pass < n; pass++) {
+		const cluster = find(energy, pattern, 1, true);
+		pattern[cluster] = 0;
+		splat(energy, cluster, -1);
+		const hole = find(energy, pattern, 0, false);
+		pattern[hole] = 1;
+		splat(energy, hole, 1);
+		if (hole === cluster) break;
+	}
+
+	const rank = new Uint32Array(n);
+	// 1. The initial points, tightest cluster last: removed one by one, ranked downward
+	{
+		const p = pattern.slice();
+		const e = energy.slice();
+		for (let ones = initial; ones > 0; ) {
+			const cluster = find(e, p, 1, true);
+			p[cluster] = 0;
+			splat(e, cluster, -1);
+			rank[cluster] = --ones;
+		}
+	}
+	// 2. Up to half: each new point in the largest void
+	let ones = initial;
+	while (ones < n / 2) {
+		const hole = find(energy, pattern, 0, false);
+		pattern[hole] = 1;
+		splat(energy, hole, 1);
+		rank[hole] = ones++;
+	}
+	// 3. The rest: the empty pixels are the minority now; fill their tightest cluster first
+	const empty = new Float32Array(n);
+	for (let i = 0; i < n; i++) if (!pattern[i]) splat(empty, i, 1);
+	while (ones < n) {
+		const cluster = find(empty, pattern, 0, true);
+		pattern[cluster] = 1;
+		splat(empty, cluster, -1);
+		rank[cluster] = ones++;
+	}
+
+	const out = new Uint8Array(n);
+	for (let i = 0; i < n; i++) out[i] = Math.floor((rank[i] * 256) / n);
+	return out;
 }
 
 /** Perlin gradient noise over a size³ grid, periodic: `cells` lattice cells per tile on each axis. */
