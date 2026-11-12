@@ -52,6 +52,10 @@ export interface TerrainSettings {
 		motionScale: number;
 		motionMode: number;
 		exactHeights: number;
+		roughRefineSteps: number;
+		roughShaftSamples: number;
+		roughExactHeights: number;
+		fineBand: number;
 	};
 	shading: {
 		tint: number[];
@@ -443,9 +447,14 @@ export class Terrain implements Drawable {
 		s[0] = shading.shadowLight;
 		s[1] = shading.aoStrength;
 		s[2] = shading.cavityStrength;
+		// The rough cache (a moving camera, on a slow device) is marched cheaper: no slope smoothing (4 height reads
+		// for the normal instead of 8), its own refine steps, fewer shaft samples, bilinear heights unless asked, and
+		// a precision matched to its larger pixels. The sharp march after it has everything.
+		const rough = cache === this.rough;
+		const motion = Math.min(1, Math.max(0.1, march.motionScale)); // as in draw(): the rough cache's scale
 		const u = this.marchUniforms;
 		u.uSlopeLight = shading.slopeLight;
-		u.uSlopeSmoothing = Math.max(0, shading.slopeSmoothing);
+		u.uSlopeSmoothing = rough ? 0 : Math.max(0, shading.slopeSmoothing);
 		const f = this.farFieldVector;
 		f[0] = ground.farBase;
 		f[1] = farField.amplitude;
@@ -456,7 +465,8 @@ export class Terrain implements Drawable {
 		this.slabVector[0] = slabMin;
 		this.slabVector[1] = slabMax;
 		const sm = this.shaftMarchVector;
-		sm[0] = Math.max(0, Math.round(shafts.samples));
+		const samples = Math.max(0, Math.round(shafts.samples));
+		sm[0] = rough ? Math.min(samples, Math.max(0, Math.round(march.roughShaftSamples))) : samples;
 		sm[1] = shafts.softness;
 		sm[2] = fog.density;
 
@@ -467,11 +477,12 @@ export class Terrain implements Drawable {
 		u.uFarMap = this.farTexture ?? this.heightTexture;
 		u.uMaps = this.mapsTexture;
 		u.uSteps = march.steps;
-		u.uRefineSteps = march.refineSteps;
+		u.uRefineSteps = rough ? march.roughRefineSteps : march.refineSteps;
+		u.uFineBand = Math.max(0, march.fineBand);
 		u.uStepScale = march.stepScale;
-		u.uPrecision = march.precision;
+		u.uPrecision = rough ? march.precision / motion : march.precision;
 		u.uPixel = 2 / (camera.projection[5] * cache.height); // this cache's pixels (the rough one's are larger)
-		u.uExactHeights = march.exactHeights;
+		u.uExactHeights = rough ? Math.min(march.exactHeights, march.roughExactHeights) : march.exactHeights;
 		u.uMaxDistance = fog.end;
 		u.uTint = srgbToLinear(shading.tint, this.tintLinear);
 		u.uShadow = this.shadow!.color;

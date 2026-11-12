@@ -12,6 +12,7 @@ uniform float uStepScale;  // fraction of the clearance to step (< 1: steep slop
 uniform float uPrecision;  // minimum step and hit tolerance, relative to the distance (~ pixel footprint)
 uniform vec2 uSlab;        // height range of the whole ground (min, max)
 uniform float uMaxDistance; // fog end: nothing is searched beyond
+uniform float uFineBand;   // the fine reads within this of the ground (world units, plus a pixel's height)
 
 // Ray vs the ground's height slab, capped at uMaxDistance: (tEnter, tExit), tEnter >= tExit when it misses.
 vec2 slabInterval(vec3 ro, vec3 rd) {
@@ -32,18 +33,19 @@ Surface marchSurface(vec3 ro, vec3 rd) {
 	// Both stops end exactly on the surface (on a plane; very close on real terrain), from clearances already
 	// measured: later passes rebuild the ground from this depth (shadows on the ground, the sea), and a gap
 	// that jumps from band to band across a slope would show in them as stairs.
-	// The big steps read the heights as the GPU filters them (one read; not exact, see /terrain, but off by far
-	// less than 1/4096 of the height range); near the ground, the fine ones. The fine surface (the B-spline,
-	// /terrain) strays from the GPU's bilinear one along steep walls: a margin of about 3 m on the site, so the
-	// fine reads still catch it
-	float nearGround = (uSlab.y - uSlab.x) / 128.0;
+	// The big steps read the heights as the GPU filters them (one read, bilinear); within uFineBand of the
+	// ground, the fine ones (the B-spline, /terrain; four reads). The B-spline rises above the bilinear surface
+	// where it fills narrow dips (by up to 0.5 m on 99.99 % of the site): where that rise passes about 3/4 of the
+	// band, a step can cross into the dip, and the hit lands slightly inside it. 0.8 m leaves about 0.008 % of
+	// the site's ground to that.
+	float nearGround = uFineBand;
 	float t = span.x;
 	float tAbove = span.x;
 	float cAbove = -1.0; // clearance at tAbove; < 0: not measured yet
 	for (int i = 0; i < uSteps; i++) {
 		vec3 p = ro + rd * t;
 		float clearance = p.y - height(p.xz);
-		if (clearance < nearGround + t * uPrecision) clearance = p.y - heightExact(p.xz);
+		if (uExactHeights > 0.5 && clearance < nearGround + t * uPrecision) clearance = p.y - heightExact(p.xz);
 		if (clearance <= 0.0) {
 			// The surface is between tAbove (above ground) and t (below): bisect, then where the clearance
 			// crosses zero in the last bracket
