@@ -255,7 +255,10 @@
 			{/each}
 		</ol>
 	</nav>
-	<a class="menu" class:open={menuOpen} href="/lab/views/">lab: views</a>
+	<!-- The view-system test page: a dev tool, not linked from the published site -->
+	{#if import.meta.env.DEV}
+		<a class="menu" class:open={menuOpen} href="/lab/views/">lab: views</a>
+	{/if}
 </header>
 
 <!-- Outside the site element, so its wheel and keys don't reach the tour -->

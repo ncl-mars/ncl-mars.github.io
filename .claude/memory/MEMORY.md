@@ -3,7 +3,7 @@
 - [Commit workflow](commit-workflow.md) — user commits; hand over one final PowerShell block, re-send if changes land after; plain ASCII messages, no apostrophes
 - [Design: discovery](design-discovery.md) — non-obvious readability is intended; don't push "make it obvious" fixes
 - [Browser testing](browser-testing.md) — use the user's Brave, ask first; never probe for or install browsers
-- [Deploy later](deploy-later.md) — site stays local; don't push M4 / GitHub until the user brings it up
+- [Deploy](deploy-later.md) — wanted since 2026-11-12, live before the evening of 11-13; no remote yet; Pages free = public repo only
 - [Diagnose first](diagnose-first.md) — visual artifacts: data check / debug view before any fix; no blind fixes
 - [No unasked cleanup](no-unasked-cleanup.md) — never remove params/switches/code unless explicitly asked; saved defaults or a pending offer aren't a yes
 - [Verify facts](verify-facts.md) — never state guesses about tools (Houdini viewport…) as fact; search the web or say unknown; take the user's test conditions as given
