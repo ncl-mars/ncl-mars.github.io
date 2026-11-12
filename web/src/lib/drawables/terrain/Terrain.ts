@@ -3,6 +3,7 @@ import vertexSource from '../../gl/fullscreen.vert';
 import marchSource from './terrain.frag';
 import compositeSource from './composite.frag';
 import shadowSource from './shadow.frag';
+import shaftBlurSource from './shaftblur.frag';
 import { hotSwap, type Program } from '../../gl/programs';
 import { createHeightTexture, loadColourTexture, loadDataTexture } from '../../gl/textures';
 import { createBlueNoiseTexture, createNoiseTexture3D } from '../../gl/noise';
@@ -27,6 +28,7 @@ let vertex = vertexSource;
 let marchFragment = marchSource;
 let compositeFragment = compositeSource;
 let shadowFragment = shadowSource;
+let shaftBlurFragment = shaftBlurSource;
 /** Bumped by shader hot reload, so a still camera's cache gets re-marched with the new shader. */
 let shaderGeneration = 0;
 /** Seconds the camera must stay still before the sharp march replaces the rough one. */
@@ -78,7 +80,7 @@ export interface TerrainSettings {
 	tone: { exposure: number; curve: number };
 	post: { vignette: number; vignetteRadius: number; vignetteSoftness: number };
 	mist: { density: number; height: number; falloff: number; banks: number; bankScale: number };
-	shafts: { samples: number; softness: number; darkness: number; glow: number; power: number; view: number };
+	shafts: { samples: number; blur: number; softness: number; darkness: number; glow: number; power: number; view: number };
 	ground: {
 		albedoSaturation: number;
 		albedoTint: number[];
@@ -139,6 +141,7 @@ export class Terrain implements Drawable {
 	private marchProgram: Program | null = null;
 	private compositeProgram: Program | null = null;
 	private shadowProgram: Program | null = null;
+	private shaftBlurProgram: Program | null = null;
 	private vao: WebGLVertexArrayObject | null = null;
 	private heightTexture: WebGLTexture | null = null;
 	/** The far map's heights, or null without one (the heightmap's then stands in, unused). */
@@ -168,6 +171,13 @@ export class Terrain implements Drawable {
 	/** The shadow ceiling (RG8 over the slab: coarse + fine), and the ground it was rendered for (far field, shaders). */
 	private shadow: ColorTarget | null = null;
 	private shadowKey = '';
+	/**
+	 * The light shafts blurred once the view has settled (shaftblur.frag, R8 at the sharp cache's size): the pass
+	 * along x, then the result; and the march they were blurred from (`marches` then), −1 for none yet.
+	 */
+	private shaftsAlong: ColorTarget | null = null;
+	private shaftsBlurred: ColorTarget | null = null;
+	private blurredMarch = -1;
 	private stillTime = 0;
 	private cachedRevision = -1;
 	private cachedShaders = -1;
@@ -206,6 +216,7 @@ export class Terrain implements Drawable {
 	private readonly marchUniforms: Record<string, unknown>;
 	private readonly compositeUniforms: Record<string, unknown>;
 	private readonly shadowUniforms: Record<string, unknown>;
+	private readonly blurUniforms: Record<string, unknown> = { uNearFar: new Float32Array(2) };
 
 	constructor(
 		private readonly camera: SurveyCamera,
@@ -280,6 +291,8 @@ export class Terrain implements Drawable {
 		this.marchProgram = renderer.program(vertex, marchFragment);
 		this.compositeProgram = renderer.program(vertex, compositeFragment);
 		this.shadowProgram = renderer.program(vertex, shadowFragment);
+		this.shaftBlurProgram = renderer.program(vertex, shaftBlurFragment);
+		this.blurredMarch = -1;
 		this.vao = gl.createVertexArray();
 		this.noiseTexture = renderer.resource('noise:3d', (gl) => createNoiseTexture3D(gl));
 		this.blueNoise = renderer.resource('noise:blue', (gl) => createBlueNoiseTexture(gl));
@@ -373,7 +386,14 @@ export class Terrain implements Drawable {
 			this.march(gl, ctx, ground, target);
 			this.shown = target;
 		}
-		this.composite(gl, ctx, this.shown!);
+		// The light shafts' grain, smoothed once the view has settled: the frame after the sharp march (never in
+		// the same frame, nor while moving), once per march
+		const { shafts } = this.settings;
+		const radius = shafts.samples >= 1 ? Math.min(16, Math.max(0, Math.round(shafts.blur))) : 0;
+		const settled = this.shown === this.sharp && this.stillTime >= SETTLE_TIME;
+		if (radius > 0 && settled && !target && this.blurredMarch !== this.marches) this.blurShafts(gl, ctx, this.sharp!, radius);
+		const blurred = radius > 0 && settled && this.blurredMarch === this.marches ? this.shaftsBlurred : null;
+		this.composite(gl, ctx, this.shown!, blurred);
 	}
 
 	/** Dev readout: the rough cache is on screen (the camera is moving, or hasn't settled yet). */
@@ -415,6 +435,7 @@ export class Terrain implements Drawable {
 		this.rough = this.release(gl, this.rough);
 		if (this.shadow) deleteColorTarget(gl, this.shadow);
 		this.shadow = null;
+		this.releaseShafts(gl);
 		this.heightTexture = null; // textures stay in the renderer's per-context cache
 		this.farTexture = null;
 		this.noAlbedo = null;
@@ -554,8 +575,54 @@ export class Terrain implements Drawable {
 		this.drawFullscreen(gl, this.shadowProgram!, u);
 	}
 
-	/** The cached ground under the live atmosphere, into the view. */
-	private composite(gl: WebGL2RenderingContext, ctx: DrawContext, cache: ColorDepthTarget) {
+	/**
+	 * The light shafts of `cache` (its alpha) blurred, `radius` texels, into `shaftsBlurred` (shaftblur.frag: along
+	 * x into `shaftsAlong`, then along y), the targets fitted to the cache first. Run once the view has settled:
+	 * the camera hasn't moved since the march, so its near and far planes are the cache's. Then restores the
+	 * renderer's target, viewport and scissor.
+	 */
+	private blurShafts(gl: WebGL2RenderingContext, ctx: DrawContext, cache: ColorDepthTarget, radius: number) {
+		if (this.shaftsBlurred?.width !== cache.width || this.shaftsBlurred.height !== cache.height) {
+			this.releaseShafts(gl);
+			this.shaftsAlong = createColorTarget(gl, cache.width, cache.height, gl.R8);
+			this.shaftsBlurred = createColorTarget(gl, cache.width, cache.height, gl.R8);
+		}
+		const u = this.blurUniforms;
+		(u.uNearFar as Float32Array).set([this.camera.near, this.camera.far]);
+		u.uDepth = cache.depth;
+		u.uRadius = radius;
+		gl.disable(gl.SCISSOR_TEST);
+		gl.viewport(0, 0, cache.width, cache.height);
+		const pass = (input: WebGLTexture, fromAlpha: number, direction: number[], output: ColorTarget) => {
+			u.uInput = input;
+			u.uFromAlpha = fromAlpha;
+			u.uDirection = direction;
+			gl.bindFramebuffer(gl.FRAMEBUFFER, output.framebuffer);
+			this.drawFullscreen(gl, this.shaftBlurProgram!, u);
+		};
+		pass(cache.color, 1, [1, 0], this.shaftsAlong!);
+		pass(this.shaftsAlong!.color, 0, [0, 1], this.shaftsBlurred!);
+
+		const { rect, scissor } = ctx;
+		gl.bindFramebuffer(gl.FRAMEBUFFER, ctx.target);
+		gl.viewport(rect.x, rect.y, rect.width, rect.height);
+		gl.enable(gl.SCISSOR_TEST);
+		gl.scissor(scissor.x, scissor.y, scissor.width, scissor.height);
+		this.blurredMarch = this.marches;
+	}
+
+	private releaseShafts(gl: WebGL2RenderingContext) {
+		if (this.shaftsAlong) deleteColorTarget(gl, this.shaftsAlong);
+		if (this.shaftsBlurred) deleteColorTarget(gl, this.shaftsBlurred);
+		this.shaftsAlong = this.shaftsBlurred = null;
+		this.blurredMarch = -1;
+	}
+
+	/**
+	 * The cached ground under the live atmosphere, into the view. `blurred`: the cache's light shafts smoothed
+	 * (blurShafts), read instead of its alpha; null while they aren't (moving, not settled yet, blur off).
+	 */
+	private composite(gl: WebGL2RenderingContext, ctx: DrawContext, cache: ColorDepthTarget, blurred: ColorTarget | null) {
 		const camera = this.camera;
 		const { fog, mist, wind, shafts, water, shading, tone, post } = this.settings;
 		this.toneVector[0] = tone.exposure;
@@ -579,6 +646,8 @@ export class Terrain implements Drawable {
 		const u = this.compositeUniforms;
 		u.uColor = cache.color;
 		u.uDepth = cache.depth;
+		u.uShaftsSmooth = blurred?.color ?? cache.color; // the cache stands in when unused
+		u.uShaftsBlurred = blurred ? 1 : 0;
 		u.uInvViewProj = camera.inverseViewProjection;
 		u.uCamPos = camera.eye;
 		u.uFade = this.fade;
@@ -644,16 +713,24 @@ function blackTexture(gl: WebGL2RenderingContext): WebGLTexture {
 // Shader hot reload (also when an included chunk changes: march, shade, shafts, terrain, fog, wind…)
 if (import.meta.hot) {
 	import.meta.hot.accept(
-		['../../gl/fullscreen.vert', './terrain.frag', './composite.frag', './shadow.frag'],
-		([v, m, c, s]) => {
+		['../../gl/fullscreen.vert', './terrain.frag', './composite.frag', './shadow.frag', './shaftblur.frag'],
+		([v, m, c, s, b]) => {
 			const nextVertex = v?.default ?? vertex;
 			const nextMarch = m?.default ?? marchFragment;
 			const nextComposite = c?.default ?? compositeFragment;
 			const nextShadow = s?.default ?? shadowFragment;
+			const nextBlur = b?.default ?? shaftBlurFragment;
 			hotSwap([vertex, marchFragment], [nextVertex, nextMarch]);
 			hotSwap([vertex, compositeFragment], [nextVertex, nextComposite]);
 			hotSwap([vertex, shadowFragment], [nextVertex, nextShadow]);
-			[vertex, marchFragment, compositeFragment, shadowFragment] = [nextVertex, nextMarch, nextComposite, nextShadow];
+			hotSwap([vertex, shaftBlurFragment], [nextVertex, nextBlur]);
+			[vertex, marchFragment, compositeFragment, shadowFragment, shaftBlurFragment] = [
+				nextVertex,
+				nextMarch,
+				nextComposite,
+				nextShadow,
+				nextBlur
+			];
 			shaderGeneration++;
 		}
 	);

@@ -143,6 +143,7 @@ export const schema: Group[] = [
 		label: 'Light shafts',
 		params: [
 			{ key: 'samples', label: 'Samples', kind: 'int', min: 0, max: 64, step: 1, hint: 'Per view ray through the mist, in the march (cached: a still view pays nothing). More: smoother shafts, slower moving frames. 0: off.' },
+			{ key: 'blur', label: 'Blur (texels)', kind: 'int', min: 0, max: 16, step: 1, hint: 'Smooths the shafts’ grain once the view has settled (0.15 s still): one pass along x and one along y, once per march, never while moving; it stops at depth jumps (a ridge’s shafts don’t spread onto the ground in front). 0: off. Debug view 1 shows the result.' },
 			{ key: 'softness', label: 'Edge softness', min: 0, max: 10, step: 0.1, hint: 'Shadow edges in the air, world units.' },
 			{ key: 'darkness', label: 'Shadow darkness', min: 0, max: 1, step: 0.01, hint: 'How much the air (mist and haze) darkens in the shadow of the ridges.' },
 			{ key: 'glow', label: 'Glow', min: 0, max: 2, step: 0.01, hint: 'Sunlit air brightening toward the sun, on top of the fog’s sun glow (which air in shadow loses).' },

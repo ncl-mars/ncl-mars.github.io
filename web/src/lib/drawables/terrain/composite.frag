@@ -18,6 +18,8 @@ precision highp int; // the noise hash needs 32-bit integers (fragment ints defa
 #include /tonemap;
 
 uniform sampler2D uColor;       // the cache: linear light, sRGB bytes (decoded when sampled), alpha the light shafts
+uniform sampler2D uShaftsSmooth; // the cache's light shafts, smoothed once the view settled (shaftblur.frag), in red
+uniform float uShaftsBlurred;    // 1: read them from uShaftsSmooth; 0: the cache's alpha (moving, or not blurred yet)
 uniform float uExposure;        // the ground's, against the fog (the cache holds it unexposed: ≤ 1 in 8 bits)
 uniform vec4 uVignette;         // x: strength, y: radius, z: softness (1: the screen's corner), w: the view's aspect
 uniform highp sampler2D uDepth; // highp: samplers default to lowp, which would ruin the depth
@@ -68,6 +70,11 @@ vec3 sea(vec3 col, vec3 p, vec3 rd, float t) {
 	return mix(col, skyColor(r), fresnel * uSea.x) + uSunColor * glint;
 }
 
+// The share of the air on this pixel's ray that the sun reaches (the light shafts), smoothed if it has been
+float shaftsLit() {
+	return uShaftsBlurred > 0.5 ? texture(uShaftsSmooth, vUv).r : texture(uColor, vUv).a;
+}
+
 void main() {
 	vec2 ndc = vUv * 2.0 - 1.0;
 	vec4 farPoint = uInvViewProj * vec4(ndc, 1.0, 1.0);
@@ -79,8 +86,7 @@ void main() {
 		vec4 h = uInvViewProj * vec4(ndc, depth * 2.0 - 1.0, 1.0);
 		vec3 p = h.xyz / h.w;
 		float t = length(p - uCamPos);
-		vec4 cached = texture(uColor, vUv); // alpha: the light shafts (terrain.frag)
-		vec3 ground = cached.rgb * uExposure;
+		vec3 ground = texture(uColor, vUv).rgb * uExposure;
 		if (uSea.x + uSea.y > 0.0 && rd.y < 0.0 && uCamPos.y > uSeaLevel) {
 			// Water? Asked with the cache texel's own ray: the cache can be coarser than the view (the rough march
 			// in motion), and its depth with this pixel's ray would land off the plane, in flickering patches
@@ -94,7 +100,7 @@ void main() {
 				ground = sea(ground, uCamPos + rd * t, rd, t);
 			}
 		}
-		col = atmosphere(ground, uCamPos, rd, t, cached.a);
+		col = atmosphere(ground, uCamPos, rd, t, shaftsLit());
 	} else {
 		col = skyColor(rd);
 	}
@@ -120,7 +126,7 @@ void main() {
 		col = mix(col, vec3(0.1, 0.3, 0.8), 1.0 - smoothstep(0.5, 1.5, cell.z));
 		if (depth >= 1.0) col = vec3(0.6, 0.7, 0.8);
 	} else if (uShaftView > 0.5) {
-		col = vec3(texture(uColor, vUv).a);
+		col = vec3(shaftsLit()); // smoothed once the view settles: compare with Blur at 0
 	}
 
 	gl_FragDepth = depth;
