@@ -13,8 +13,14 @@
 <h1 class="visually-hidden">{portfolio.name}</h1>
 
 <style>
+	/* At the top, without the heading's margin: placed where it would flow (under the full-height scene), it stuck
+	   out below the window, so the home page had a scrollbar that a project's page didn't, and the canvas changed
+	   width when a card opened */
 	.visually-hidden {
 		position: absolute;
+		top: 0;
+		left: 0;
+		margin: 0;
 		width: 1px;
 		height: 1px;
 		overflow: hidden;
