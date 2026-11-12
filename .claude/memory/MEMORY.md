@@ -5,6 +5,8 @@
 - [Browser testing](browser-testing.md) — use the user's Brave, ask first; never probe for or install browsers
 - [Deploy later](deploy-later.md) — site stays local; don't push M4 / GitHub until the user brings it up
 - [Diagnose first](diagnose-first.md) — visual artifacts: data check / debug view before any fix; no blind fixes
+- [No unasked cleanup](no-unasked-cleanup.md) — never remove params/switches/code unless explicitly asked; saved defaults or a pending offer aren't a yes
+- [Verify facts](verify-facts.md) — never state guesses about tools (Houdini viewport…) as fact; search the web or say unknown; take the user's test conditions as given
 - [Baked lighting](baked-lighting.md) — shadows stay baked, sun fixed; only n·L is computed in the shader; to change where the sun shows, aim the camera
 - [Copernicus image ops](copernicus-image-ops.md) — masks, blurs, remaps are the user's, in Copernicus; export scripts only read, check, pack
 - [RGB layers](copernicus-rgb-layers.md) — a multi-channel texture is one Copernicus RGB layer (the albedo); exporters read it as is, never heightfields per channel

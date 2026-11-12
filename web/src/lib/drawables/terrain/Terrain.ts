@@ -53,7 +53,15 @@ export interface TerrainSettings {
 		motionMode: number;
 		exactHeights: number;
 	};
-	shading: { tint: number[]; shadowLight: number; aoStrength: number; cavityStrength: number; exposure: number };
+	shading: {
+		tint: number[];
+		shadowLight: number;
+		slopeLight: number;
+		slopeSmoothing: number;
+		aoStrength: number;
+		cavityStrength: number;
+		exposure: number;
+	};
 	fog: {
 		color: number[];
 		skyColor: number[];
@@ -435,6 +443,9 @@ export class Terrain implements Drawable {
 		s[0] = shading.shadowLight;
 		s[1] = shading.aoStrength;
 		s[2] = shading.cavityStrength;
+		const u = this.marchUniforms;
+		u.uSlopeLight = shading.slopeLight;
+		u.uSlopeSmoothing = Math.max(0, shading.slopeSmoothing);
 		const f = this.farFieldVector;
 		f[0] = ground.farBase;
 		f[1] = farField.amplitude;
@@ -449,7 +460,6 @@ export class Terrain implements Drawable {
 		sm[1] = shafts.softness;
 		sm[2] = fog.density;
 
-		const u = this.marchUniforms;
 		u.uInvViewProj = camera.inverseViewProjection;
 		u.uViewProj = camera.viewProjection;
 		u.uCamPos = camera.eye;

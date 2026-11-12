@@ -50,13 +50,13 @@ export class Ground {
 		return Math.max(this.terrainAt(x, z), this.sea.level);
 	}
 
-	/** The terrain itself, the seabed included. */
+	/** The terrain itself, the seabed included. The heightmap as a B-spline, like the shaders' fine reads. */
 	terrainAt(x: number, z: number): number {
 		const { min, max } = this.field.meta.bounds;
 		const mask = coreMask(x, z, min, max, this.band);
-		if (mask >= 1) return this.field.heightAt(x, z);
+		if (mask >= 1) return this.field.bsplineAt(x, z);
 		const outer = this.surroundingsAt(x, z);
-		return mask <= 0 ? outer : outer + (this.field.heightAt(x, z) - outer) * mask;
+		return mask <= 0 ? outer : outer + (this.field.bsplineAt(x, z) - outer) * mask;
 	}
 
 	/** Around the heightmap: the far map where there is one, fading into the noise at its edges. */

@@ -33,8 +33,10 @@ Surface marchSurface(vec3 ro, vec3 rd) {
 	// measured: later passes rebuild the ground from this depth (shadows on the ground, the sea), and a gap
 	// that jumps from band to band across a slope would show in them as stairs.
 	// The big steps read the heights as the GPU filters them (one read; not exact, see /terrain, but off by far
-	// less than 1/4096 of the height range); within four times that of the ground, they're read exactly
-	float nearGround = (uSlab.y - uSlab.x) / 1024.0;
+	// less than 1/4096 of the height range); near the ground, the fine ones. The fine surface (the B-spline,
+	// /terrain) strays from the GPU's bilinear one along steep walls: a margin of about 3 m on the site, so the
+	// fine reads still catch it
+	float nearGround = (uSlab.y - uSlab.x) / 128.0;
 	float t = span.x;
 	float tAbove = span.x;
 	float cAbove = -1.0; // clearance at tAbove; < 0: not measured yet

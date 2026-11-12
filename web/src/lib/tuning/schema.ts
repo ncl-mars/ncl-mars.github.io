@@ -77,7 +77,7 @@ export const schema: Group[] = [
 			{ key: 'renderScale', label: 'Render scale', min: 0.25, max: 1, step: 0.05, hint: 'Resolution of the terrain cache (the raymarch). Lower is cheaper; the mist stays full resolution.' },
 			{ key: 'motionScale', label: 'Motion scale', min: 0.1, max: 1, step: 0.05, hint: 'Resolution of the rough march while the camera moves (see Rough in motion), as a fraction of the render scale; a sharp march follows once it stops.' },
 			{ key: 'motionMode', label: 'Rough in motion', kind: 'int', min: 0, max: 2, step: 1, hint: '0: never, the march stays sharp while moving. 1: automatic, on for good the first time moving frames run under ~52 fps on this device, before the resolution drops; remembered on the device (switching away and back forgets it and restarts the detection). 2: always. The stats show "motion sharp / rough".' },
-			{ key: 'exactHeights', label: 'Exact heights', kind: 'int', min: 0, max: 1, step: 1, hint: '1: near the ground (and for the shading’s slope), the march filters the heightmap itself, in full precision (four reads instead of one). 0: the GPU’s filtering everywhere, cheaper, but not exact (8-bit sub-texel weights): steep slopes come out stepped (stairs in thin shadows, bands in the light).' }
+			{ key: 'exactHeights', label: 'Exact heights', kind: 'int', min: 0, max: 1, step: 1, hint: '1: near the ground (and for the shading’s slope), the march reads the heightmap as a cubic B-spline (four GPU-filtered reads instead of one): smooth heights and slopes, the far map in full precision. 0: the GPU’s bilinear filtering everywhere, cheaper, but not exact (8-bit sub-texel weights): steep slopes come out stepped (stairs in thin shadows, bands in the light).' }
 		]
 	},
 	{
@@ -86,6 +86,8 @@ export const schema: Group[] = [
 		params: [
 			{ key: 'tint', label: 'Tint', kind: 'color', hint: 'The colour without albedo files, and past them (the heightmap’s, the far map’s).' },
 			{ key: 'shadowLight', label: 'Light in shadow', min: 0, max: 0.2, step: 0.001, hint: 'What the sky leaves in the sun’s shadow, in linear light (0.01 shows about as 0.12 would on screen).' },
+			{ key: 'slopeLight', label: 'Slope light', min: 0, max: 1, step: 0.01, hint: 'How much the sun’s angle on the slope (n·L, from the heightmap’s normal) darkens the ground. 1: fully (a face turned from the sun gets Light in shadow); 0: off, only the baked shadow, AO and cavity remain (flat ground then about 3× brighter).' },
+			{ key: 'slopeSmoothing', label: 'Slope smoothing', min: 0, max: 4, step: 0.05, hint: 'Blurs the slope the sun lights, in heightmap texels (0: none, the slope one texel at a time). One-texel steps in the heights (a stamp’s aliased walls) each catch or miss the sun and draw dashes: around 1 to 2 smooths them; more softens the relief’s light too. The heights and the shadows are untouched.' },
 			{ key: 'aoStrength', label: 'AO strength', min: 0, max: 1, step: 0.01 },
 			{ key: 'cavityStrength', label: 'Cavity strength', min: 0, max: 2, step: 0.01 },
 			{ key: 'exposure', label: 'Exposure', min: 0, max: 5, step: 0.01, hint: 'The ground’s brightness against the fog, in linear light (applied in the composite, not cached). Tone → Exposure is the whole picture’s.' }

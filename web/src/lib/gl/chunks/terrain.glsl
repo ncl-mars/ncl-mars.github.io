@@ -9,12 +9,15 @@
 // filtering isn't exact (its weights are fixed point, 8 bits of sub-texel precision; some GPUs also blend
 // at half precision), so a steep slope seen at a grazing angle comes out stepped, whatever the
 // file's precision (iq's "hardware interpolation" article). `heightExact()` (and `terrainHeight()`,
-// `terrainNormal()`) filter it here, in fp32, from the four texels around the point: exact, four reads. The
-// march steps with the first and switches to the second near the ground; programs that don't set
-// uExactHeights (dust, shadow ceiling) read the cheap way everywhere.
+// `terrainNormal()`) read the heightmap as a cubic B-spline, from four reads the GPU filters (GPU Gems 2, Sigg
+// & Hadwiger): smoother heights and slopes than bilinear, so the stamps' one-texel steps no longer each catch
+// the sun; the samples slightly softened. Its reads go through the same 8-bit weights: on a new device, check
+// the steep walls. The far map's fine reads are bilinear in fp32 from four texels (exact). The march steps
+// with the first and switches to the second near the ground; programs that don't set uExactHeights (dust,
+// shadow ceiling) read the cheap way everywhere.
 //
-// MIRROR OF web/src/lib/terrain/farfield.ts + ground.ts: the CPU (camera, picking) must agree with this.
-// Change both together.
+// MIRROR OF web/src/lib/terrain/farfield.ts + ground.ts (the B-spline: heightfield.ts's bsplineAt): the CPU
+// (camera, picking) must agree with this. Change both together.
 
 uniform highp sampler2D uHeightmap; // RG8: the 16-bit samples' bytes, R low, G high (heightfield.ts), no mipmaps
 uniform vec3 uBoundsMin;      // heightmap world box: x/z are the outer edges of the samples, y the height range
@@ -85,18 +88,41 @@ void texelCell(vec2 uv, vec2 size, out ivec2 lo, out ivec2 hi, out vec2 f) {
 	hi = min(lo + 1, ivec2(size) - 1);
 }
 
-// The heightmap's normalized value at uv: exact (bilinear in fp32 from four texels) or the GPU's filtering.
+// The cubic B-spline's weights for the four samples around a point at f (0..1) between the middle two
+vec4 bsplineWeights(float f) {
+	float g = 1.0 - f;
+	float f2 = f * f;
+	float f3 = f2 * f;
+	return vec4(g * g * g, 4.0 - 6.0 * f2 + 3.0 * f3, 1.0 + 3.0 * (f + f2 - f3), f3) / 6.0;
+}
+
+// The heightmap's normalized value at uv as a cubic B-spline over the 4 × 4 texels around it (smooth slopes
+// and curvature across the cells; it doesn't pass through the samples, which come out slightly softened), from
+// 4 reads the GPU filters (GPU Gems 2, Sigg & Hadwiger: each pair of weights becomes one bilinear read placed
+// between its two texels). Not exact: the GPU's 8-bit weights, half precision on some. Clamped at the edges
+// like texelCell(); mirrored by heightfield.ts's bsplineAt.
+float bsplineValue(vec2 uv) {
+	vec2 size = vec2(textureSize(uHeightmap, 0));
+	vec2 s = clamp(uv * size - 0.5, vec2(0.0), size - 1.0);
+	vec2 b = floor(s);
+	vec2 f = s - b;
+	vec4 wx = bsplineWeights(f.x);
+	vec4 wy = bsplineWeights(f.y);
+	vec2 g0 = vec2(wx.x + wx.y, wy.x + wy.y);
+	vec2 g1 = vec2(wx.z + wx.w, wy.z + wy.w);
+	vec2 h0 = (b - 0.5 + vec2(wx.y, wy.y) / g0) / size; // between texels b - 1 and b
+	vec2 h1 = (b + 1.5 + vec2(wx.w, wy.w) / g1) / size; // between texels b + 1 and b + 2
+	float v00 = heightTexel(textureLod(uHeightmap, h0, 0.0).rg);
+	float v10 = heightTexel(textureLod(uHeightmap, vec2(h1.x, h0.y), 0.0).rg);
+	float v01 = heightTexel(textureLod(uHeightmap, vec2(h0.x, h1.y), 0.0).rg);
+	float v11 = heightTexel(textureLod(uHeightmap, h1, 0.0).rg);
+	return g0.y * (g0.x * v00 + g1.x * v10) + g1.y * (g0.x * v01 + g1.x * v11);
+}
+
+// The heightmap's normalized value at uv: the fine read (the B-spline) or the GPU's bilinear filtering.
 // textureLod / texelFetch: called inside loops, where implicit derivatives aren't defined
 float mapValue(vec2 uv, bool exact) {
-	if (!exact) return heightTexel(textureLod(uHeightmap, uv, 0.0).rg);
-	ivec2 lo, hi;
-	vec2 f;
-	texelCell(uv, vec2(textureSize(uHeightmap, 0)), lo, hi, f);
-	float a = heightTexelExact(texelFetch(uHeightmap, lo, 0).rg);
-	float b = heightTexelExact(texelFetch(uHeightmap, ivec2(hi.x, lo.y), 0).rg);
-	float c = heightTexelExact(texelFetch(uHeightmap, ivec2(lo.x, hi.y), 0).rg);
-	float d = heightTexelExact(texelFetch(uHeightmap, hi, 0).rg);
-	return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+	return exact ? bsplineValue(uv) : heightTexel(textureLod(uHeightmap, uv, 0.0).rg);
 }
 
 // The same for the far map
@@ -155,16 +181,35 @@ float heightExact(vec2 xz) {
 	return max(terrainHeightAt(xz, uExactHeights > 0.5), uSeaLevel);
 }
 
-// Surface normal from central differences (up over the sea), from exact heights: one texel apart (the
-// heightmap's, widening to the far map's past it), or `span` apart where that's wider (a pixel's footprint far
-// away, so relief finer than a pixel averages out instead of crawling as the camera moves). Over the far map,
-// one of its own texels: within a texel its bilinear surface is a single patch whose slope jumps at the next,
-// and the light drew its grid.
-vec3 terrainNormal(vec2 xz, float span) {
+// The normal's stencil, in steps of e: the four neighbours, then the four corners (read only with smoothing)
+const vec2 STENCIL[8] = vec2[8](
+	vec2(1.0, 0.0), vec2(-1.0, 0.0), vec2(0.0, 1.0), vec2(0.0, -1.0),
+	vec2(1.0, 1.0), vec2(-1.0, -1.0), vec2(1.0, -1.0), vec2(-1.0, 1.0)
+);
+
+// Surface normal from central differences (up over the sea), from the fine heights (the B-spline): one texel
+// apart (the heightmap's, widening to the far map's past it), or `span` apart where that's wider (a pixel's
+// footprint far away, so relief finer than a pixel averages out instead of crawling as the camera moves). Over
+// the far map, one of its own texels: within a texel its bilinear surface is a single patch whose slope jumps
+// at the next, and the light drew its grid.
+// `smoothing` (in texels, 0: none) blurs the slope: up to 1, the differences fade into a Sobel stencil (also
+// averaged across, 1-2-1, so in both directions); past 1, that stencil widens to `smoothing` texels. One-texel
+// steps (a stamp's aliased walls) then no longer each catch or miss the sun. 8 reads instead of 4.
+// The reads are a loop with a run-time count, not written out: the compiler keeps one copy of heightExact()
+// (the whole ground: heightmap, far map, noise) instead of eight, which kept the shader small enough for phones.
+vec3 terrainNormal(vec2 xz, float span, float smoothing) {
 	vec2 e = (uBoundsMax.xz - uBoundsMin.xz) / vec2(textureSize(uHeightmap, 0));
 	if (uFarRange.z > 0.0) e = mix((uFarBounds.zw - uFarBounds.xy) / vec2(textureSize(uFarMap, 0)), e, coreMask(xz));
-	e = max(e, vec2(span));
-	float dx = heightExact(xz + vec2(e.x, 0.0)) - heightExact(xz - vec2(e.x, 0.0));
-	float dz = heightExact(xz + vec2(0.0, e.y)) - heightExact(xz - vec2(0.0, e.y));
-	return normalize(vec3(-dx / (2.0 * e.x), 1.0, -dz / (2.0 * e.y)));
+	e = max(e * max(1.0, smoothing), vec2(span));
+	// Central differences and the Sobel stencil mixed by w: (1 − w/2) on the neighbours, w/4 on the corners
+	float w = clamp(smoothing, 0.0, 1.0);
+	float side = 1.0 - 0.5 * w;
+	float corner = 0.25 * w;
+	int count = w > 0.0 ? 8 : 4;
+	vec2 d = vec2(0.0); // the height differences along x and z, over 2e
+	for (int k = 0; k < count; k++) {
+		vec2 o = STENCIL[k];
+		d += (k < 4 ? side : corner) * o * heightExact(xz + o * e);
+	}
+	return normalize(vec3(-d.x / (2.0 * e.x), 1.0, -d.y / (2.0 * e.y)));
 }

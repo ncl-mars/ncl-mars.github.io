@@ -70,6 +70,45 @@ export class Heightfield {
 		const bottom = h[j1 * width + i0] + (h[j1 * width + i1] - h[j1 * width + i0]) * fu;
 		return top + (bottom - top) * fv;
 	}
+
+	/**
+	 * Ground height as a cubic B-spline over the 4 × 4 samples around the point, clamped at the edges: the
+	 * surface the shaders draw near the ground (terrain.glsl's bsplineValue, there from 4 GPU-filtered reads),
+	 * smoother than bilinear, the samples slightly softened. The site's heightmap only (ground.ts).
+	 */
+	bsplineAt(x: number, z: number): number {
+		const { width, height, bounds } = this.meta;
+		const u = clamp(((x - bounds.min[0]) / (bounds.max[0] - bounds.min[0])) * width - 0.5, 0, width - 1);
+		const v = clamp(((z - bounds.min[2]) / (bounds.max[2] - bounds.min[2])) * height - 0.5, 0, height - 1);
+		const i0 = Math.floor(u);
+		const j0 = Math.floor(v);
+		bsplineWeights(u - i0, weightsX);
+		bsplineWeights(v - j0, weightsZ);
+		const h = this.heights;
+		let sum = 0;
+		for (let b = 0; b < 4; b++) {
+			const row = clamp(j0 - 1 + b, 0, height - 1) * width;
+			let line = 0;
+			for (let a = 0; a < 4; a++) line += weightsX[a] * h[row + clamp(i0 - 1 + a, 0, width - 1)];
+			sum += weightsZ[b] * line;
+		}
+		return sum;
+	}
+}
+
+/** Scratch weights for bsplineAt (no allocation per call: it runs in the camera's and picking's loops). */
+const weightsX = new Float64Array(4);
+const weightsZ = new Float64Array(4);
+
+/** The cubic B-spline's weights for the four samples around a point at f (0..1) between the middle two. */
+function bsplineWeights(f: number, out: Float64Array) {
+	const g = 1 - f;
+	const f2 = f * f;
+	const f3 = f2 * f;
+	out[0] = (g * g * g) / 6;
+	out[1] = (4 - 6 * f2 + 3 * f3) / 6;
+	out[2] = (1 + 3 * (f + f2 - f3)) / 6;
+	out[3] = f3 / 6;
 }
 
 const cache = new Map<string, Promise<Heightfield>>();

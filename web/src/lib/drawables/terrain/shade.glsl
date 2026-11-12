@@ -24,6 +24,8 @@ uniform vec3 uAlbedoTint;     // multiplies them (white: as exported)
 uniform vec2 uDetail;         // x: colour variation, y: its size (world units)
 uniform highp sampler3D uNoise; // gl/noise.ts: tileable gradient noise, sample with p / 8
 uniform vec3 uShading;        // x: light in full shadow, y: AO strength, z: cavity strength
+uniform float uSlopeLight;    // how much the sun's angle on the slope counts: 1 fully, 0 not at all (the shadow alone)
+uniform float uSlopeSmoothing; // the slope blurred over this many heightmap texels (terrainNormal), 0: none
 uniform vec3 uShallow;        // the water's colour where it's shallow
 uniform vec3 uDeep;           // and where it's deep
 uniform vec3 uWater;          // x: depth over which it turns deep (world units), y: foam, z: foam width (depth, world units)
@@ -46,12 +48,12 @@ vec3 shadeSurface(Surface s, vec3 rd) {
 	if (!s.hit) return vec3(0.0);
 
 	vec3 p = s.position;
-	vec3 normal = terrainNormal(p.xz, s.t * uPixel);
+	vec3 normal = terrainNormal(p.xz, s.t * uPixel, uSlopeSmoothing);
 	if (mask < 1.0) {
 		// Past the baked maps: the shadow ceiling's shadows, no AO, neutral cavity
 		maps = mix(vec3(sunVisibility(p + vec3(0.0, 1.5, 0.0)), 1.0, 0.5), maps, mask);
 	}
-	float sun = max(dot(normal, uSunDir), 0.0) * maps.r; // the sun's angle on the slope, times its shadow
+	float sun = mix(1.0, max(dot(normal, uSunDir), 0.0), uSlopeLight) * maps.r; // the sun's angle on the slope, times its shadow
 	float light = mix(uShading.x, 1.0, sun);
 	float ao = mix(1.0, maps.g, uShading.y);
 	float cavity = 1.0 + (maps.b - 0.5) * uShading.z;
