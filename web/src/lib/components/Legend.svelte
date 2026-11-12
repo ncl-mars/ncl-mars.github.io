@@ -2,10 +2,9 @@
 	// Legend lines over a GL view: put it inside the view element (it fills it). The layout and animation
 	// live in lib/legend/legend.ts, which writes the DOM directly after each rendered frame; this component
 	// only renders the elements and keeps the style values (ink, text size, stroke) in step with the panel.
-	// With `onselect`, titles are buttons (keyboard and screen readers included); `current` marks one.
-	// With `ondata`, the label at `dataAt` gets a Data button under its coordinates.
+	// With `onselect`, titles are buttons (keyboard and screen readers included), those `selectable` allows
+	// (all by default); the others stay plain text.
 	import { onMount } from 'svelte';
-	import { fade } from 'svelte/transition';
 	import { getRenderer } from '$lib/gl/context';
 	import { Legend, type LegendElements, type LegendItem } from '$lib/legend/legend';
 	import type { LegendLines } from '$lib/legend/lines';
@@ -17,21 +16,18 @@
 		items,
 		camera,
 		ground,
-		current = -1,
-		dataAt = -1,
 		shadowLines,
 		onselect,
-		ondata
+		selectable = () => true
 	}: {
 		items: LegendItem[];
 		camera: SurveyCamera;
 		ground: () => Ground | null;
-		current?: number;
-		dataAt?: number;
 		/** Where to write the lines in 3D, for their shadows in the scene (drawables/legend-shadows). */
 		shadowLines?: LegendLines;
 		onselect?: (index: number) => void;
-		ondata?: (index: number) => void;
+		/** Which titles `onselect` makes buttons. */
+		selectable?: (index: number) => boolean;
 	} = $props();
 
 	const renderer = getRenderer();
@@ -45,8 +41,6 @@
 	const labels = $state<HTMLElement[]>([]);
 	const titles = $state<HTMLElement[]>([]);
 	const metas = $state<HTMLElement[]>([]);
-	let legend: Legend | null = null;
-
 	onMount(() => {
 		const elements: LegendElements[] = items.map((_, i) => ({
 			group: groups[i],
@@ -57,8 +51,6 @@
 			meta: metas[i]
 		}));
 		const instance = new Legend(root, items, elements, camera, ground, tuning.legend, tuning.fog, tuning.mist, shadowLines);
-		instance.current = current;
-		legend = instance;
 		// The text size comes from the legend (smaller on phones), so its lines and the CSS agree
 		const applyStyle = () => {
 			const s = tuning.legend;
@@ -76,14 +68,7 @@
 			stopTuning();
 			readouts.delete('legend');
 			instance.dispose();
-			legend = null;
 		};
-	});
-
-	// The current POI's label is placed first (after onMount, which creates the legend)
-	$effect(() => {
-		const index = current;
-		if (legend) legend.current = index;
 	});
 </script>
 
@@ -97,28 +82,17 @@
 		{/each}
 	</svg>
 	{#each items as item, i (item)}
-		<div class="label" class:current={i === current} bind:this={labels[i]} style="visibility: hidden">
-			{#if onselect}
-				<button
-					type="button"
-					class="title interactive"
-					aria-current={i === current ? 'location' : undefined}
-					bind:this={titles[i]}
-					onclick={() => onselect(i)}
-				>
+		<div class="label" bind:this={labels[i]} style="visibility: hidden">
+			{#if onselect && selectable(i)}
+				<button type="button" class="title interactive" bind:this={titles[i]} onclick={() => onselect(i)}>
 					{item.title}
 				</button>
 			{:else}
 				<span class="title" bind:this={titles[i]}>{item.title}</span>
 			{/if}
-			<!-- Under the shelf: the coordinates, then the Data button -->
+			<!-- Under the shelf: the coordinates -->
 			<div class="below">
 				<span class="meta" bind:this={metas[i]}>{item.meta ?? ''}</span>
-				{#if ondata && i === dataAt}
-					<button type="button" class="data interactive" onclick={() => ondata(i)} transition:fade={{ duration: 250 }}>
-						Data
-					</button>
-				{/if}
 			</div>
 		</div>
 	{/each}
@@ -186,10 +160,6 @@
 		opacity: 1;
 	}
 
-	.current .title {
-		font-weight: 700;
-	}
-
 	.title,
 	.below {
 		position: absolute;
@@ -238,25 +208,5 @@
 		letter-spacing: 0.04em;
 		line-height: 1.2;
 		opacity: 0.8;
-	}
-
-	.data {
-		padding: 0.3em 0.75em 0.25em;
-		border: var(--stroke) solid currentColor;
-		font-family: var(--font-mono);
-		font-size: 0.78em;
-		letter-spacing: 0.18em;
-		text-transform: uppercase;
-		line-height: 1.2;
-		text-shadow: none;
-		transition:
-			background-color 0.15s,
-			color 0.15s;
-	}
-
-	.data:hover,
-	.data:focus-visible {
-		background: var(--ink, var(--fg));
-		color: var(--bg);
 	}
 </style>

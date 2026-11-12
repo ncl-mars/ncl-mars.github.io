@@ -19,8 +19,8 @@
 	// The legend writes its lines in 3D here after each frame; their shadows are drawn in the god rays
 	const legendLines = new LegendLines(pois.length * 2, Math.min(pois.length, MAX_LABEL_SHADOWS));
 	const legendShadows = new LegendShadows(camera, terrain, legendLines, tuning.legendShadows);
-	const tour = new Tour(camera, pois, () => terrain.ground, tuning.flight, tuning.start);
-	/** Dev only: free camera input (pan, zoom, rotate) to frame POI views. */
+	const tour = new Tour(camera, () => terrain.ground, tuning.flight, tuning.start);
+	/** Dev only: free camera input (pan, zoom, rotate) to frame the start view. */
 	const dev = { freeCamera: false };
 
 	/** The project's place, for the card's first line: E x · N −z, as in the legend. */
@@ -36,19 +36,18 @@
 	// The dig site, shared by `/` and `/projects/<slug>/`: this layout stays mounted between them, so the
 	// scene never reloads. One full-viewport element with two views, drawn in the order they are attached:
 	// the terrain (raymarched ground + atmosphere, writing depth), then the dust over it.
-	// Home is the overview, where no POI is current; clicking a label (or a menu entry) flies to that POI, clicking the current POI's
-	// label goes back home, as you left it. Around the current POI, dragging turns and the wheel zooms.
-	// Once the camera has arrived at a POI with a project, its label shows a Data button: it opens the
-	// project's card over the scene, at /projects/<slug>/. The URL is the truth: back closes the card, and a
-	// project's URL (link, back, forward) brings the camera to its POI.
+	// The camera stays at home, the overview: dragging turns and the wheel zooms around its pivot, Home goes back
+	// to the start view. Clicking a label (or a menu entry) opens its project's card over the scene, at
+	// /projects/<slug>/, without moving the camera. The URL is the truth: back closes the card, and a project's
+	// URL (link, back, forward) opens it.
 	// Perf tuning from the URL: ?steps=48 (march iteration cap), ?dpr=1 (pixel-ratio cap).
-	import { onMount, untrack } from 'svelte';
+	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { getRenderer } from '$lib/gl/context';
 	import { surveyControls } from '$lib/gl/controls';
-	import { HOME, tourControls } from '$lib/navigation/tour';
+	import { tourControls } from '$lib/navigation/tour';
 	import { actions, onTuningChange, readouts, setTuning } from '$lib/tuning';
 	import Legend from '$lib/components/Legend.svelte';
 	import ProjectOverlay from '$lib/components/ProjectOverlay.svelte';
@@ -60,14 +59,11 @@
 	let site: HTMLElement;
 	let masthead: HTMLElement;
 	let toggle: HTMLButtonElement;
-	let current = $state(tour.current);
 	/** Phones: the POI menu is folded behind a Projects button, and unfolded by tapping it. */
 	let menuOpen = $state(false);
-	/** The POI the camera has arrived at (−1 during a flight): its label shows the Data button. */
-	let arrived = $state(-1);
-	const dataAt = $derived(arrived !== -1 && projectFor(pois[arrived].id) ? arrived : -1);
 	const project = $derived(page.data.project);
-	let mounted = false;
+	/** The open project's POI (its menu entry is marked), or −1. */
+	const current = $derived(project ? pois.findIndex((poi) => poi.id === project.slug) : -1);
 
 	/** Phones: fold the menu, the keyboard going back to its button if `focus`. */
 	function foldMenu(focus: boolean) {
@@ -76,13 +72,16 @@
 		if (focus) toggle.focus();
 	}
 
-	/** A menu entry: fly there, and fold the menu (phones) */
+	/** A menu entry: open its project, and fold the menu (phones) */
 	function choose(index: number) {
 		foldMenu(true);
-		tour.go(index);
+		open(index);
 	}
 
-	function openProject(slug: string) {
+	/** A label or a menu entry: POI `index`'s project card, if it has one (some text or media). */
+	function open(index: number) {
+		const slug = pois[index].id;
+		if (!projectFor(slug)) return;
 		goto(resolve(`/projects/${slug}/`), { state: { fromScene: true }, noScroll: true, keepFocus: true });
 	}
 
@@ -91,16 +90,6 @@
 		if (page.state.fromScene) history.back();
 		else goto(resolve('/'), { replaceState: true, noScroll: true, keepFocus: true });
 	}
-
-	// A project's URL brings the camera to its POI: jumping when the page opens on it, flying on back / forward
-	$effect(() => {
-		const slug = project?.slug;
-		untrack(() => {
-			if (!slug) return;
-			const index = pois.findIndex((poi) => poi.id === slug);
-			if (index !== -1 && index !== tour.current) tour.go(index, !mounted);
-		});
-	});
 
 	// The card closed: the keyboard goes back to the scene
 	let hadProject = false;
@@ -111,23 +100,14 @@
 	});
 
 	onMount(() => {
-		mounted = true;
 		// Keyboard controls work right away, without a focus ring nobody asked for
 		if (!project) site.focus({ preventScroll: true, focusVisible: false } as FocusOptions);
-		// A project's URL may have moved the tour already
-		current = tour.current;
-		arrived = tour.flying ? -1 : tour.current;
-		tour.onChange = (index) => {
-			current = index;
-			arrived = -1;
-		};
-		tour.onArrive = (index) => (arrived = index);
 
 		const stopTuning = onTuningChange((group) => {
 			// Panel edits to what the march caches (the ground, the light shafts, which the mist weighs) need a re-march
 			const cached = ['march', 'shading', 'farField', 'fog', 'mist', 'shafts', 'water', 'ground'];
 			if (cached.includes(group)) terrain.invalidate();
-			// A new start view moves home and every POI view: show the current one's new framing
+			// A new start view moves home: show it
 			if (group === 'start' && !dev.freeCamera) tour.reframe();
 		});
 		readouts.set(
@@ -144,26 +124,16 @@
 		});
 		readouts.set('tour', () => {
 			if (dev.freeCamera) return 'free camera';
-			const place = tour.current === HOME ? 'home' : `poi ${tour.current + 1}/${pois.length} · ${pois[tour.current].title}`;
-			return `${place}${tour.flying ? ' · flying' : ''}`;
+			return `${project ? `card · ${project.slug}` : 'home'}${tour.flying ? ' · flying' : ''}`;
 		});
 
 		if (import.meta.env.DEV) {
 			actions.set('Free camera', () => {
 				dev.freeCamera = !dev.freeCamera;
 				if (dev.freeCamera) camera.stop();
-				else tour.go(tour.current); // back to the POI's framing
+				else tour.home(); // back to the start view
 				site.focus({ preventScroll: true });
-				return dev.freeCamera ? 'free camera: drag, wheel, right-drag, keys' : 'back to the POIs';
-			});
-			actions.set('Copy pose', async () => {
-				// Relative to the start view, as POI views are (content/pois.ts): a line for the project's project.md
-				const { target, distance, heading } = camera.pose();
-				const start = tuning.start;
-				const turn = ((((heading - start.heading) % 360) + 540) % 360) - 180;
-				const view = `view: { target: [${target[0].toFixed(1)}, ${target[1].toFixed(1)}], zoom: ${(distance / start.distance).toFixed(2)}, turn: ${turn.toFixed(0)} }`;
-				await navigator.clipboard.writeText(view);
-				return `copied ${view}`;
+				return dev.freeCamera ? 'free camera: drag, wheel, right-drag, keys' : 'back to the start view';
 			});
 			actions.set('Use view as start', () => {
 				const { target, distance, heading } = camera.pose();
@@ -176,7 +146,7 @@
 		}
 
 		// Phones, menu unfolded: a tap outside it only folds it (the click that follows is swallowed, so a label
-		// under the finger doesn't fly), and Escape folds it before the scene sees the key (it would go home).
+		// under the finger doesn't open its project), and Escape folds it before anything else sees the key.
 		// Capture phase on the window: ahead of the scene's own listeners.
 		let swallowUntil = 0;
 		const onPointerDown = (event: PointerEvent) => {
@@ -206,9 +176,6 @@
 		const previous = dpr > 0 ? renderer.setMaxPixelRatio(dpr) : null;
 
 		return () => {
-			mounted = false;
-			tour.onChange = null;
-			tour.onArrive = null;
 			stopTuning();
 			window.removeEventListener('pointerdown', onPointerDown, true);
 			window.removeEventListener('click', onClick, true);
@@ -218,7 +185,6 @@
 			readouts.delete('camera');
 			readouts.delete('tour');
 			actions.delete('Free camera');
-			actions.delete('Copy pose');
 			actions.delete('Use view as start');
 			if (previous !== null) renderer.setMaxPixelRatio(previous);
 		};
@@ -230,7 +196,7 @@
 <div
 	class="site"
 	role="application"
-	aria-label="Map of the projects. Select a label or a menu entry to fly there; at a point of interest, Data opens its project. Drag or the left and right arrows turn the view, the wheel, a pinch or the up and down arrows zoom, Escape goes back home."
+	aria-label="Map of the projects. Select a label or a menu entry to open its project. Drag or the left and right arrows turn the view, the wheel, a pinch or the up and down arrows zoom, Home goes back to the start view."
 	tabindex="0"
 	inert={!!project}
 	bind:this={site}
@@ -248,17 +214,15 @@
 		items={pois}
 		{camera}
 		ground={() => terrain.ground}
-		{current}
-		{dataAt}
 		shadowLines={legendLines}
-		onselect={(i) => tour.select(i)}
-		ondata={(i) => openProject(pois[i].id)}
+		onselect={open}
+		selectable={(i) => !!projectFor(pois[i].id)}
 	/>
 </div>
 
 <header class="masthead" inert={!!project} bind:this={masthead}>
 	<p class="name">{portfolio.name}</p>
-	<!-- Straight to any POI. On phones the list folds behind a Projects button -->
+	<!-- Any project, straight to its card. On phones the list folds behind a Projects button -->
 	<nav aria-label="Projects">
 		<button
 			type="button"
@@ -274,14 +238,19 @@
 		<ol id="poi-menu" class="menu" class:open={menuOpen}>
 			{#each pois as poi, i (poi.id)}
 				<li>
-					<button
-						type="button"
-						class:current={i === current}
-						aria-current={i === current ? 'location' : undefined}
-						onclick={() => choose(i)}
-					>
-						<span class="number">{String(i + 1).padStart(2, '0')}</span>{poi.title}
-					</button>
+					<!-- A POI without a card (no text, no media): its entry is plain text, like its label -->
+					{#if projectFor(poi.id)}
+						<button
+							type="button"
+							class:current={i === current}
+							aria-current={i === current ? 'page' : undefined}
+							onclick={() => choose(i)}
+						>
+							<span class="number">{String(i + 1).padStart(2, '0')}</span>{poi.title}
+						</button>
+					{:else}
+						<span class="entry"><span class="number">{String(i + 1).padStart(2, '0')}</span>{poi.title}</span>
+					{/if}
 				</li>
 			{/each}
 		</ol>
@@ -347,6 +316,7 @@
 	}
 
 	.masthead li button,
+	.masthead li .entry,
 	.toggle {
 		display: flex;
 		gap: 0.7em;
@@ -360,6 +330,10 @@
 		cursor: pointer;
 		pointer-events: auto;
 		text-shadow: 0 0 0.6em var(--bg);
+	}
+
+	.masthead li .entry {
+		cursor: default;
 	}
 
 	.masthead li button:hover,

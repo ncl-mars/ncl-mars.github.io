@@ -70,7 +70,6 @@ interface Flight {
 	duration: number;
 	/** Read live (the panel edits it mid-flight). */
 	settings: FlightSettings;
-	onArrive?: () => void;
 }
 
 /**
@@ -82,7 +81,7 @@ interface Flight {
  * Input (controls.ts) either acts directly (drag, pinch, twist, rotate-drag) or sets goals that `update`
  * eases toward every frame (wheel zoom, inertia, keyboard, north reset). The matrices are shared by every
  * program that draws the scene (raymarch now; cords and particles later), so their depths agree.
- * `flyTo` / `jumpTo` move it between framed poses (the POIs); the free input is for authoring them (dev).
+ * `flyTo` / `jumpTo` move it to a framed pose (home, the start view); the free input is for authoring it (dev).
  */
 export class SurveyCamera {
 	readonly target: Vec3 = [0, 0, 0];
@@ -193,7 +192,7 @@ export class SurveyCamera {
 		return this.flight !== null;
 	}
 
-	/** The current view as a pose (dev: Copy pose). */
+	/** The current view as a pose (dev: Use view as start). */
 	pose(): CameraPose {
 		const heading = (((-this.yaw / DEG) % 360) + 360) % 360;
 		return { target: [this.target[0], this.target[2]], distance: this.distance, heading };
@@ -218,7 +217,7 @@ export class SurveyCamera {
 	 * the target height along the whole flight stays above what `follow()` would need at every point.
 	 * Flying again mid-flight starts from where the camera is. Pan bounds don't apply.
 	 */
-	flyTo(pose: CameraPose, ground: GroundHeights, settings: FlightSettings, onArrive?: () => void) {
+	flyTo(pose: CameraPose, ground: GroundHeights, settings: FlightSettings) {
 		this.stop();
 		const widthPerDistance = 2 * Math.tan((this.settings.fov * DEG) / 2) * this.aspect;
 		const path = zoomPath(
@@ -235,7 +234,7 @@ export class SurveyCamera {
 		const turn = Math.abs(yawDelta) / Math.PI; // a half turn counts like one view width
 		const duration = clamp(Math.max(path.length, turn) * settings.pace, settings.minTime, settings.maxTime);
 		const heights = this.planHeights(ground, path, widthPerDistance, yaw0, yawDelta);
-		this.flight = { path, widthPerDistance, yaw0, yawDelta, heights, end: pose, time: 0, duration, settings, onArrive };
+		this.flight = { path, widthPerDistance, yaw0, yawDelta, heights, end: pose, time: 0, duration, settings };
 	}
 
 	/** Grabbing the ground stops every glide (pan and turn inertia, smooth zoom, heading ease, flight). */
@@ -459,7 +458,6 @@ export class SurveyCamera {
 			this.target[1] = flight.heights[FLIGHT_SAMPLES];
 			this.flight = null;
 			this.refresh();
-			flight.onArrive?.();
 			return;
 		}
 		this.refresh();

@@ -48,4 +48,4 @@ The heightmap goes first and the far map second: the others check their footprin
 
 - [ ] Hard reload: with the dev server running, the page can keep the old heights.
 - [ ] Check in the panel: Light shafts → Debug view 2 (a line every metre of height: unbroken across the site's edge), 4 (the ground's colour).
-- [ ] If the terrain changed: retune what's in metres (camera distances, start view, mist, fog) and reframe the POIs (Copy pose).
+- [ ] If the terrain changed: retune what's in metres (camera distances, start view, mist, fog).

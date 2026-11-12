@@ -10,7 +10,7 @@ Living work plan. Tick boxes as we go, add notes inline, and log decisions at th
 3. Bake the maps in Copernicus on the same height, flattened at the sea (`max(height, 0)`): `shadow` with `hou/snippets/ocl/bake_shadow.cl` (the sun 20° up, the placeholder's azimuth: `sun_dir = {-0.8609, 0.3420, 0.3766}`; on the full-resolution heights, then downsampled to the maps' resolution), `occlusion` with Height to Ambient Occlusion, `cavity` with Curvature remapped around 0.5. Import them into SOPs as layers, with `v@sun_dir` referencing the kernel's (`chv`), and export them with `export_maps.py` (`maps.png` + `maps.json`: the web's sun comes from it; [formats/terrain-maps.md](formats/terrain-maps.md)). Check that the baked shadows fall the same way as the legend shadows.
 4. Place the POIs in Houdini (`s@name` per point) and export them (`export_pois.py`): the placeholder ones will likely fall outside the new bounds, and the page says so.
 5. One folder per project in `web/src/lib/assets/projects/<name>/`: `project.md` (title at least) and the media ([formats/projects.md](formats/projects.md)).
-6. In the dev panel: frame the overview (Free camera, "Use view as start", Save defaults), then each POI ("Copy pose" → `view:` in its `project.md`).
+6. In the dev panel: frame the overview (Free camera, "Use view as start", Save defaults).
 7. Then the look on the real terrain (fog, mist, god rays, legend shadows), and a phone check.
 
 Deploy (M4) waits: the site stays local for now, until you decide otherwise.
@@ -302,6 +302,8 @@ Dropped (2026-10-29): simpler, faster without.
 ---
 
 ## Decision log
+
+- **2026-11-12**: No more camera flights to the POIs. The camera stays at home, the overview framed by the start view: visitors turn and zoom around its pivot, and the Home key flies back to the start view (the only flight left). A POI's label, or its menu entry, opens its project's card straight away, the camera staying where it is; a project's URL only opens and closes the card. Removed with the flights: the POI framing (`view` in `project.md`, "Copy pose"), the Data button, the current POI (its label placed first and bold, its room for the button), and Escape going home. A POI without a card (no text, no media) shows its label and menu entry as plain text.
 
 - **2026-11-12**: The rough march (moving frames, on the devices that need it) gets cheaper on its own, so fast devices keep everything: no slope smoothing, its own refine steps and shaft samples (Rough refine steps, Rough shaft samples), the GPU's bilinear heights instead of the B-spline (Rough exact heights), and a precision divided by Motion scale (its pixels are that much larger). The band of fine reads near the ground became a setting (Fine band): the B-spline rises above bilinear by at most 0.5 m on 99.99 % of the site (5.4 m at one spot), so the first 3 m guess was far wider than needed. Baking AO and cavity in Houdini was weighed: no saving, they're baked already and read with the shadow in one texture read. Next if needed: a Rough max steps, after comparing the phone's fps standing still and moving (still frames slow too would point at the composite, the dust or the legend shadows, not the march).
 

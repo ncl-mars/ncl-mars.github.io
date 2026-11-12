@@ -1,86 +1,42 @@
 import type { Attachment } from 'svelte/attachments';
-import { wrapAngle, type CameraPose, type FlightSettings, type GroundHeights, type SurveyCamera } from '$lib/gl/camera';
+import { wrapAngle, type FlightSettings, type GroundHeights, type SurveyCamera } from '$lib/gl/camera';
 import { TurnTracker } from '$lib/gl/controls';
-import { homeView, poiView, type Poi, type StartView } from '$lib/content/pois';
-
-/** `Tour.current` at home: the overview, where no POI is current. */
-export const HOME = -1;
+import { homeView, type StartView } from '$lib/content/pois';
 
 /**
- * Moving between home and the POIs. Home is the overview, framed by the start view; the POIs are framed
- * relative to it (content/pois.ts). `go(i)` flies the camera to any POI, or home (`HOME`), from wherever it
- * is. Leaving home remembers how you left it (your zoom and turn) and coming back returns there; going home
- * from home goes back to the start view. Before the ground has loaded, or with reduced motion, it jumps.
- * Lives at module level with the camera, so the current POI survives navigation.
+ * The camera's place: home, the overview framed by the start view (tuning.start). The camera never flies to the
+ * POIs: their labels and the menu open the project's card over the scene. The visitor turns and zooms around
+ * home's pivot (`tourControls`); `home()` goes back to the start view. Lives at module level with the camera.
  */
 export class Tour {
-	/** The POI the camera is at or flying to, or `HOME`. */
-	current = HOME;
-	/** Called when the current POI changes (the page mirrors it in UI state). */
-	onChange: ((index: number) => void) | null = null;
-	/** Called when the camera gets there: end of the flight, or right away after a jump. */
-	onArrive: ((index: number) => void) | null = null;
-	private homePose: CameraPose | null = null;
 	private readonly reducedMotion =
 		typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 	constructor(
 		readonly camera: SurveyCamera,
-		readonly pois: Poi[],
 		private readonly ground: () => GroundHeights | null,
 		private readonly settings: FlightSettings,
 		/** Read live (tuning.start). */
 		private readonly start: StartView
 	) {
-		camera.jumpTo(this.viewOf(HOME));
+		camera.jumpTo(homeView(start));
 	}
 
 	get flying(): boolean {
 		return this.camera.flying;
 	}
 
-	/** The framed view of POI `index`, or of home (the start view). */
-	viewOf(index: number): CameraPose {
-		return index === HOME ? homeView(this.start) : poiView(this.pois[index], this.start);
-	}
-
-	/** `index`: a POI, or `HOME`. `instant`: jump instead of flying (a page opened on a project's URL). */
-	go(index: number, instant = false) {
-		index = Math.max(HOME, Math.min(this.pois.length - 1, index));
-		let view = this.viewOf(index);
-		if (index === HOME) {
-			if (this.current !== HOME && this.homePose) view = this.homePose;
-			else this.homePose = null;
-		} else if (this.current === HOME && !this.camera.flying) {
-			this.homePose = this.camera.pose();
-		}
-		const changed = index !== this.current;
-		this.current = index;
-		if (changed) this.onChange?.(index);
-		const arrive = () => this.onArrive?.(index);
-		const ground = this.ground();
-		if (ground && !instant && !this.reducedMotion) {
-			this.camera.flyTo(view, ground, this.settings, arrive);
-		} else {
-			this.camera.jumpTo(view);
-			arrive();
-		}
-	}
-
-	/** Back to the overview, as you left it. */
+	/** Back to the start view: a flight, or a jump before the ground has loaded or with reduced motion. */
 	home() {
-		if (this.current !== HOME) this.go(HOME);
+		const view = homeView(this.start);
+		const ground = this.ground();
+		if (ground && !this.reducedMotion) this.camera.flyTo(view, ground, this.settings);
+		else this.camera.jumpTo(view);
 	}
 
-	/** A label clicked: fly to its POI; the current POI's label goes home. */
-	select(index: number) {
-		this.go(index === this.current ? HOME : index);
-	}
-
-	/** The start view was edited (dev panel): show the current POI's new framing at once. */
+	/** The start view was edited (dev panel): show it at once. */
 	reframe() {
-		this.homePose = null;
-		if (!this.camera.flying) this.camera.jumpTo(this.viewOf(this.current));
+		if (!this.camera.flying) this.camera.jumpTo(homeView(this.start));
 	}
 }
 
@@ -115,15 +71,13 @@ export interface TourControlsOptions {
 }
 
 /**
- * The visitor's input around the current POI, attached to the view element:
- * `<div tabindex="0" {@attach tourControls(tour)}>`. The camera stays on its pivot (the POI's point, or
- * the start view's at home): input only turns it and zooms toward it. Moving between POIs is by the labels
- * and the menu.
+ * The visitor's input, attached to the view element: `<div tabindex="0" {@attach tourControls(tour)}>`. The
+ * camera stays on its pivot (the start view's): input only turns it and zooms toward it. The projects open from
+ * the labels and the menu.
  * - Drag (any mouse button, one finger): turns, with some inertia on release.
  * - Wheel, trackpad pinch: smooth zoom. Two fingers: pinch zooms, twist turns.
- * - Keyboard (when focused): ← → / Q E turn, ↑ ↓ / + − / Page Up Down zoom, Escape goes home (as you left
- *   it), Home goes to the start view.
- * Input waits while a flight is under way (the flight owns the camera).
+ * - Keyboard (when focused): ← → / Q E turn, ↑ ↓ / + − / Page Up Down zoom, Home goes back to the start view.
+ * Input waits while a flight is under way (the flight back to the start view owns the camera).
  */
 export function tourControls(tour: Tour, options: TourControlsOptions = {}): Attachment<HTMLElement> {
 	return (el) => {
@@ -217,11 +171,9 @@ export function tourControls(tour: Tour, options: TourControlsOptions = {}): Att
 				updateHeld();
 				return;
 			}
-			if (event.code !== 'Escape' && event.code !== 'Home') return;
+			if (event.code !== 'Home') return;
 			event.preventDefault();
-			if (event.repeat) return;
-			if (event.code === 'Escape') tour.home();
-			else tour.go(HOME);
+			if (!event.repeat) tour.home();
 		};
 
 		const onKeyUp = (event: KeyboardEvent) => {

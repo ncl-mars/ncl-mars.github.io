@@ -249,7 +249,7 @@ export const schema: Group[] = [
 			{ key: 'column', label: 'Column inset', min: 0.05, max: 0.45, step: 0.01, hint: 'Layout 1: where the columns start, as a fraction of the width from each edge.' },
 			{ key: 'spacing', label: 'Spacing (em)', min: 1.5, max: 10, step: 0.1, hint: 'Layout 1: minimum distance between two labels of a column.' },
 			{ key: 'follow', label: 'Follow', min: 0.5, max: 30, step: 0.5, hint: 'How fast a label moves to its new height: out of another label’s way (layout 0), after its point (layout 1). Lower is calmer.' },
-			{ key: 'flightFollow', label: 'Follow in flight', min: 0.5, max: 30, step: 0.5, hint: 'Follow, while the camera flies to a POI. Lower: labels drift slowly during the flight and settle after it lands.' },
+			{ key: 'flightFollow', label: 'Follow in flight', min: 0.5, max: 30, step: 0.5, hint: 'Follow, while the camera flies back to the start view (Home key). Lower: labels drift slowly during the flight and settle after it lands.' },
 			{ key: 'lift', label: 'Anchor lift', min: 0, max: 20, step: 0.1, hint: 'Height of the point above the ground, world units.' },
 			{ key: 'occlusionLift', label: 'Occlusion lift', min: 0, max: 50, step: 0.5, hint: 'The ridge test looks from this high above the point (world units): a point a little behind a crest keeps its label. 0: hidden as soon as the point is.' },
 			{ key: 'fogCutoff', label: 'Fog cutoff', min: 0.1, max: 1, step: 0.01, hint: 'Mist cover (0 clear … 1 opaque) at which a label has faded down to the mist floor. It starts fading at half of it.' },

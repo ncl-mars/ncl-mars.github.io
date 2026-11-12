@@ -1,6 +1,6 @@
 <script lang="ts">
 	// Dev-only panel: renderer stats, live read-outs (e.g. camera pitch), buttons registered by pages
-	// (`actions`, e.g. Copy pose) and live tuning of every value in
+	// (`actions`, e.g. Free camera) and live tuning of every value in
 	// src/lib/tuning/defaults.json, laid out by schema.ts. Edits apply immediately: the code reads `tuning`
 	// every frame. "Save defaults" writes defaults.json through the dev server (vite.config.ts,
 	// /__tuning/save) without reloading the app; "Copy" puts the JSON on the clipboard; "Reset" goes back

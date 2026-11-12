@@ -296,7 +296,7 @@ export class LegendShadows implements Drawable {
 		gl.bindVertexArray(null);
 	}
 
-	/** Redraw the masks whose label's text changed (rare: a new label, the current POI, the text size), then the mipmaps. */
+	/** Redraw the masks whose label's text changed (rare: a new label, its side, the text size), then the mipmaps. */
 	private updateMasks(gl: WebGL2RenderingContext) {
 		const canvas = this.canvas;
 		if (!canvas) return;
@@ -331,7 +331,7 @@ export class LegendShadows implements Drawable {
 		canvas.scale(scale, scale);
 		canvas.fillStyle = '#fff';
 		canvas.textBaseline = 'middle';
-		canvas.font = `${text.bold ? 700 : 500} ${em}px ${fonts.sans}`;
+		canvas.font = `500 ${em}px ${fonts.sans}`;
 		spaced(canvas, text.title.toUpperCase(), 0.16 * em, (box.above - 0.45 - 0.6) * em, text.side, width);
 		const meta = 0.9 * em;
 		canvas.font = `${meta}px ${fonts.mono}`;

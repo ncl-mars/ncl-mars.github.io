@@ -1,6 +1,6 @@
 # Project folder format
 
-What a project shows: its label's title, how the camera frames it, and its card (text, credits, images, videos). One folder per POI, named by its id ([pois.md](pois.md) says where it stands). Read by `web/src/lib/content/projects.ts`, through the build-time reader in `web/vite.config.ts`.
+What a project shows: its label's title and its card (text, credits, images, videos), opened from its label and the menu. One folder per POI, named by its id ([pois.md](pois.md) says where it stands). Read by `web/src/lib/content/projects.ts`, through the build-time reader in `web/vite.config.ts`.
 
 ## Folder
 
@@ -19,7 +19,6 @@ A header in YAML between two `---` lines, then the presentation: paragraphs sepa
 ```markdown
 ---
 title: Trench A
-view: { zoom: 0.37, turn: 0 }
 credits:
   Direction: Name Surname
   Lookdev, lighting: Name Surname, Name Surname
@@ -35,11 +34,10 @@ Second paragraph.
 | Key | Meaning |
 |-----|---------|
 | `title` | **required**: the label in the scene, the menu entry, the card's title |
-| `view` | optional: how the camera frames the POI, relative to the start view. Frame it with the dev panel's free camera, then "Copy pose", and paste the line here. `zoom`: distance as a multiple of the start view's; `turn`: degrees from its heading; `target: [x, z]`: look at another point than the POI's. Default `{ zoom: 0.4, turn: 0 }` |
 | `credits` | optional: one `Role: names` line per role, indented, in order |
 | `media` | optional: one `- file: what it shows` line per file of the folder, in order. Images: png, jpg, webp (resized and converted at build). Videos: mp4, webm, copied as they are (encode for the web first: H.264 MP4 with `-movflags +faststart`, about 1080 px tall), played muted and looping while visible. The text after the colon describes the file for screen readers |
 
-A project with no presentation and no media has **no card**: its POI only has a label, no Data button, no page.
+A project with no presentation and no media has **no card**: its POI's label and menu entry are plain text, and it has no page.
 
 ## YAML, the few rules that matter
 
@@ -49,4 +47,4 @@ A project with no presentation and no media has **no card**: its POI only has a 
 
 ## Checks
 
-When the site loads (and at build), these stop the page with a message naming the file: no header, a key other than the four above, no title, a malformed `view`, `credits` or `media`, a media file that isn't in the folder. A YAML syntax error is reported the same way, with its line.
+When the site loads (and at build), these stop the page with a message naming the file: no header, a key other than the three above, no title, a malformed `credits` or `media`, a media file that isn't in the folder. A YAML syntax error is reported the same way, with its line.

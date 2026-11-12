@@ -61,11 +61,10 @@ const OCCLUSION_SAMPLES = 24;
 const NARROW = '(max-width: 700px)';
 /**
  * A label's box around its shelf line, in em (Legend.svelte's CSS): the title above, the coordinates
- * below, and the Data button under them on the current POI's label; and the gap kept between two labels.
+ * below; and the gap kept between two labels.
  */
 const BOX_ABOVE = 1.75;
 const BOX_BELOW = 1.6;
-const BOX_DATA = 2.3;
 const BOX_GAP = 0.35;
 
 interface Box {
@@ -138,8 +137,8 @@ class Mark {
  * read in the frame loop: sizes come from a ResizeObserver.
  *
  * - Layout 0 (callout): the label sits beside its point, a diagonal then the shelf; it flips side to stay in
- *   the view. Labels are placed nearest first (the current POI's before all): one that would overlap a
- *   label already placed rises above it, eased, its diagonal getting longer.
+ *   the view. Labels are placed nearest first: one that would overlap a label already placed rises above
+ *   it, eased, its diagonal getting longer.
  * - Layout 1 (columns): labels stand in a column on each side, sorted by height and kept apart; only their
  *   height follows the anchor, smoothed, so the text stays calm while the camera moves.
  *
@@ -150,8 +149,6 @@ class Mark {
 export class Legend {
 	/** Labels currently on screen (dev readout). */
 	shown = 0;
-	/** The current POI's label (−1: none): placed first, with room for its Data button. */
-	current = -1;
 	/** Called when the screen crosses the narrow breakpoint: the text size (`textScale`) changed. */
 	onScaleChange: (() => void) | null = null;
 
@@ -355,18 +352,16 @@ export class Legend {
 
 			const title = mark.item.title;
 			const meta = mark.el.meta.textContent ?? '';
-			const bold = mark.index === this.current;
 			let text = lines.texts[mark.index];
-			if (!text) text = lines.texts[mark.index] = { title, meta, size: em, bold, side, width: mark.width, revision: 0 };
+			if (!text) text = lines.texts[mark.index] = { title, meta, size: em, side, width: mark.width, revision: 0 };
 			else if (
 				text.title !== title ||
 				text.meta !== meta ||
 				text.size !== em ||
-				text.bold !== bold ||
 				text.side !== side ||
 				text.width !== mark.width
 			) {
-				Object.assign(text, { title, meta, size: em, bold, side, width: mark.width });
+				Object.assign(text, { title, meta, size: em, side, width: mark.width });
 				text.revision++;
 			}
 		}
@@ -412,15 +407,15 @@ export class Legend {
 		lines.count = n;
 	}
 
-	/** How fast labels ease to their new heights: `flightFollow` while the camera flies to a POI. */
+	/** How fast labels ease to their new heights: `flightFollow` while the camera flies (back to the start view). */
 	private get followRate(): number {
 		return this.camera.flying ? this.settings.flightFollow : this.settings.follow;
 	}
 
 	/**
-	 * Each label beside its anchor: up the diagonal, then the shelf, on the side where it fits. Nearest first
-	 * (the current POI's before all); a label overlapping one already placed rises above it. Boxes use the
-	 * target heights, so the order is settled every frame; the lift itself is eased (`followRate`).
+	 * Each label beside its anchor: up the diagonal, then the shelf, on the side where it fits. Nearest first;
+	 * a label overlapping one already placed rises above it. Boxes use the target heights, so the order is
+	 * settled every frame; the lift itself is eased (`followRate`).
 	 */
 	private layoutCallouts(dt: number, em: number, tan: number) {
 		const s = this.settings;
@@ -432,8 +427,7 @@ export class Legend {
 		const order = this.order;
 		order.length = 0;
 		for (const mark of this.marks) if (mark.t > 0) order.push(mark);
-		const current = this.current;
-		order.sort((a, b) => Number(b.index === current) - Number(a.index === current) || a.distance - b.distance);
+		order.sort((a, b) => a.distance - b.distance);
 
 		const boxes = this.boxes;
 		boxes.length = 0;
@@ -447,7 +441,7 @@ export class Legend {
 			const left = mark.side === 1 ? mark.labelX : mark.labelX - mark.width;
 			const right = left + mark.width;
 			const above = BOX_ABOVE * em;
-			const below = (BOX_BELOW + (mark.index === current ? BOX_DATA : 0)) * em;
+			const below = BOX_BELOW * em;
 			// Up above every placed label it would overlap, until it overlaps none (it only rises: this ends)
 			let y = mark.y - rise;
 			for (let pass = 0; pass <= boxes.length; pass++) {

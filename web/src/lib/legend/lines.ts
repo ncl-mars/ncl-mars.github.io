@@ -4,8 +4,6 @@ export interface LabelText {
 	meta: string;
 	/** The legend's text size (CSS px): the title's; the coordinates are 0.9 of it. */
 	size: number;
-	/** The current POI's title is bold. */
-	bold: boolean;
 	/** 1: aligned left (label right of its point), −1: aligned right. */
 	side: number;
 	/** The label's width (CSS px), the widest of its two lines. */
