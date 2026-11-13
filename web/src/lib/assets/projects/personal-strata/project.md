@@ -4,6 +4,7 @@ credits:
   Year: 2026
   Role: Concept, Houdini pipeline, WebGL rendering, development
   Data: LINZ Data Service, Toitū Te Whenua Land Information New Zealand, CC BY 4.0 (modified)
+  Licence: https://creativecommons.org/licenses/by/4.0/
 
 media:
   - strata_001.png:
