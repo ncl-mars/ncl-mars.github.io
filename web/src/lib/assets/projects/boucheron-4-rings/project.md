@@ -3,7 +3,7 @@ title: Boucheron / 4 Rings
 
 credits:
   Year: 2025
-  Role: Simulation
+  Role: Simulation, rings animation
   Art Direction: Chien Bleu Studio
 
 media:
