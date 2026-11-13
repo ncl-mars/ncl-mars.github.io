@@ -5,6 +5,7 @@
 - [Browser testing](browser-testing.md) — use the user's Brave, ask first; never probe for or install browsers
 - [Deploy](deploy-later.md) — wanted since 2026-11-12, live before the evening of 11-13; no remote yet; Pages free = public repo only
 - [Diagnose first](diagnose-first.md) — visual artifacts: data check / debug view before any fix; no blind fixes
+- [Portfolio texts](portfolio-texts.md) — card texts: simple words + his own key terms, never node names, never "lead" (senior tech artist), a progression not a count
 - [No unasked cleanup](no-unasked-cleanup.md) — never remove params/switches/code unless explicitly asked; saved defaults or a pending offer aren't a yes
 - [Verify facts](verify-facts.md) — never state guesses about tools (Houdini viewport…) as fact; search the web or say unknown; take the user's test conditions as given
 - [Baked lighting](baked-lighting.md) — shadows stay baked, sun fixed; only n·L is computed in the shader; to change where the sun shows, aim the camera

@@ -41,7 +41,7 @@ The card shows the text (with its files), then the credits, then the `media` lis
 | Key | Meaning |
 |-----|---------|
 | `title` | **required**: the label in the scene, the menu entry, the card's title |
-| `credits` | optional: one `Role: names` line per role, indented, in order |
+| `credits` | optional: one `Role: names` line per role, indented, in order. A value that is a web address becomes a link: `Website: https://example.com` (shown as `example.com`). No date field: a `Year: 2025` line does it |
 | `media` | optional: files shown at the end of the card, after the credits: one `- file: what it shows` line per file, in order. The text after the colon describes the file for screen readers. A file placed in the text doesn't need to be listed here |
 
 Files, in the text or in `media`: images png, jpg, webp (resized and converted at build); videos mp4, webm, copied as they are (encode for the web first: H.264 MP4 with `-movflags +faststart`, about 1080 px tall), played muted and looping while visible.

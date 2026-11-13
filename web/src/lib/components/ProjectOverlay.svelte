@@ -139,7 +139,16 @@
 				{#each project.credits as credit, i (i)}
 					<div>
 						<dt>{credit.role}</dt>
-						<dd>{credit.names}</dd>
+						<!-- A web address is a link (shown without its https://) -->
+						{#if /^https?:\/\/\S+$/.test(credit.names)}
+							<dd>
+								<a href={credit.names} target="_blank" rel="noopener">
+									{credit.names.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')}
+								</a>
+							</dd>
+						{:else}
+							<dd>{credit.names}</dd>
+						{/if}
 					</div>
 				{/each}
 			</dl>
@@ -155,25 +164,29 @@
 	</article>
 </div>
 
-<!-- An image (`image`: its place in the lightbox) or a video, in the text or in the media list -->
+<!-- An image (`image`: its place in the lightbox) or a video, in the text or in the media list, with its caption
+     (the words after the file name) under it -->
 {#snippet file(item: Media, image: number)}
-	{#if item.kind === 'image'}
-		<button class="image" type="button" aria-label="Full screen: {item.alt}" onclick={() => openImage(image)}>
-			<enhanced:img src={item.picture} alt={item.alt} sizes="(max-width: 700px) 100vw, {tuning.overlay.width}rem" />
-		</button>
-	{:else}
-		<video
-			src={item.src}
-			poster={item.poster}
-			aria-label={item.alt}
-			muted
-			loop
-			playsinline
-			controls
-			preload="metadata"
-			{@attach playWhenVisible}
-		></video>
-	{/if}
+	<figure>
+		{#if item.kind === 'image'}
+			<button class="image" type="button" aria-label="Full screen: {item.alt}" onclick={() => openImage(image)}>
+				<enhanced:img src={item.picture} alt={item.alt} sizes="(max-width: 700px) 100vw, {tuning.overlay.width}rem" />
+			</button>
+		{:else}
+			<video
+				src={item.src}
+				poster={item.poster}
+				aria-label={item.alt}
+				muted
+				loop
+				playsinline
+				controls
+				preload="metadata"
+				{@attach playWhenVisible}
+			></video>
+		{/if}
+		{#if item.alt}<figcaption>{item.alt}</figcaption>{/if}
+	</figure>
 {/snippet}
 
 {#if lightboxOpen}
@@ -312,6 +325,21 @@
 		margin: 0;
 	}
 
+	figure {
+		margin: 0;
+	}
+
+	/* A file's caption: small, thin, italic, under it */
+	figcaption {
+		margin-top: 0.45rem;
+		font-size: 0.8rem;
+		font-style: italic;
+		font-weight: 300;
+		line-height: 1.4;
+		color: var(--muted);
+		text-align: center;
+	}
+
 	/* A file placed in the text, between two paragraphs */
 	.placed {
 		margin: 1.5rem 0;
@@ -323,8 +351,11 @@
 		margin-top: 2.5rem;
 	}
 
+	/* A button only takes its content's width, even as a block: centred in the card, an image narrower than it too */
 	.image {
 		display: block;
+		max-width: 100%;
+		margin-inline: auto;
 		padding: 0;
 		border: 0;
 		background: none;

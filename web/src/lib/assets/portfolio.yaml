@@ -1,7 +1,2 @@
-# The portfolio's own text (format: doc/formats/portfolio.md)
-
-# Your name: the masthead, and the browser tab ("Trench A · name" on a project's page)
-name: Portfolio
-
-# For search engines and link previews of the home page
-description: A placeholder description of the portfolio.
+name: Nicolas Mars
+description: "Portfolio of Nicolas Mars, 3D technical artist: simulation, Houdini pipelines, real-time 3D for the web."

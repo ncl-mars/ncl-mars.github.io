@@ -83,7 +83,7 @@
 		"darkness": 0.5,
 		"glow": 0.3,
 		"power": 3,
-		"view": 1
+		"view": 0
 	},
 	"ground": {
 		"albedoSaturation": 0.43,
@@ -96,9 +96,9 @@
 		"shallow": [0.463, 0.561, 0.576],
 		"deep": [0.204, 0.255, 0.298],
 		"depth": 6,
-		"foam": 0.6,
-		"foamWidth": 0.6,
-		"waveSize": 14,
+		"foam": 0.82,
+		"foamWidth": 3.05,
+		"waveSize": 26.5,
 		"waveSpeed": 0.6,
 		"waves": 0.35,
 		"waveFade": 600,

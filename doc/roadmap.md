@@ -298,6 +298,7 @@ Dropped (2026-10-29): simpler, faster without.
   - [ ] Check on the phone that it switches by itself ("motion rough" after the first moves) and that the desktop stays sharp
 - [ ] `prefers-reduced-motion`, keyboard/focus, meta/OG tags, page titles
 - [ ] Lighthouse pass (LCP with a full-screen canvas, CLS)
+- [ ] Real coordinates on the labels: the ground's true position and altitude instead of site metres. Measure first, read-only: the site's NZTM centre from `hou/geo/dem/site.tif`'s GeoTIFF tags, and the axes, scale (½) and any height offset (a water level subtracted inland, [dem.md](dem.md) step 6) by matching the exported heightmap against `site.tif`. Then the mapping as data next to the heightmap (not in code), and the legend's line (`legend.ts`) formatted from it. Format to choose: NZTM metres (`E 1 571 234 · N 5 178 456 · ALT 143`, a surveyor's) or latitude / longitude (an inverse NZTM projection in the code).
 
 ---
 
