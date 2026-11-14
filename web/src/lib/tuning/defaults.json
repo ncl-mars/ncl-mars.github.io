@@ -44,7 +44,7 @@
 	},
 	"shading": {
 		"tint": [0.8, 0.81, 0.83],
-		"shadowLight": 0.05,
+		"shadowLight": 0.125,
 		"slopeLight": 1,
 		"slopeSmoothing": 1.2,
 		"aoStrength": 0.91,

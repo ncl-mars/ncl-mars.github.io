@@ -32,12 +32,13 @@ The heightmap goes first and the far map second: the others check their footprin
 
 ## Albedo (4)
 
+- [ ] **The OCIO transform to sRGB applied in Copernicus, before the export: `export_albedo.py` converts nothing**, it writes the layer's values as they are. Linear values exported as they are come out too dark and dull on the web (it happened: the ground's exposure had been pushed to 2.33 to make up for it; with the transform, 1).
 - [ ] Display values (sRGB), the colour of everything, the stamps included (one matte material); no AO, shadow or light in it.
 - [ ] From a photo: its light taken out in linear light (`delight.cl`, at the photo's sun, on the heights before the stamps), then back to sRGB.
 
 ## Far albedo (5)
 
-- [ ] Over the far map's 16,000 m, 1024², made like the site's albedo (display values, no light in it).
+- [ ] Over the far map's 16,000 m, 1024², made like the site's albedo (display values, no light in it): the OCIO transform to sRGB before the export too.
 - [ ] Its colours matched to the site's albedo where they overlap (both cover the site), or the site's edge shows.
 
 ## POIs (6)

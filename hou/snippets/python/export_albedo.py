@@ -8,6 +8,8 @@
 # shadow or light: maps.png has them), already converted to display values (sRGB), since the web reads them
 # as they are. Lying in XZ like the height (no rotation; axis flips and swaps are handled). Under the sea it's
 # unused (the water's colour comes from its depth). Reads, checks, packs: the colour is made in Copernicus.
+# IT CONVERTS NOTHING: apply the OCIO transform to sRGB in Copernicus before this node. Linear values written
+# as they are look too dark and dull on the web (doc/terrain-export.md, Albedo).
 # Two exports, two nodes: NAME = "albedo" (over the heightmap, its footprint), "faralbedo" (over the far map,
 # its footprint).
 
